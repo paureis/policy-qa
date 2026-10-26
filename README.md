@@ -13,10 +13,10 @@ The point of the project is not the demo. It is that every change is measured ag
 | Ingestion and page-level chunking | done |
 | Hybrid retrieval (BM25 + bge-small embeddings, RRF) with a bge cross-encoder reranker | done |
 | Retrieval recall scored against the golden set | done, `results/` |
-| Generation on a Meta open-weights model with enforced citations | next |
-| Answer accuracy and faithfulness via an LLM judge, judge validated against 50 human verdicts | next |
-| Abstention on unanswerable questions | next |
-| Tracing, cost per query, p95 latency | next |
+| Generation with enforced citations (any OpenAI-compatible host for a Meta open-weights model) | code done, waiting on hackathon credits |
+| Answer accuracy and faithfulness via Claude as judge; judge validated against 50 human verdicts | harness done, validation pending |
+| Abstention on unanswerable questions, and forced abstention when no citation survives | done in the harness |
+| Tracing, cost per query, p95 latency | cost and latency per query reported; tracing next |
 
 ## Quick start
 
@@ -32,6 +32,21 @@ python -m policyqa.cli search "How many home health visits per day does Florida 
 ```
 
 Requires `pdftotext` and `pdfinfo` (poppler-utils). No API keys are needed for retrieval or its evaluation.
+
+Generation and the judge need keys; copy `.env.example` and fill in the names it lists. Then:
+
+```bash
+python -m policyqa.cli answer "Can an adult on Florida Medicaid get a fixed bridge to replace a missing tooth?"
+python -m policyqa.cli eval-answers --judge-subset        # 50 rows, Claude as judge
+python -m policyqa.cli eval-answers                       # all 160 rows
+python -m policyqa.cli eval-answers --provider mock --judge mock   # no keys; checks the plumbing, scores mean nothing
+```
+
+## How answers are scored
+
+The model sees the top 5 passages tagged `[P1]` to `[P5]` and must return JSON: an answer, the passages it relied on with a verbatim quote from each, and whether it abstains. Citations are checked, not trusted: a citation must name a passage that was shown, and its quote must occur in that passage (same 0.8 overlap rule as retrieval). Invalid citations are dropped, and an answer left with no valid citation becomes an abstention, because an uncited coverage claim is the failure this system exists to prevent.
+
+Claude then grades each answer against the human-written gold answer (correct, partially correct, incorrect, abstained) and against the cited passages (supported, partially supported, unsupported). The report gives accuracy by question type, the supported rate, abstention on the 10 unanswerable rows, false abstention on answerable rows, citation validity, tokens and cost per query for generation and for the judge, and p50 and p95 latency. The judge's verdicts on the 50-row judge subset are compared with independent human verdicts before any accuracy number is quoted.
 
 ## How retrieval is scored
 

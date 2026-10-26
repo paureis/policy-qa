@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: policyqa
+Version: 0.1.0
+Summary: Policy Document QA with citations: hybrid retrieval over public healthcare policy PDFs, scored against a human-verified golden set.
+License: MIT
+Requires-Python: >=3.11
+License-File: LICENSE
+Requires-Dist: rank_bm25>=0.2.2
+Requires-Dist: sentence-transformers>=3.0
+Requires-Dist: numpy>=1.26
+Requires-Dist: httpx>=0.27
+Requires-Dist: anthropic>=1.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Dynamic: license-file

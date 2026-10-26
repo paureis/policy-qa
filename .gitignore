@@ -11,3 +11,6 @@ __pycache__/
 .pytest_cache/
 .cache/
 models/
+
+# smoke-test output from the mock provider; not a result
+results/answers-mock*.json
