@@ -167,7 +167,7 @@ class Provider:
         if not (self.base_url and self.model):
             raise RuntimeError("Set POLICYQA_LLM_BASE_URL and POLICYQA_LLM_MODEL (and POLICYQA_LLM_API_KEY) to call a model.")
 
-    def complete(self, system: str, user: str, max_tokens: int = 600) -> tuple[str, int, int]:
+    def complete(self, system: str, user: str, max_tokens: int = 2000) -> tuple[str, int, int]:
         import httpx
 
         body = {
@@ -261,7 +261,7 @@ class MockProvider:
         return 0.0
 
 
-def answer_question(question: str, hits: list[Hit], provider, max_tokens: int = 600, trace=None) -> Answer:
+def answer_question(question: str, hits: list[Hit], provider, max_tokens: int = 2000, trace=None) -> Answer:
     from contextlib import nullcontext
 
     passages = format_passages(hits)

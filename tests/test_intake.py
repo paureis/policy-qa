@@ -141,7 +141,9 @@ def test_text_extraction_sends_one_text_part_and_returns_extraction():
     parts = p.calls[0]["parts"]
     assert len(parts) == 1 and parts[0]["type"] == "text" and LETTER in parts[0]["text"]
     assert p.calls[0]["schema"] is CARD_SCHEMA
-    assert ex.source == "text" and ex.raw_text == LETTER and ex.card == GOOD_CARD
+    stripped = {k: {kk: vv for kk, vv in c.items() if kk != "verified"} for k, c in ex.card.items()}
+    assert ex.source == "text" and ex.raw_text == LETTER and stripped == GOOD_CARD
+    assert ex.card["payer_name"]["verified"] is True  # the check ran against the letter
     assert ex.summary == "A plain summary." and ex.model == "muse-spark-1.3"
     assert ex.input_tokens == 100 and ex.output_tokens == 50 and ex.cost_usd == 0.0002 and ex.latency_ms >= 0
 
@@ -295,3 +297,45 @@ def test_reversed_date_range_is_rejected():
     assert coerce_field("dates_of_service", "2026-09-30/2026-09-01") == (None, False)
     assert coerce_field("dates_of_service", "2026-09-01/2026-09-30") == ("2026-09-01/2026-09-30", True)
     assert coerce_field("dates_of_service", "2026-09-01/2026-09-01") == ("2026-09-01/2026-09-01", True)
+
+
+# ---- verification against the letter text ----------------------------------
+
+def test_value_in_text_renderings():
+    from policyqa.intake import value_in_text
+
+    letter = "Service code T1000, dates of service September 1, 2026 through September 30, 2026. The amount billed was $4,320.00. Dated 10/14/2026. Sunshine Health."
+    assert value_in_text("service_code", "T1000", letter) is True
+    assert value_in_text("service_code", "T100", letter) is True  # substring of T1000: the check cannot catch a dropped digit inside a longer code
+    assert value_in_text("service_code", "T11000", letter) is False
+    assert value_in_text("amount_billed", 4320.0, letter) is True
+    assert value_in_text("amount_billed", 4230.0, letter) is False
+    assert value_in_text("dates_of_service", "2026-09-01/2026-09-30", letter) is True
+    assert value_in_text("dates_of_service", "2026-09-01/2026-10-30", letter) is False
+    assert value_in_text("letter_date", "2026-10-14", letter) is True
+    assert value_in_text("appeal_deadline_claimed", "2026-12-13", letter) is False
+    assert value_in_text("payer_name", "Sunshine Health", letter) is True
+    assert value_in_text("payer_name", "Humana", letter) is False
+    assert value_in_text("service", "anything", letter) is None
+    assert value_in_text("service_code", None, letter) is None
+
+
+def test_verify_card_demotes_values_not_in_the_letter():
+    from policyqa.intake import normalize_card, verify_card_against_text
+
+    letter = "Sunshine Health denied private duty nursing, service code T1000, billed $4,320.00, dated October 14, 2026."
+    card = normalize_card({**GOOD_CARD, "service_code": {"value": "T11000", "confidence": "high"}, "appeal_deadline_claimed": {"value": "2026-12-13", "confidence": "high"}})
+    out = verify_card_against_text(card, letter)
+    assert out["service_code"]["confidence"] == "low" and out["service_code"]["verified"] is False
+    assert out["appeal_deadline_claimed"]["confidence"] == "low"
+    assert out["amount_billed"]["verified"] is True and out["amount_billed"]["confidence"] == card["amount_billed"]["confidence"]
+    assert "verified" not in out["service"]
+
+
+def test_extractor_runs_verification_and_records_reasoning_tokens():
+    bad = {"is_denial_letter": True, "is_out_of_scope": False, "raw_text": LETTER, "summary": "s", "card": {**GOOD_CARD, "service_code": {"value": "T11000", "confidence": "high"}}}
+    fake = RecordingProvider(reply=bad)
+    fake.last_response = {"usage": {"completion_tokens_details": {"reasoning_tokens": 58}}}
+    ex = MuseSparkExtractor(fake).extract("text", text=LETTER)
+    assert ex.card["service_code"]["confidence"] == "low"
+    assert ex.reasoning_tokens == 58

@@ -35,6 +35,8 @@ uvicorn api.main:app --reload --port 8000
 
 Errors come back as `{"detail": {"code", "message"}}`. Intake codes (422): `unsupported_type`, `too_large`, `text_length`, `unreadable`, `not_a_denial_letter`, `out_of_scope`; 400 `bad_request` for both or neither of file and text. Case codes: 404 `not_found`, 409 `wrong_status` (the card is editable only during intake), 422 `invalid_field` (with `field`). The screen shows the six intake codes with their own copy, any other 4xx message under "The service could not accept that", and a network failure or 5xx as "We could not reach the service".
 
+After extraction, copied values (service code, amount, the three dates, payer) are checked against the letter text; a value that does not appear is demoted to `low` so the screen flags it, and the cell carries `verified: true|false`. Muse Spark 1.3 is a reasoning model, so completion tokens include its thinking (`reasoning_tokens` in the usage details) and every call carries a generous `max_tokens`.
+
 Extraction runs on Muse Spark 1.3 (`policyqa/intake.py`, `MuseSparkExtractor`: text, `image_url`, or a PDF `file` part with a `pdftotext` fallback, JSON schema output) when `POLICYQA_LLM_BASE_URL` and `POLICYQA_LLM_MODEL` are set, and on `FixtureExtractor` (the Sunshine Health sample below, no network) otherwise. `GET /health` reports which in `intake`. Cases live in memory (`api/cases.py`) and vanish on restart.
 
 ### Intake screen modes

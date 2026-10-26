@@ -76,6 +76,7 @@ class Extraction:
     output_tokens: int
     cost_usd: float
     latency_ms: float
+    reasoning_tokens: int = 0
 
 
 # ---- scope heuristic -------------------------------------------------------
@@ -137,7 +138,7 @@ SYSTEM_PROMPT = f"""You read a health coverage denial letter, notice of adverse 
 Rules:
 1. Use only what the letter says. Do not use outside knowledge about payers, programs, or codes.
 2. Confidence: "high" when the letter states the value in so many words; "medium" when you inferred it from what the letter says (for example the program from the payer and plan name, the age group from a date of birth); "low" when you guessed or the letter does not say it. When the letter does not say it, set value to null (or "unknown" for program and member_age_group) with confidence "low".
-3. Formats: dates as YYYY-MM-DD; dates_of_service as YYYY-MM-DD or a range YYYY-MM-DD/YYYY-MM-DD; amount_billed as a number without currency symbols; service in at most 80 characters; denial_reason in at most three sentences, quoting the letter's own reason where possible.
+3. Copy service codes, amounts, and dates character for character from the letter before converting the format; a code such as T1000 has exactly the digits the letter shows. Formats: dates as YYYY-MM-DD; dates_of_service as YYYY-MM-DD or a range YYYY-MM-DD/YYYY-MM-DD; amount_billed as a number without currency symbols; service in at most 80 characters; denial_reason in at most three sentences, quoting the letter's own reason where possible.
 4. program is one of: {", ".join(PROGRAMS)}. member_age_group is one of: {", ".join(AGE_GROUPS)}.
 5. raw_text: the letter as you read it, in reading order, 200 to 6,000 characters. For text input, repeat the text you were given.
 6. summary: one paragraph in plain language for a reader with no insurance background: who denied what, why the letter says it was denied, the amount if stated, and the deadline the letter gives to appeal. No advice beyond that.
@@ -280,7 +281,9 @@ def _is_file_rejection(exc: Exception) -> bool:
 class MuseSparkExtractor:
     """Muse Spark 1.3 (or any OpenAI-compatible multimodal endpoint) reads the letter into the card."""
 
-    def __init__(self, provider, max_tokens: int = 2500):
+    # Muse Spark 1.3 is a reasoning model: completion tokens include its thinking
+    # (58 of 68 on the smoke test), so the budget must leave room for both.
+    def __init__(self, provider, max_tokens: int = 6000):
         self.provider = provider
         self.max_tokens = max_tokens
         self.model = getattr(provider, "model", MODEL_NAME)
@@ -316,18 +319,89 @@ class MuseSparkExtractor:
             raise IntakeError("out_of_scope", "Recourse reads coverage denial letters and drafts appeals. It does not give medical advice. For questions about treatment, dosage, or diagnosis, ask your doctor or pharmacist. If you have a denial letter, start with that.")
         if doc.get("is_denial_letter") is False:
             raise IntakeError("not_a_denial_letter", "This does not look like a coverage denial letter, notice of action, or explanation of benefits.")
-        raw_text = text if text is not None else str(doc.get("raw_text") or "")
+        raw_text = (text if text is not None else str(doc.get("raw_text") or ""))[:TEXT_MAX]
+        card = verify_card_against_text(normalize_card(doc.get("card") or {}), raw_text)
+        last = getattr(self.provider, "last_response", None) or {}
+        details = (last.get("usage") or {}).get("completion_tokens_details") or {}
         return Extraction(
             source=source,
-            raw_text=raw_text[:TEXT_MAX],
+            raw_text=raw_text,
             summary=str(doc.get("summary") or "").strip(),
-            card=normalize_card(doc.get("card") or {}),
+            card=card,
             model=self.model,
             input_tokens=n_in,
             output_tokens=n_out,
             cost_usd=self.provider.cost(n_in, n_out),
             latency_ms=latency,
+            reasoning_tokens=int(details.get("reasoning_tokens", 0) or 0),
         )
+
+
+# ---- verification against the letter text -----------------------------------
+#
+# Values the model copies (codes, amounts, dates, payer) are checked against the
+# letter text. A value that does not appear is demoted to "low" so the screen
+# flags it with Check. The letter text is the pasted text, or the model's own
+# transcription for a photo or PDF, so the check is strongest on text input.
+
+_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+VERIFIED_FIELDS = ("service_code", "amount_billed", "dates_of_service", "letter_date", "appeal_deadline_claimed", "payer_name")
+
+
+def _squash(s: str) -> str:
+    return re.sub(r"[\s\-]", "", s).lower()
+
+
+def _date_renderings(iso: str) -> list[str]:
+    y, m, d = int(iso[:4]), int(iso[5:7]), int(iso[8:10])
+    name = _MONTHS[m - 1]
+    return [iso, f"{name} {d}, {y}", f"{name[:3]} {d}, {y}", f"{name[:3]}. {d}, {y}", f"{d} {name} {y}", f"{d} {name[:3]} {y}", f"{m}/{d}/{y}", f"{m:02d}/{d:02d}/{y}", f"{m}/{d}/{y % 100:02d}", f"{m:02d}/{d:02d}/{y % 100:02d}", f"{name} {d}", f"{m}-{d}-{y}", f"{m:02d}-{d:02d}-{y}"]
+
+
+def _amount_renderings(a: float) -> list[str]:
+    whole = int(a)
+    out = [f"{a:,.2f}", f"{a:.2f}", f"{whole:,}", f"{whole}"]
+    if a != whole:
+        out.append(f"{a:g}")
+    return out
+
+
+def value_in_text(field: str, value, text: str) -> bool | None:
+    """True if the value appears in the text, False if not, None when the check does not apply."""
+    if value is None or value == "" or not text:
+        return None
+    hay = text.lower()
+    if field == "service_code":
+        return _squash(str(value)) in _squash(text)
+    if field == "payer_name":
+        return str(value).lower() in hay
+    if field == "amount_billed":
+        try:
+            return any(r in text for r in _amount_renderings(float(value)))
+        except (TypeError, ValueError):
+            return None
+    if field in ("letter_date", "appeal_deadline_claimed", "dates_of_service"):
+        parts = str(value).split("/") if field == "dates_of_service" and "/" in str(value) and len(str(value)) > 10 else [str(value)]
+        try:
+            return all(any(r.lower() in hay for r in _date_renderings(p)) for p in parts)
+        except (ValueError, IndexError):
+            return None
+    return None
+
+
+def verify_card_against_text(card: dict, text: str) -> dict:
+    """Demote to low any copied value that is not in the letter; record the check on the cell."""
+    out = {}
+    for f, cell in card.items():
+        cell = dict(cell)
+        if f in VERIFIED_FIELDS:
+            found = value_in_text(f, cell.get("value"), text)
+            if found is not None:
+                cell["verified"] = found
+                if not found:
+                    cell["confidence"] = "low"
+        out[f] = cell
+    return out
 
 
 FIXTURE_CARD = {
