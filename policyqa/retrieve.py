@@ -38,12 +38,18 @@ class Retriever:
 
             self.reranker = CrossEncoder(rerank_model)
 
-    def search(self, query: str, k: int = 10, candidates: int = 40, rrf_k: int = 60, trace=None) -> list[Hit]:
+    def search(self, query: str, k: int = 10, candidates: int = 40, rrf_k: int = 60, trace=None, jurisdictions: set[str] | None = None) -> list[Hit]:
+        """Top `k` hits. With `jurisdictions` (for example {"Florida"}), only chunks from those
+        jurisdictions count: the candidate pool is widened until `k` of them are found or the
+        index runs out, and at most `candidates` filtered hits go to the reranker."""
         from contextlib import nullcontext
 
         span = trace.span if trace is not None else (lambda name, **kw: nullcontext())
-        with span("retrieve", mode=self.mode, candidates=candidates):
-            hits = self._search(query, candidates, rrf_k)
+        with span("retrieve", mode=self.mode, candidates=candidates, jurisdictions=sorted(jurisdictions) if jurisdictions else None):
+            if jurisdictions:
+                hits = self._search_filtered(query, k, candidates, rrf_k, set(jurisdictions))
+            else:
+                hits = self._search(query, candidates, rrf_k)
         if self.reranker is not None and hits:
             with span("rerank", model=getattr(self.reranker, "model_name", None) or "cross-encoder", pairs=len(hits)):
                 pairs = [(query, h.chunk["text"]) for h in hits]
@@ -51,6 +57,15 @@ class Retriever:
                 hits = [Hit(h.chunk, float(s), "rerank") for h, s in zip(hits, scores)]
                 hits.sort(key=lambda h: -h.score)
         return hits[:k]
+
+    def _search_filtered(self, query: str, k: int, candidates: int, rrf_k: int, allowed: set[str]) -> list[Hit]:
+        total = len(self.index.chunks)
+        pool = candidates
+        while True:
+            hits = [h for h in self._search(query, pool, rrf_k) if h.chunk.get("jurisdiction") in allowed]
+            if len(hits) >= k or pool >= total:
+                return hits[: max(candidates, k)]
+            pool = min(total, pool * 4)
 
     def _search(self, query: str, candidates: int, rrf_k: int) -> list[Hit]:
         idx = self.index

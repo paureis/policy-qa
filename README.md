@@ -88,7 +88,14 @@ The report also gives `doc@k` (right document, any page) and `page@k` (right doc
 
 Results live in `results/<run>.json` with the full config and a per-row record, so two runs can be diffed row by row.
 
-Current numbers, 139 scorable rows on the 59 documents reachable from the build machine (the full 64-document run is pending), 300-word chunks, CPU only:
+Current numbers on all 64 documents, 150 scorable rows (Alvaro's machine, Oct 26 evening, `results/hybrid.json` and `results/hybrid-rerank.json`), 300-word chunks, CPU only:
+
+| Retrieval | all@5 | all@10 | right doc @10 | MRR | p50 latency |
+|---|---|---|---|---|---|
+| Hybrid, RRF | 0.560 | 0.680 | 0.867 | 0.433 | 14 ms |
+| Hybrid + MiniLM-L-6 reranker, 20 candidates (the answering path) | 0.613 | 0.720 | 0.913 | 0.480 | 421 ms |
+
+The earlier sweep, 139 scorable rows on the 59 documents reachable from the build machine, which chose the settings:
 
 | Retrieval | all@5 | all@10 | right doc @10 | MRR | p50 latency |
 |---|---|---|---|---|---|

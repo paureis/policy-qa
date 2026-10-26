@@ -74,6 +74,9 @@ class Answer:
     latency_ms: float
     raw: str
     error: str | None = None
+    struck: list[dict] = field(default_factory=list)
+    original_answer: str = ""
+    reasoning_tokens: int = 0
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -124,24 +127,61 @@ def parse_model_json(text: str) -> dict:
         return json.loads(m.group(0))
 
 
-def enforce_citations(data: dict, passages: list[dict]) -> tuple[str, bool, list[Citation], int, int, bool]:
-    """Return (answer, abstained, kept citations, proposed, dropped, forced_abstain)."""
+STRUCK_NOT_FOUND = "quote not found on the cited page"
+STRUCK_NOT_SHOWN = "cited a passage that was not shown"
+STRUCK_TOO_SHORT = "quote too short to verify"
+
+
+@dataclass
+class Enforcement:
+    """What the verifier decided about one model reply.
+
+    `answer` is the text to show (the abstention text when abstained); `original_answer`
+    is what the model wrote before any forced abstention, so a screen can show it struck
+    out. `struck` lists every dropped citation with the reason it was dropped.
+    """
+
+    answer: str
+    abstained: bool
+    kept: list[Citation]
+    proposed: int
+    struck: list[dict]
+    forced_abstain: bool
+    original_answer: str
+
+    @property
+    def dropped(self) -> int:
+        return len(self.struck)
+
+
+def enforce_citations_detailed(data: dict, passages: list[dict]) -> Enforcement:
     by_tag = {p["tag"]: p for p in passages}
     proposed = data.get("citations") or []
+    if not isinstance(proposed, list):
+        proposed = []
     kept: list[Citation] = []
+    struck: list[dict] = []
     for c in proposed:
         if not isinstance(c, dict):
+            struck.append({"doc_id": None, "title": None, "page": None, "quote": str(c)[:300], "reason": STRUCK_NOT_SHOWN})
             continue
         tag = str(c.get("passage", "")).strip().strip("[]").upper()
         quote = str(c.get("quote", "")).strip()
         p = by_tag.get(tag)
-        if p is None or len(quote) < 15:
+        if p is None:
+            struck.append({"doc_id": None, "title": None, "page": None, "quote": quote, "reason": STRUCK_NOT_SHOWN})
+            continue
+        if len(quote) < 15:
+            struck.append({"doc_id": p["doc_id"], "title": p.get("title"), "page": p["page"], "quote": quote, "reason": STRUCK_TOO_SHORT})
             continue
         ov = quote_overlap(quote, p["text"])
         if ov >= QUOTE_THRESHOLD:
             kept.append(Citation(tag, p["doc_id"], p["page"], quote, round(ov, 3)))
-    abstained = bool(data.get("abstain")) or str(data.get("answer", "")).strip().lower().startswith("not covered")
-    answer = str(data.get("answer", "")).strip()
+        else:
+            struck.append({"doc_id": p["doc_id"], "title": p.get("title"), "page": p["page"], "quote": quote, "reason": STRUCK_NOT_FOUND})
+    original = str(data.get("answer", "")).strip()
+    abstained = bool(data.get("abstain")) or original.lower().startswith("not covered")
+    answer = original
     forced = False
     if abstained:
         answer = ABSTAIN_TEXT
@@ -150,7 +190,13 @@ def enforce_citations(data: dict, passages: list[dict]) -> tuple[str, bool, list
         forced = True
         abstained = True
         answer = ABSTAIN_TEXT
-    return answer, abstained, kept, len(proposed), len(proposed) - len(kept), forced
+    return Enforcement(answer, abstained, kept, len(proposed), struck, forced, original)
+
+
+def enforce_citations(data: dict, passages: list[dict]) -> tuple[str, bool, list[Citation], int, int, bool]:
+    """Return (answer, abstained, kept citations, proposed, dropped, forced_abstain)."""
+    r = enforce_citations_detailed(data, passages)
+    return r.answer, r.abstained, r.kept, r.proposed, r.dropped, r.forced_abstain
 
 
 class Provider:
@@ -278,7 +324,8 @@ def answer_question(question: str, hits: list[Hit], provider, max_tokens: int = 
             error = f"{type(e).__name__}: {e}"
             data = {"answer": "", "abstain": True, "citations": []}
     latency = (time.perf_counter() - t) * 1000
-    ans, abst, kept, proposed, dropped, forced = enforce_citations(data, passages)
+    enf = enforce_citations_detailed(data, passages)
+    ans, abst, kept, proposed, dropped, forced = enf.answer, enf.abstained, enf.kept, enf.proposed, enf.dropped, enf.forced_abstain
     if trace is not None:
         trace.set(input_tokens=n_in, output_tokens=n_out, cost_usd=provider.cost(n_in, n_out), abstained=abst, forced_abstain=forced, citations_kept=len(kept), citations_dropped=proposed - len(kept), error=error)
     return Answer(
@@ -297,4 +344,17 @@ def answer_question(question: str, hits: list[Hit], provider, max_tokens: int = 
         latency_ms=round(latency, 1),
         raw=raw,
         error=error,
+        struck=enf.struck,
+        original_answer=enf.original_answer,
+        reasoning_tokens=reasoning_tokens(provider) if n_out else 0,
     )
+
+
+def reasoning_tokens(provider) -> int:
+    """Reasoning tokens from the provider's last response (Muse Spark 1.3 reports them under usage.completion_tokens_details)."""
+    last = getattr(provider, "last_response", None) or {}
+    details = (last.get("usage") or {}).get("completion_tokens_details") or {}
+    try:
+        return int(details.get("reasoning_tokens", 0) or 0)
+    except (TypeError, ValueError):
+        return 0

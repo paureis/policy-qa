@@ -7,14 +7,22 @@ Surface:
                                  (mock provider until POLICYQA_LLM_* are set)
   POST  /case/intake             multipart: one of `file` (jpeg/png/webp/pdf, 10 MB) or `text`
                                  (200 to 6,000 chars) -> the case with its card
-  GET   /case/{id}               the case
+  GET   /case/{id}               the case, with `route` and `investigation` (null until started)
   PATCH /case/{id}               {field: plain value, ...} -> the case; edited cells become high
-  POST  /case/{id}/investigate   intake -> investigating (stub; the agent lands next)
+  POST  /case/{id}/investigate   202 {case_id, status: "investigating"}; runs the investigation in a
+                                 background thread; poll GET /case/{id} to watch findings arrive;
+                                 the case ends as `investigated` or `failed`
 
 Errors are {"detail": {"code": ..., "message": ...}}: 400 bad_request, 404 not_found,
 409 wrong_status, 422 one of the intake codes (unsupported_type, too_large,
 text_length, unreadable, not_a_denial_letter, out_of_scope) or invalid_field
 (with "field").
+
+The investigation runs live (Muse Spark 1.3 through POLICYQA_LLM_*, hybrid retrieval over
+data/chunks.jsonl) only when both the env and the index exist; otherwise the fixture
+investigator serves a synthetic Sunshine Health investigation. `RUN_INVESTIGATION_INLINE`
+makes the POST run it synchronously (tests); `FIXTURE_DELAY` is the pause between fixture
+findings.
 
 Run: uvicorn api.main:app --reload --port 8000
 Verdict and letter endpoints land as the agent is built.
@@ -22,6 +30,8 @@ Verdict and letter endpoints land as the agent is built.
 from __future__ import annotations
 
 import os
+import threading
+from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
@@ -36,6 +46,9 @@ from api.cases import STORE
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 MAX_UPLOAD = 10 * 1024 * 1024
+RUN_INVESTIGATION_INLINE = False  # True: POST /case/{id}/investigate runs the whole investigation before answering (tests)
+FIXTURE_DELAY = 0.8  # seconds between fixture findings, so progress is visible on screen
+INVESTIGATION_THREADS: dict[str, threading.Thread] = {}
 
 app = FastAPI(title="Recourse API", version="0.1.0")
 
@@ -65,8 +78,28 @@ def retriever():
         raise HTTPException(503, "index not built: run `python -m policyqa.cli chunk` and `embed` first")
     r = Retriever(Index(chunks, DATA / "dense.npy"), mode="hybrid", rerank=True, rerank_model=ANSWER_RERANK_MODEL)
     search = r.search
-    r.search = lambda q, k=5, trace=None: search(q, k=k, candidates=ANSWER_CANDIDATES, trace=trace)
+    r.search = lambda q, k=5, **kw: search(q, k=k, candidates=ANSWER_CANDIDATES, **kw)
     return r
+
+
+def _live_configured() -> bool:
+    return bool(os.environ.get("POLICYQA_LLM_BASE_URL") and os.environ.get("POLICYQA_LLM_MODEL"))
+
+
+def investigation_mode() -> str:
+    """The model name when a live investigation is possible (env set and index built), else "fixture"."""
+    if _live_configured() and (DATA / "chunks.jsonl").exists():
+        return os.environ["POLICYQA_LLM_MODEL"]
+    return "fixture"
+
+
+@lru_cache(maxsize=1)
+def investigator():
+    from policyqa.investigate import FixtureInvestigator, LiveInvestigator
+
+    if investigation_mode() == "fixture":
+        return FixtureInvestigator(delay=FIXTURE_DELAY)
+    return LiveInvestigator(retriever(), provider())
 
 
 @lru_cache(maxsize=1)
@@ -99,7 +132,8 @@ def health():
         "index_built": (DATA / "chunks.jsonl").exists(),
         "dense_built": (DATA / "dense.npy").exists(),
         "model": os.environ.get("POLICYQA_LLM_MODEL") or "mock",
-        "intake": os.environ.get("POLICYQA_LLM_MODEL") if (os.environ.get("POLICYQA_LLM_BASE_URL") and os.environ.get("POLICYQA_LLM_MODEL")) else "fixture",
+        "intake": os.environ.get("POLICYQA_LLM_MODEL") if _live_configured() else "fixture",
+        "investigation": investigation_mode(),
     }
 
 
@@ -228,10 +262,44 @@ def case_patch(case_id: str, body: dict = Body(...)):
     return STORE.patch(case_id, updates)
 
 
-@app.post("/case/{case_id}/investigate")
+_CASE_STATUS = {"running": "investigating", "done": "investigated", "failed": "failed"}
+
+
+def _run_investigation(case_id: str) -> None:
+    """Body of the investigation thread: every finding is stored as it lands, then the final state."""
+    from policyqa.investigate import _empty_investigation
+
+    c = STORE.get(case_id)
+    if c is None:
+        return
+    route = c.get("route")
+
+    def progress(partial: dict) -> None:
+        STORE.set_investigation(case_id, route, partial, _CASE_STATUS.get(partial.get("status"), "investigating"))
+
+    try:
+        final = investigator().investigate(c, on_progress=progress)
+        STORE.set_investigation(case_id, route, final, _CASE_STATUS.get(final.get("status"), "failed"))
+    except Exception as e:  # noqa: BLE001 - the case records the failure; the thread must not die silently
+        cur = (STORE.get(case_id) or {}).get("investigation") or _empty_investigation(getattr(investigator(), "model", "?"))
+        cur.update(status="failed", error=f"{type(e).__name__}: {e}"[:500], finished_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        STORE.set_investigation(case_id, route, cur, "failed")
+
+
+@app.post("/case/{case_id}/investigate", status_code=202)
 def case_investigate(case_id: str):
+    from policyqa.investigate import _empty_investigation
+
     c = _load_case(case_id)
     if c["status"] != "intake":
         raise _err(409, "wrong_status", f"Case {case_id} is already {c['status']}.")
-    STORE.set_status(case_id, "investigating")
+    inv = investigator()
+    route = inv.route(c["card"]).to_dict()
+    STORE.set_investigation(case_id, route, _empty_investigation(getattr(inv, "model", "?")), "investigating")
+    if RUN_INVESTIGATION_INLINE:
+        _run_investigation(case_id)
+    else:
+        t = threading.Thread(target=_run_investigation, args=(case_id,), name=f"investigate-{case_id}", daemon=True)
+        INVESTIGATION_THREADS[case_id] = t
+        t.start()
     return {"case_id": case_id, "status": "investigating"}

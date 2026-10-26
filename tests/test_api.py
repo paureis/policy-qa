@@ -211,11 +211,15 @@ def test_patch_bad_values():
     assert client.patch(f"/case/{cid}", json={}).status_code == 422
 
 
-def test_investigate_then_patch_conflicts():
+def test_investigate_then_patch_conflicts(monkeypatch):
+    import api.main as m
+
+    monkeypatch.setattr(m, "RUN_INVESTIGATION_INLINE", False)
     cid = _intake_text().json()["case_id"]
     r = client.post(f"/case/{cid}/investigate")
-    assert r.status_code == 200 and r.json() == {"case_id": cid, "status": "investigating"}
-    assert client.get(f"/case/{cid}").json()["status"] == "investigating"
+    assert r.status_code == 202 and r.json() == {"case_id": cid, "status": "investigating"}
+    m.INVESTIGATION_THREADS[cid].join(timeout=10)
+    assert client.get(f"/case/{cid}").json()["status"] == "investigated"
     r = client.patch(f"/case/{cid}", json={"payer_name": "X"})
     assert r.status_code == 409 and r.json()["detail"]["code"] == "wrong_status"
     r = client.post(f"/case/{cid}/investigate")
@@ -248,3 +252,115 @@ def test_malformed_patch_bodies_keep_the_error_shape():
         assert r.status_code == 422, (body, r.text)
         d = r.json()["detail"]
         assert isinstance(d, dict) and d["code"] == "invalid_field" and d["message"], (body, r.text)
+
+
+# ---- investigation ----------------------------------------------------------
+
+import api.main as api_main  # noqa: E402
+from api.main import investigator  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _investigation_inline(monkeypatch):
+    """Run the investigation synchronously in the request and skip the fixture's 0.8 s pauses."""
+    monkeypatch.setattr(api_main, "RUN_INVESTIGATION_INLINE", True)
+    monkeypatch.setattr(api_main, "FIXTURE_DELAY", 0)
+    investigator.cache_clear()
+    yield
+    investigator.cache_clear()
+
+
+def test_new_case_has_null_route_and_investigation():
+    b = _intake_text().json()
+    assert b["route"] is None and b["investigation"] is None and b["status"] == "intake"
+
+
+def test_health_reports_investigation_mode(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+    assert client.get("/health").json()["investigation"] == "fixture"
+    monkeypatch.setenv("POLICYQA_LLM_BASE_URL", "https://api.meta.ai/v1")
+    monkeypatch.setenv("POLICYQA_LLM_MODEL", "muse-spark-1.3")
+    # env set but no index on disk: still the fixture
+    assert client.get("/health").json()["investigation"] == "fixture"
+    (tmp_path / "chunks.jsonl").write_text("")
+    assert client.get("/health").json()["investigation"] == "muse-spark-1.3"
+
+
+def test_investigate_fixture_path_through_the_real_app(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)  # no index, and the autouse fixture above removed the env
+    cid = _intake_text().json()["case_id"]
+    r = client.post(f"/case/{cid}/investigate")
+    assert r.status_code == 202 and r.json() == {"case_id": cid, "status": "investigating"}
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "investigated"
+    assert b["route"] == {"program": "florida_medicaid_mma", "jurisdictions": ["Florida"], "dual": False, "reason": b["route"]["reason"]}
+    assert b["route"]["reason"].endswith(".")
+    inv = b["investigation"]
+    assert inv["status"] == "done" and inv["error"] is None and inv["model"] == "fixture"
+    assert inv["questions_planned"] == 5 and inv["questions_done"] == 5 and len(inv["findings"]) == 5
+    assert set(inv) >= {"status", "started_at", "finished_at", "questions_planned", "questions_done", "findings", "coverage", "cost_usd", "latency_ms", "model", "error", "trace"}
+    assert inv["coverage"] == {"claims": 4, "supported": 3}
+    assert {f["status"] for f in inv["findings"]} == {"supported", "not_settled", "unsupported"}
+    f = inv["findings"][0]
+    assert set(f) == {"id", "question", "topic", "jurisdiction", "status", "answer", "citations", "struck", "model", "input_tokens", "output_tokens", "reasoning_tokens", "latency_ms", "cost_usd"}
+    assert set(f["citations"][0]) == {"doc_id", "title", "page", "quote", "overlap"}
+    struck = next(x for x in inv["findings"] if x["status"] == "unsupported")["struck"][0]
+    assert set(struck) == {"doc_id", "title", "page", "quote", "reason"}
+    assert inv["trace"]["spans"]
+    # the whole case keeps every intake field
+    assert b["card"]["payer_name"]["value"] == "Sunshine Health" and b["summary"] and b["raw_text"]
+    # a second call conflicts
+    r = client.post(f"/case/{cid}/investigate")
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "wrong_status"
+
+
+def test_investigate_background_thread_updates_the_case_as_findings_arrive(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+    monkeypatch.setattr(api_main, "RUN_INVESTIGATION_INLINE", False)
+    monkeypatch.setattr(api_main, "FIXTURE_DELAY", 0.05)
+    investigator.cache_clear()
+    cid = _intake_text().json()["case_id"]
+    assert client.post(f"/case/{cid}/investigate").status_code == 202
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] in ("investigating", "investigated") and b["route"]["jurisdictions"] == ["Florida"]
+    assert b["investigation"]["status"] in ("running", "done") and b["investigation"]["questions_done"] <= 5
+    t = api_main.INVESTIGATION_THREADS[cid]
+    assert t.daemon
+    t.join(timeout=10)
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "investigated" and b["investigation"]["questions_done"] == 5 and len(b["investigation"]["findings"]) == 5
+
+
+def test_investigation_failure_marks_the_case_failed(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+
+    class Boom:
+        model = "boom"
+
+        def route(self, card):
+            from policyqa.investigate import route_case
+
+            return route_case(card)
+
+        def investigate(self, case, on_progress=None):
+            raise RuntimeError("provider down")
+
+    monkeypatch.setattr(api_main, "investigator", lambda: Boom())
+    cid = _intake_text().json()["case_id"]
+    assert client.post(f"/case/{cid}/investigate").status_code == 202
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "failed" and b["investigation"]["status"] == "failed" and "RuntimeError" in b["investigation"]["error"]
+    assert b["investigation"]["finished_at"] and b["investigation"]["findings"] == []
+
+
+def test_set_investigation_store_method():
+    from api.cases import CaseStore
+
+    s = CaseStore()
+    c = s.create({"card": {}})
+    assert c["route"] is None and c["investigation"] is None
+    inv = {"status": "running", "findings": [{"id": "f1"}]}
+    out = s.set_investigation(c["case_id"], {"program": "unknown"}, inv, "investigating")
+    inv["findings"].append({"id": "f2"})  # the store keeps its own copy
+    assert out["status"] == "investigating" and len(s.get(c["case_id"])["investigation"]["findings"]) == 1
+    assert s.set_investigation("c_nope", None, None, "failed") is None
