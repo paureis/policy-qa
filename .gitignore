@@ -20,3 +20,4 @@ review/export/
 
 # Claude Code project settings and skills (Impeccable is installed globally on the developer machine)
 .claude/
+*.egg-info/
