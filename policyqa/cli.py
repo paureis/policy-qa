@@ -81,6 +81,7 @@ def main(argv=None):
     ea.add_argument("--judge-subset", action="store_true", help="only the 50 rows marked judge_subset=1")
     ea.add_argument("--limit", type=int, default=None)
     ea.add_argument("--name", default=None)
+    ea.add_argument("--traces", type=Path, default=ROOT / "data/traces.jsonl", help="JSONL trace log; pass an empty string to disable")
 
     args = ap.parse_args(argv)
 
@@ -134,7 +135,7 @@ def main(argv=None):
 
         r = Retriever(Index(args.chunks, args.dense), mode=args.mode, rerank=args.rerank, rerank_model=args.rerank_model or RERANK_MODEL)
         r_search = r.search
-        r.search = lambda q, k=5: r_search(q, k=k, candidates=args.candidates)
+        r.search = lambda q, k=5, trace=None: r_search(q, k=k, candidates=args.candidates, trace=trace)
         provider = MockProvider() if args.provider == "mock" else Provider()
         if args.cmd == "answer":
             a = answer_question(args.question, r.search(args.question, k=args.k), provider)
@@ -159,7 +160,7 @@ def main(argv=None):
                 if len(done) % 10 == 0:
                     print(f"  {len(done)} rows", flush=True)
 
-            res = run(golden, r, provider, judge, k=args.k, present_docs=present, limit=args.limit, judge_subset_only=args.judge_subset, on_row=progress)
+            res = run(golden, r, provider, judge, k=args.k, present_docs=present, limit=args.limit, judge_subset_only=args.judge_subset, on_row=progress, trace_path=(args.traces or None))
             summary = summarize(res)
             name = args.name or f"{args.provider}-{args.judge}"
             config = {"mode": args.mode, "rerank": args.rerank, "rerank_model": (args.rerank_model or RERANK_MODEL) if args.rerank else None, "candidates": args.candidates, "k": args.k, "provider": args.provider, "model": getattr(provider, "model", None), "judge": args.judge, "judge_model": getattr(judge, "model", None), "judge_subset_only": args.judge_subset, "limit": args.limit}

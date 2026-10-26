@@ -19,6 +19,7 @@ from pathlib import Path
 
 from .generate import answer_question
 from .retrieve import Retriever
+from .trace import Trace, TraceWriter
 
 
 def _pct(n: int, d: int) -> float | None:
@@ -32,9 +33,10 @@ def _p(values: list[float], q: float) -> float | None:
     return round(s[min(len(s) - 1, int(q * (len(s) - 1)))], 1)
 
 
-def run(golden: list[dict], retriever: Retriever, provider, judge, k: int = 5, present_docs: set | None = None, limit: int | None = None, judge_subset_only: bool = False, on_row=None) -> dict:
+def run(golden: list[dict], retriever: Retriever, provider, judge, k: int = 5, present_docs: set | None = None, limit: int | None = None, judge_subset_only: bool = False, on_row=None, trace_path: Path | None = None) -> dict:
     rows = []
     skipped = []
+    writer = TraceWriter(trace_path)
     t0 = time.perf_counter()
     for row in golden:
         if judge_subset_only and row.get("judge_subset") != "1":
@@ -43,13 +45,21 @@ def run(golden: list[dict], retriever: Retriever, provider, judge, k: int = 5, p
         if present_docs is not None and docs and not all(d in present_docs for d in docs):
             skipped.append({"id": row["id"], "reason": "document missing here"})
             continue
-        hits = retriever.search(row["question"], k=k)
-        ans = answer_question(row["question"], hits, provider)
+        tr = Trace(row["question"])
+        hits = retriever.search(row["question"], k=k, trace=tr)
+        ans = answer_question(row["question"], hits, provider, trace=tr)
         cited_tags = {c.passage for c in ans.citations}
         cited = [p for p in ans.passages if p["tag"] in cited_tags]
-        v = judge.grade(row["question"], row["answer"], row["gold_quote"], ans.answer, cited) if judge else None
+        v = None
+        if judge:
+            with tr.span("judge", model=getattr(judge, "model", "?")):
+                v = judge.grade(row["question"], row["answer"], row["gold_quote"], ans.answer, cited)
+        tr.set(golden_id=row["id"], type=row["type"])
+        writer.write(tr)
         rec = {
             "id": row["id"],
+            "trace_id": tr.trace_id,
+            "stage_ms": {sp["name"]: sp["ms"] for sp in tr.spans},
             "type": row["type"],
             "difficulty": row.get("difficulty", ""),
             "judge_subset": row.get("judge_subset") == "1",
@@ -102,7 +112,9 @@ def summarize(result: dict) -> dict:
         "citations": {"proposed": proposed, "kept": proposed - dropped, "valid_rate": _pct(proposed - dropped, proposed), "cited_gold_doc_rate": _pct(sum(1 for r in answered if r["cited_gold_doc"]), len(answered))},
         "cost_usd": {"generation_per_query": round(sum(gen_cost) / len(rows), 6) if rows else None, "judge_per_item": round(sum(judge_cost) / len(judge_cost), 6) if judge_cost else None, "generation_total": round(sum(gen_cost), 4), "judge_total": round(sum(judge_cost), 4)},
         "tokens_per_query": {"input": round(sum(r["answer"]["input_tokens"] for r in rows) / len(rows)) if rows else None, "output": round(sum(r["answer"]["output_tokens"] for r in rows) / len(rows)) if rows else None},
-        "latency_ms": {"p50": _p(lat, 0.5), "p95": _p(lat, 0.95)},
+        "latency_ms": {"p50": _p(lat, 0.5), "p95": _p(lat, 0.95), "generation_only": True},
+        "stage_ms_p50": {st: _p([r["stage_ms"][st] for r in rows if st in r["stage_ms"]], 0.5) for st in ("retrieve", "rerank", "generate", "judge") if any(st in r["stage_ms"] for r in rows)},
+        "end_to_end_ms": {"p50": _p([sum(v for n, v in r["stage_ms"].items() if n != "judge") for r in rows], 0.5), "p95": _p([sum(v for n, v in r["stage_ms"].items() if n != "judge") for r in rows], 0.95)},
         "errors": sum(1 for r in rows if r["answer"]["error"]) + sum(1 for r in rows if r["verdict"] and r["verdict"]["error"]),
         "wall_s": result["wall_s"],
     }

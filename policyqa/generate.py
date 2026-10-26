@@ -212,20 +212,26 @@ class MockProvider:
         return 0.0
 
 
-def answer_question(question: str, hits: list[Hit], provider, max_tokens: int = 600) -> Answer:
+def answer_question(question: str, hits: list[Hit], provider, max_tokens: int = 600, trace=None) -> Answer:
+    from contextlib import nullcontext
+
     passages = format_passages(hits)
     user = build_user_message(question, passages)
     t = time.perf_counter()
     raw, n_in, n_out = "", 0, 0
     error = None
-    try:
-        raw, n_in, n_out = provider.complete(SYSTEM_PROMPT, user, max_tokens=max_tokens)
-        data = parse_model_json(raw)
-    except Exception as e:  # noqa: BLE001 - recorded, not hidden
-        error = f"{type(e).__name__}: {e}"
-        data = {"answer": "", "abstain": True, "citations": []}
+    span = trace.span if trace is not None else (lambda name, **kw: nullcontext())
+    with span("generate", model=getattr(provider, "model", "?"), passages=len(passages)):
+        try:
+            raw, n_in, n_out = provider.complete(SYSTEM_PROMPT, user, max_tokens=max_tokens)
+            data = parse_model_json(raw)
+        except Exception as e:  # noqa: BLE001 - recorded, not hidden
+            error = f"{type(e).__name__}: {e}"
+            data = {"answer": "", "abstain": True, "citations": []}
     latency = (time.perf_counter() - t) * 1000
     ans, abst, kept, proposed, dropped, forced = enforce_citations(data, passages)
+    if trace is not None:
+        trace.set(input_tokens=n_in, output_tokens=n_out, cost_usd=provider.cost(n_in, n_out), abstained=abst, forced_abstain=forced, citations_kept=len(kept), citations_dropped=proposed - len(kept), error=error)
     return Answer(
         question=question,
         answer=ans,

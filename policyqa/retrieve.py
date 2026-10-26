@@ -36,7 +36,21 @@ class Retriever:
 
             self.reranker = CrossEncoder(rerank_model)
 
-    def search(self, query: str, k: int = 10, candidates: int = 40, rrf_k: int = 60) -> list[Hit]:
+    def search(self, query: str, k: int = 10, candidates: int = 40, rrf_k: int = 60, trace=None) -> list[Hit]:
+        from contextlib import nullcontext
+
+        span = trace.span if trace is not None else (lambda name, **kw: nullcontext())
+        with span("retrieve", mode=self.mode, candidates=candidates):
+            hits = self._search(query, candidates, rrf_k)
+        if self.reranker is not None and hits:
+            with span("rerank", model=getattr(self.reranker, "model_name", None) or "cross-encoder", pairs=len(hits)):
+                pairs = [(query, h.chunk["text"]) for h in hits]
+                scores = self.reranker.predict(pairs, batch_size=16)
+                hits = [Hit(h.chunk, float(s), "rerank") for h, s in zip(hits, scores)]
+                hits.sort(key=lambda h: -h.score)
+        return hits[:k]
+
+    def _search(self, query: str, candidates: int, rrf_k: int) -> list[Hit]:
         idx = self.index
         if self.mode == "bm25" or idx.dense is None:
             s = idx.bm25_scores(query)
@@ -56,10 +70,4 @@ class Retriever:
                 fused[i] = fused.get(i, 0.0) + 1.0 / (rrf_k + rank + 1)
             order = sorted(fused, key=lambda i: -fused[i])[:candidates]
             hits = [Hit(idx.chunks[i], fused[i], "hybrid") for i in order]
-
-        if self.reranker is not None and hits:
-            pairs = [(query, h.chunk["text"]) for h in hits]
-            scores = self.reranker.predict(pairs, batch_size=16)
-            hits = [Hit(h.chunk, float(s), "rerank") for h, s in zip(hits, scores)]
-            hits.sort(key=lambda h: -h.score)
-        return hits[:k]
+        return hits
