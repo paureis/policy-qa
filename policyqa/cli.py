@@ -7,6 +7,8 @@
   eval     recall against golden/golden.csv, writes results/<name>.json
   answer   one question end to end: retrieve, generate, enforce citations
   eval-answers  retrieve + generate + judge over the golden set, writes results/answers-<name>.json
+  export-review  judge-subset rows of an answers file -> JSON docs for the Judge Validation Review page
+  judge-agreement  graded review docs -> results/judge-agreement-<run>.json
 """
 import argparse
 import json
@@ -82,6 +84,17 @@ def main(argv=None):
     ea.add_argument("--limit", type=int, default=None)
     ea.add_argument("--name", default=None)
     ea.add_argument("--traces", type=Path, default=ROOT / "data/traces.jsonl", help="JSONL trace log; pass an empty string to disable")
+
+    xr = sub.add_parser("export-review")
+    xr.add_argument("answers", type=Path, help="results/answers-<name>.json")
+    xr.add_argument("--run", required=True, help="run label shown on the page, e.g. llama70b-oct28")
+    xr.add_argument("--out", type=Path, default=None, help="default review/export/<run>/")
+    xr.add_argument("--golden", type=Path, default=ROOT / "golden/golden.csv")
+    xr.add_argument("--all-rows", action="store_true", help="export every row, not only the judge subset")
+
+    ja = sub.add_parser("judge-agreement")
+    ja.add_argument("docs", type=Path, help="directory of graded review documents")
+    ja.add_argument("--run", required=True)
 
     args = ap.parse_args(argv)
 
@@ -169,6 +182,20 @@ def main(argv=None):
             write_results(res, summary, ROOT / "results" / f"answers-{name}.json", config)
             print(json.dumps(summary, indent=2))
             print(f"wrote results/answers-{name}.json")
+    elif args.cmd == "export-review":
+        from .review_sync import export
+
+        out = args.out or (ROOT / "review/export" / args.run)
+        n = export(args.answers, args.golden, out, args.run, judge_subset_only=not args.all_rows)
+        print(f"wrote {n} documents to {out}")
+    elif args.cmd == "judge-agreement":
+        from .review_sync import agreement
+
+        rep = agreement(args.docs, args.run)
+        path = ROOT / "results" / f"judge-agreement-{args.run}.json"
+        path.write_text(json.dumps(rep, indent=2))
+        print(json.dumps({k: v for k, v in rep.items() if k != "disagreements"}, indent=2))
+        print(f"{len(rep['disagreements'])} disagreements; wrote {path.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

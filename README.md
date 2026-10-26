@@ -46,6 +46,8 @@ python -m policyqa.cli eval-answers --provider mock --judge mock   # no keys; ch
 
 The model sees the top 5 passages tagged `[P1]` to `[P5]` and must return JSON: an answer, the passages it relied on with a verbatim quote from each, and whether it abstains. Citations are checked, not trusted: a citation must name a passage that was shown, and its quote must occur in that passage (same 0.8 overlap rule as retrieval). Invalid citations are dropped, and an answer left with no valid citation becomes an abstention, because an uncited coverage claim is the failure this system exists to prevent.
 
+Before any accuracy number is quoted, the judge is checked against a person. `export-review` turns the 50 judge-subset answers of a run into documents for the Judge Validation Review page (`review/judge-review.html`, a one-answer-at-a-time grading page whose verdicts save server-side; the judge's verdict is hidden until the human's is in). `judge-agreement` then reports exact and collapsed agreement, Cohen's kappa, the confusion matrix, and every disagreement with both rationales.
+
 Claude then grades each answer against the human-written gold answer (correct, partially correct, incorrect, abstained) and against the cited passages (supported, partially supported, unsupported). The report gives accuracy by question type, the supported rate, abstention on the 10 unanswerable rows, false abstention on answerable rows, citation validity, tokens and cost per query for generation and for the judge, and p50 and p95 latency. The judge's verdicts on the 50-row judge subset are compared with independent human verdicts before any accuracy number is quoted.
 
 ## How retrieval is scored

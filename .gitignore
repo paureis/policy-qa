@@ -14,3 +14,6 @@ models/
 
 # smoke-test output from the mock provider; not a result
 results/answers-mock*.json
+
+# review exports are regenerated from results/answers-*.json
+review/export/

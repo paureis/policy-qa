@@ -1,0 +1,224 @@
+<title>Judge Validation Review</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one model answer at a time against its gold answer; two verdict rows fixed at the bottom. Same family as the Golden Set Review page. */
+:root{
+  --bg:#F5F3EE; --surface:#FFFFFF; --surface-2:#ECE8DF; --fg:#1E1B16; --fg-2:#5B554B; --fg-3:#8A8376; --line:#DCD6C9;
+  --accent:#1F6F8B; --accent-fg:#FFFFFF; --accent-soft:#DCEAF0;
+  --good:#2E7D4F; --good-soft:#DDF0E4; --mid:#B5731E; --mid-soft:#FBEBD2; --bad:#B3433A; --bad-soft:#F8DEDB;
+  --serif:"Source Serif 4",Georgia,"Times New Roman",serif; --sans:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --radius:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#15130F; --surface:#1E1B16; --surface-2:#2A2620; --fg:#ECE7DC; --fg-2:#B5AE9F; --fg-3:#847D70; --line:#38332B;
+  --accent:#5FB0CC; --accent-fg:#0B2730; --accent-soft:#17323B;
+  --good:#5CC487; --good-soft:#173A27; --mid:#E2A758; --mid-soft:#3E2D14; --bad:#E37A70; --bad-soft:#44201C; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#15130F; --surface:#1E1B16; --surface-2:#2A2620; --fg:#ECE7DC; --fg-2:#B5AE9F; --fg-3:#847D70; --line:#38332B;
+  --accent:#5FB0CC; --accent-fg:#0B2730; --accent-soft:#17323B;
+  --good:#5CC487; --good-soft:#173A27; --mid:#E2A758; --mid-soft:#3E2D14; --bad:#E37A70; --bad-soft:#44201C; color-scheme:dark }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:860px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 210px}
+h1{font-family:var(--serif);font-size:24px;font-weight:600;margin:0;letter-spacing:-.01em}
+.top{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.counts{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--fg-2)}
+.counts b{font-family:var(--mono);color:var(--fg);font-variant-numeric:tabular-nums}
+.bar{height:8px;background:var(--surface-2);border-radius:999px;overflow:hidden;margin-bottom:14px;display:flex}
+.bar i{display:block;height:100%;background:var(--accent)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+select,textarea{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 9px}
+textarea{width:100%;resize:vertical;font-size:14px;line-height:1.45;min-height:44px}
+.ghost{background:none;border:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;padding:4px 6px;border-radius:6px}
+.ghost:hover{background:var(--accent-soft)}
+button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--fg-3);margin-bottom:12px}
+.pill{display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--surface-2);color:var(--fg-2)}
+.pill.good{background:var(--good-soft);color:var(--good)} .pill.mid{background:var(--mid-soft);color:var(--mid)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-3);font-weight:600;margin:14px 0 4px}
+.q{font-family:var(--serif);font-size:21px;line-height:1.35;font-weight:600;text-wrap:balance}
+.a{font-family:var(--serif);font-size:17px;line-height:1.5}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px}
+.two>div{min-width:0}
+.box{border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:var(--surface)}
+.box.model{border-color:var(--accent);border-width:2px}
+.quote{font-family:var(--serif);font-size:15px;line-height:1.55;color:var(--fg);background:var(--surface-2);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 8px 8px 0;white-space:pre-wrap;margin-top:8px}
+.quote .src{display:block;margin-bottom:4px}
+.src{font-family:var(--mono);font-size:12px;color:var(--fg-3)}
+.notes{font-size:13px;color:var(--fg-2)}
+.judge{margin-top:14px;padding:10px 12px;border-radius:8px;background:var(--surface-2);font-size:13px}
+.judge[hidden]{display:none}
+.verdicts{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));z-index:5}
+.verdicts .in{max-width:860px;margin:0 auto;display:grid;gap:6px}
+.vrow{display:grid;grid-template-columns:auto 92px 1fr 1fr 1fr auto;gap:8px;align-items:center}
+.vrow .rl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.vb{font:inherit;font-weight:600;font-size:14px;padding:10px 8px;border-radius:9px;border:2px solid transparent;cursor:pointer;color:var(--fg);background:var(--surface-2)}
+.vb.good{background:var(--good-soft);color:var(--good)} .vb.mid{background:var(--mid-soft);color:var(--mid)} .vb.bad{background:var(--bad-soft);color:var(--bad)}
+.vb.on{border-color:currentColor}
+.vb:disabled{opacity:.35;cursor:default}
+.vb small{display:block;font-weight:400;font-size:11px;opacity:.75}
+.nav{font:inherit;background:var(--surface-2);color:var(--fg);border:0;border-radius:9px;padding:10px 14px;cursor:pointer;font-weight:600}
+.nav:disabled{opacity:.4;cursor:default}
+.nav.sp{visibility:hidden}
+.empty{text-align:center;color:var(--fg-2);padding:40px 0}
+.toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:7px 13px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+.ro{background:var(--mid-soft);color:var(--mid);padding:8px 12px;border-radius:8px;font-size:13px;margin-bottom:12px}
+kbd{font-family:var(--mono);font-size:11px;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+@media (max-width:640px){.two{grid-template-columns:1fr}.vrow{grid-template-columns:1fr 1fr 1fr}.vrow .rl,.vrow .nav{display:none}.q{font-size:19px}.wrap{padding-bottom:170px}}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div><h1>Judge Validation Review</h1><div class="counts" id="counts">Loading…</div></div>
+    <div class="src"><kbd>1</kbd> correct · <kbd>2</kbd> partial · <kbd>3</kbd> incorrect · <kbd>S</kbd><kbd>D</kbd><kbd>U</kbd> support · <kbd>←</kbd><kbd>→</kbd> move</div>
+  </div>
+  <div class="bar" id="bar"><i style="width:0"></i></div>
+  <div class="ro" id="ro" hidden>This view can read but not save.</div>
+  <div class="filters">
+    <select id="f-run" aria-label="Run"></select>
+    <select id="f-status" aria-label="Show"><option value="todo">Unreviewed</option><option value="all">All</option><option value="done">Reviewed</option><option value="disagree">Disagree with judge</option></select>
+    <select id="f-type" aria-label="Type"><option value="">All types</option><option>fact</option><option>num</option><option>proc</option><option>multi</option><option>adv</option><option>none</option></select>
+    <span class="src" id="pos"></span>
+    <button class="ghost" id="jump" type="button">Next unreviewed</button>
+  </div>
+  <div id="card"><div class="card"><div class="empty">Model answers appear here once a run has been loaded. Grade each against the gold answer; the judge's verdict shows after yours.</div></div></div>
+</div>
+
+<div class="verdicts"><div class="in">
+  <div class="vrow">
+    <button class="nav" id="prev" type="button" aria-label="Previous">←</button>
+    <span class="rl">Accuracy</span>
+    <button class="vb good" data-d="acc" data-v="correct" type="button">Correct<small>same facts and limits</small></button>
+    <button class="vb mid" data-d="acc" data-v="partially_correct" type="button">Partial<small>main point, missed a condition</small></button>
+    <button class="vb bad" data-d="acc" data-v="incorrect" type="button">Incorrect<small>wrong, invented, or off-question</small></button>
+    <button class="nav" id="next" type="button" aria-label="Next">→</button>
+  </div>
+  <div class="vrow">
+    <span class="nav sp">←</span>
+    <span class="rl">Support</span>
+    <button class="vb good" data-d="fai" data-v="supported" type="button">Supported<small>every claim is in the quotes</small></button>
+    <button class="vb mid" data-d="fai" data-v="partially_supported" type="button">Partly<small>a claim is not in the quotes</small></button>
+    <button class="vb bad" data-d="fai" data-v="unsupported" type="button">Unsupported<small>quotes do not back it</small></button>
+    <span class="nav sp">→</span>
+  </div>
+</div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $=(s,el=document)=>el.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const TYPE_ORDER={fact:0,num:1,proc:2,multi:3,adv:4,none:5};
+const TONE={correct:'good',partially_correct:'mid',incorrect:'bad',abstained:'mid',supported:'good',partially_supported:'mid',unsupported:'bad',no_citations:'mid'};
+const state={rows:[],db:null,canWrite:true,i:0,list:[],run:''};
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),1200);}
+const done=r=>!!r.human_accuracy&&(r.abstained||!!r.human_faithfulness);
+const humanAcc=r=>r.human_accuracy;
+const judgeAcc=r=>{ if(!r.judge) return null; if(r.judge.accuracy==='abstained') return r.type==='none'?'correct':'incorrect'; return r.judge.accuracy; };
+const disagree=r=>done(r)&&r.judge&&humanAcc(r)!==judgeAcc(r);
+function runs(){ return [...new Set(state.rows.map(r=>r.run))].sort(); }
+function inRun(){ return state.rows.filter(r=>r.run===state.run); }
+function filtered(){
+  const st=$('#f-status').value, ty=$('#f-type').value;
+  return inRun().filter(r=>(!ty||r.type===ty)&&(st==='all'||(st==='todo'&&!done(r))||(st==='done'&&done(r))||(st==='disagree'&&disagree(r))));
+}
+function counts(){
+  const rs=inRun(), n=rs.length, d=rs.filter(done).length, dis=rs.filter(disagree).length, withJudge=rs.filter(r=>done(r)&&r.judge).length;
+  const agree=withJudge?Math.round((withJudge-dis)/withJudge*100):null;
+  $('#counts').innerHTML=`<span><b>${n-d}</b> left</span><span><b>${d}</b>/${n} graded</span>`+(agree!==null?`<span>judge agreement <b>${agree}%</b> on ${withJudge}</span>`:'');
+  $('#bar').firstElementChild.style.width=(n?d/n*100:0)+'%';
+}
+function cite(c){ return `<div class="quote"><span class="src">${esc(c.doc_id)} p.${esc(c.page)}${c.title?' · '+esc(c.title):''}</span>${esc(c.quote)}</div>`; }
+function render(){
+  state.list=filtered(); counts();
+  if(state.i>=state.list.length) state.i=Math.max(0,state.list.length-1);
+  const r=state.list[state.i];
+  $('#pos').textContent=state.list.length?`${state.i+1} of ${state.list.length} shown`:'0 shown';
+  $('#prev').disabled=state.i<=0; $('#next').disabled=state.i>=state.list.length-1;
+  document.querySelectorAll('.vb').forEach(b=>{
+    const v=b.dataset.d==='acc'?r?.human_accuracy:r?.human_faithfulness;
+    b.classList.toggle('on',!!r&&b.dataset.v===v);
+    b.disabled=!r||(b.dataset.d==='fai'&&!!r.abstained);
+  });
+  if(!r){$('#card').innerHTML='<div class="card"><div class="empty">Nothing in this view. Change the filter above.</div></div>';return;}
+  const cites=(r.citations||[]);
+  const showJudge=done(r)&&r.judge;
+  $('#card').innerHTML=`<article class="card" data-id="${esc(r.id)}">
+    <div class="meta"><span class="src">${esc(r.id)}</span><span class="pill">${esc(r.type)}</span><span class="pill">${esc(r.difficulty)}</span>
+      ${r.human_accuracy?`<span class="pill ${TONE[r.human_accuracy]}">you: ${esc(r.human_accuracy.replace('_',' '))}</span>`:''}
+      ${r.human_faithfulness&&!r.abstained?`<span class="pill ${TONE[r.human_faithfulness]}">${esc(r.human_faithfulness.replace('_',' '))}</span>`:''}
+      <span class="src" style="margin-left:auto">${esc(r.run)}</span></div>
+    <div class="lbl">Question</div>
+    <div class="q">${esc(r.question)}</div>
+    ${r.type==='none'?'<div class="notes" style="margin-top:6px">Unanswerable by design. The right answer is to abstain; an answer here is incorrect even if it sounds plausible.</div>':''}
+    <div class="two">
+      <div><div class="lbl">Gold answer (yours, Oct 23)</div><div class="box"><div class="a">${esc(r.gold_answer)}</div>
+        ${(r.gold_quote||'').split('||').map(s=>s.trim()).filter(Boolean).map(q=>`<div class="quote"><span class="src">${esc(r.gold_src||'')}</span>${esc(q)}</div>`).join('')}</div></div>
+      <div><div class="lbl">Model answer${r.abstained?' · abstained':''}${r.forced_abstain?' · forced (no valid citation survived)':''}</div><div class="box model"><div class="a">${esc(r.answer)}</div>
+        ${cites.length?cites.map(cite).join(''):(r.abstained?'':'<div class="notes" style="margin-top:8px">No citations survived the check.</div>')}</div></div>
+    </div>
+    <div class="lbl">Your note (optional)</div>
+    <textarea id="note" aria-label="Note" placeholder="What the judge or the model got wrong, if anything.">${esc(r.human_note||'')}</textarea>
+    <div class="judge" id="judge" ${showJudge?'':'hidden'}>${r.judge?`<b>Judge:</b> <span class="pill ${TONE[r.judge.accuracy]}">${esc(r.judge.accuracy.replace('_',' '))}</span> <span class="pill ${TONE[r.judge.faithfulness]}">${esc(r.judge.faithfulness.replace('_',' '))}</span> ${esc(r.judge.rationale||'')}${disagree(r)?' <span class="pill bad">disagrees with you</span>':''}`:''}</div>
+  </article>`;
+  $('#note').addEventListener('change',e=>{ r.human_note=e.target.value.trim(); save(r); });
+  window.scrollTo({top:0});
+}
+async function save(r){
+  if(!state.db||!state.canWrite){ toast('Not saved'); return; }
+  const {docId,...data}=r;
+  try{ await state.db.doc('answers/'+docId).set(data); toast('Saved'); }catch(e){ console.error(e); toast('Could not save'); }
+}
+function verdict(dim,v){
+  const r=state.list[state.i]; if(!r) return;
+  if(dim==='acc') r.human_accuracy=v; else { if(r.abstained) return; r.human_faithfulness=v; }
+  if(r.abstained) r.human_faithfulness='no_citations';
+  r.reviewed_on=new Date().toISOString().slice(0,10);
+  const note=$('#note'); if(note) r.human_note=note.value.trim();
+  save(r);
+  if(done(r)){ if($('#f-status').value==='todo'){ render(); } else { render(); } }
+  else render();
+}
+document.querySelectorAll('.vb').forEach(b=>b.addEventListener('click',()=>verdict(b.dataset.d,b.dataset.v)));
+$('#prev').addEventListener('click',()=>{ if(state.i>0){state.i--;render();} });
+$('#next').addEventListener('click',()=>{ if(state.i<state.list.length-1){state.i++;render();} });
+$('#jump').addEventListener('click',()=>{ $('#f-status').value='todo'; state.i=0; render(); });
+$('#f-status').addEventListener('change',()=>{state.i=0;render(); try{localStorage.setItem('jvr-status',$('#f-status').value);}catch(_){} });
+$('#f-type').addEventListener('change',()=>{state.i=0;render();});
+$('#f-run').addEventListener('change',()=>{state.run=$('#f-run').value;state.i=0;render(); try{localStorage.setItem('jvr-run',state.run);}catch(_){} });
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'){ if(e.key==='Escape') e.target.blur(); return; }
+  const k=e.key.toLowerCase();
+  if(k==='1') verdict('acc','correct'); else if(k==='2') verdict('acc','partially_correct'); else if(k==='3') verdict('acc','incorrect');
+  else if(k==='s') verdict('fai','supported'); else if(k==='d') verdict('fai','partially_supported'); else if(k==='u') verdict('fai','unsupported');
+  else if(e.key==='ArrowLeft') $('#prev').click(); else if(e.key==='ArrowRight') $('#next').click();
+});
+try{ const t=localStorage.getItem('jvr-status'); if(t) $('#f-status').value=t; }catch(_){}
+function refreshRuns(){
+  const sel=$('#f-run'), rs=runs(); let want=state.run; try{ want=want||localStorage.getItem('jvr-run')||''; }catch(_){}
+  if(!rs.includes(want)) want=rs[rs.length-1]||'';
+  sel.innerHTML=rs.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+  sel.value=want; state.run=want;
+}
+(async()=>{
+  const db = window.claude?.use ? await claude.use('db') : null;
+  if(!db){ $('#ro').hidden=false; $('#ro').textContent='Saving is unavailable in this view. Open the page signed in.'; return; }
+  state.db=db;
+  const user=await claude.use('user'); if(user){ const w=await user.can('data.write'); if(w===false){ state.canWrite=false; $('#ro').hidden=false; } }
+  let first=true;
+  db.collection('answers').onSnapshot(s=>{
+    const incoming=s.docs.map(d=>({docId:d.id,...d.data()}));
+    incoming.sort((a,b)=>(TYPE_ORDER[a.type]??9)-(TYPE_ORDER[b.type]??9)||a.id.localeCompare(b.id));
+    const cur=state.list[state.i]?.docId;
+    state.rows=incoming; refreshRuns();
+    const noteFocused=document.activeElement&&document.activeElement.id==='note';
+    if(first||!noteFocused){ render(); if(cur){ const k=state.list.findIndex(r=>r.docId===cur); if(k>=0&&k!==state.i){ state.i=k; render(); } } }
+    first=false;
+  },e=>console.error('db',e));
+})();
+</script>
