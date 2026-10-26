@@ -1,8 +1,24 @@
-# Policy Document QA with citations
+# Recourse
 
-Answers coverage and policy questions from public healthcare regulation PDFs, with a citation to the document and page for every claim, and says "not covered" when the corpus does not answer. Built for the Meta Global AI Developer Hackathon (indie track, Oct 26 to Nov 4, 2026).
+A coverage denial becomes a case, and the case works itself.
 
-The point of the project is not the demo. It is that every change is measured against a human-verified golden set before it ships.
+Drop in a denial letter or an explanation of benefits, as a photo, a PDF, or text. Recourse reads it, works out which program and policy govern the service, investigates the written rules, argues the payer's side first, and then says one of three things with the rule quoted and cited to the page: the denial matches the policy, the denial appears inconsistent with the policy, or the documents do not settle it. For an inconsistent denial it drafts the appeal letter, with every sentence carrying a verified citation, plus the evidence checklist the policy itself implies, the filing deadline with a day count, and where to file. It never gives medical advice; questions about treatment or diagnosis are refused with an explanation of what the product does instead.
+
+Built for the Meta Global AI Developer Hackathon (indie track, Oct 26 to Nov 4, 2026) on Muse Spark through the Meta Model API, with Muse Spark Open on Baseten for the open-weights comparison. Corpus: 64 public Florida Medicaid, Medicare, Medicaid, and HIPAA documents, 2,589 pages.
+
+Why it matters: KFF's 2025 analysis of prior authorization data puts denial rates at about 12% in Medicare Advantage, 14% in Medicaid managed care, and 18% in ACA marketplace plans, finds that denials are rarely appealed, and that 67%, 47%, and 43% of appealed denials respectively were overturned. Most people never file. The letter, the deadline, and the rule are the hard part, and they are what this does.
+
+The point of the project is not the demo. Every step is measured against a human-verified golden set before it ships, and the judge that grades answers is itself validated against human verdicts.
+
+## How a case runs
+
+1. **Intake.** Muse Spark reads the letter (image, PDF, or text) into a case card: program (Florida Medicaid MMA, LTC, KidCare, Medicare A, B, Advantage, Part D), member age group, service and code, dates, amount, the payer's stated reason, letter date, and the deadline the letter claims. The user corrects anything wrong.
+2. **Routing.** The program decides which documents govern. Dual-eligible or ambiguous cases are investigated under Florida Medicaid and Medicare side by side, with the difference stated.
+3. **Investigation.** The agent plans and runs targeted questions against the corpus: is the service covered, what are the limits, what conditions or prior authorization apply, what exclusions exist, what are the appeal rights and deadlines. Each finding is a verbatim quote with document and page, checked by a verifier that confirms the quote exists and supports the finding. Unsupported findings are struck out, on screen.
+4. **Steelman.** Before deciding, the agent argues the denial's case as well as the rules allow.
+5. **Verdict.** Consistent with the policy, inconsistent with the policy, or not settled by the documents. Each names the rule and the gap between the letter's reason and that rule.
+6. **Action.** A draft appeal letter where every sentence carries a citation and has passed the verifier; an evidence checklist derived from the policy's own conditions; the deadline with a day count and the filing path, cited from the appeals documents in the corpus. For a consistent denial, a plain explanation and what would have made the service covered.
+7. **Trust.** Verification coverage (claims supported over claims made), cost of the case, time taken, and the full trace.
 
 ## What is here
 
@@ -10,13 +26,16 @@ The point of the project is not the demo. It is that every change is measured ag
 |---|---|
 | Corpus: 64 public PDFs (30 Florida Medicaid, 30 federal Medicare and Medicaid, 4 HIPAA), 2,589 pages | done, `corpus/manifest.csv`, `corpus/fetch.sh` |
 | Golden set: 160 questions, six types, every document covered, LLM-drafted and human-verified | done, `golden/golden.csv` |
-| Ingestion and page-level chunking | done |
-| Hybrid retrieval (BM25 + bge-small embeddings, RRF) with a bge cross-encoder reranker | done |
-| Retrieval recall scored against the golden set | done, `results/` |
-| Generation with enforced citations (any OpenAI-compatible host for a Meta open-weights model) | code done, waiting on hackathon credits |
-| Answer accuracy and faithfulness via Claude as judge; judge validated against 50 human verdicts | harness done, validation pending |
-| Abstention on unanswerable questions, and forced abstention when no citation survives | done in the harness |
-| Tracing, cost per query, p95 latency | cost and latency per query reported; tracing next |
+| Ingestion, page-bounded chunking, hybrid retrieval with reranker, recall harness | groundwork, Oct 25 (see Timeline) |
+| Answer harness: enforced citations, forced abstention, judge, cost and latency, traces | groundwork, Oct 25 |
+| Generation on Muse Spark via the Meta Model API | Oct 27 |
+| Intake from photo, PDF, or text; program routing | Oct 27 to 28 |
+| Investigation agent with verified findings | Oct 28 |
+| Steelman, verdict, appeal letter, deadline and filing steps, evidence checklist, scope guardrail | Oct 29 |
+| Denial-case eval set (about 30 synthetic letters with known verdicts), judge validation against human verdicts | Oct 30 |
+| Live demo: API on Modal, front end on Vercel, synthetic sample letters | Oct 31 |
+| Open-weights comparison on Baseten; dual-eligible side by side | Nov 1 |
+| Full evaluation run, numbers, write-up, video | Nov 2 to 3 |
 
 ## Timeline and what was built when
 
@@ -26,7 +45,7 @@ The Meta Global AI Developer Hackathon rules require new work only, and the demo
 - The dataset: 64 public policy PDFs selected and verified (`corpus/manifest.csv`) and the 160-row golden set, drafted by LLM agents and verified row by row by a person (`golden/golden.csv`). Built Oct 22 to 23.
 - Groundwork, Oct 25 (commits c001284 to 3555222, the day before kickoff): page text extraction, chunking, a BM25 and embedding retrieval baseline with a reranker option, the retrieval recall harness, a first draft of the answer and judge harness with a mock provider, per-query traces, and the judge review page. No Meta model was called; nothing here is demoed.
 
-**During the event (Oct 27 onward):** everything the demo shows. Generation on Meta models with enforced citations, the claim-level verification agent, the coverage guardrail, the Florida versus federal comparison mode, the judge validated against human verdicts, the full evaluation run with its numbers, the product UI and its live scorecard, and the write-up. Each lands as its own commit with a date.
+**During the event (Oct 27 onward):** everything the demo shows. The product itself (Recourse) was designed on Oct 26 after the rules were published and built from Oct 27: intake from photo, PDF, and text on Muse Spark; program routing; the investigation agent with verified findings; the steelman pass; the verdict; the appeal letter, deadline, and evidence checklist; the scope guardrail; the denial-case evaluation set; the judge validated against human verdicts; the open-weights comparison; the live demo; the write-up. Each lands as its own commit with a date.
 
 ## Quick start
 
