@@ -25,9 +25,11 @@ export function ErrorNotice({ error, actions }: { error: IntakeError; actions: E
       <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">
         {error.code === "timeout"
           ? "Still waiting"
-          : error.code === "out_of_scope" || error.code === "not_a_denial_letter"
-            ? "Not a denial letter"
-            : "Could not read the letter"}
+          : error.code === "out_of_scope"
+            ? "Outside what Recourse does"
+            : error.code === "not_a_denial_letter"
+              ? "Not a denial letter"
+              : "Could not read the letter"}
       </p>
       <h1 id="error-heading" className="mt-1 text-[26px] leading-tight font-bold">
         {copy.title}

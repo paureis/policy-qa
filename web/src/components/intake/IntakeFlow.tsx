@@ -126,14 +126,22 @@ export function IntakeFlow() {
     if (file) submit({ kind: "file", file });
   };
 
+  // After a successful read the letter has become a case, so Start over begins
+  // clean. After an error the person is usually fixing the same letter, so the
+  // pasted text stays (decided by Alvaro, Oct 26).
   const startOver = () => {
     abortInFlight();
+    const keepText = phase === "error";
     setInput(null);
     setError(null);
     setResponse(null);
     setCard(null);
     setFlagged(new Set());
     setFocusText(false);
+    if (!keepText) {
+      setText("");
+      setTextOpen(false);
+    }
     setPhase("entry");
     window.scrollTo({ top: 0 });
   };
