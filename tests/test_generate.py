@@ -44,3 +44,12 @@ def test_parse_model_json_handles_fences_and_prose():
     assert parse_model_json(json.dumps(obj)) == obj
     assert parse_model_json("```json\n" + json.dumps(obj) + "\n```") == obj
     assert parse_model_json("Here you go: " + json.dumps(obj) + " hope that helps") == obj
+
+
+def test_unpack_accepts_content_as_parts():
+    from policyqa.generate import Provider
+
+    j = {"choices": [{"message": {"content": [{"type": "text", "text": "ready"}, {"type": "text", "text": "!"}]}}], "usage": {"prompt_tokens": 3, "completion_tokens": 2}}
+    assert Provider._unpack(j) == ("ready!", 3, 2)
+    j = {"choices": [{"message": {"content": None, "reasoning_content": "thinking"}}], "usage": {}}
+    assert Provider._unpack(j) == ("", 0, 0)

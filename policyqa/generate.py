@@ -184,7 +184,8 @@ class Provider:
                 body.pop("response_format")
                 r = client.post(f"{self.base_url}/chat/completions", json=body, headers=headers)
             r.raise_for_status()
-        return self._unpack(r.json())
+        self.last_response = r.json()
+        return self._unpack(self.last_response)
 
     def complete_parts(self, system: str, parts: list[dict], schema: dict | None = None, max_tokens: int = 1500) -> tuple[str, int, int]:
         """Multimodal chat completion: `parts` are OpenAI content parts (text, image_url, file).
@@ -221,16 +222,19 @@ class Provider:
                     continue
                 break
             r.raise_for_status()
-        return self._unpack(r.json())
+        self.last_response = r.json()
+        return self._unpack(self.last_response)
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
     @staticmethod
     def _unpack(j: dict) -> tuple[str, int, int]:
-        text = j["choices"][0]["message"]["content"] or ""
+        content = j["choices"][0]["message"].get("content") or ""
+        if isinstance(content, list):  # some endpoints return content as parts
+            content = "".join(p.get("text", "") for p in content if isinstance(p, dict))
         usage = j.get("usage") or {}
-        return text, int(usage.get("prompt_tokens", 0)), int(usage.get("completion_tokens", 0))
+        return content, int(usage.get("prompt_tokens", 0)), int(usage.get("completion_tokens", 0))
 
     def cost(self, input_tokens: int, output_tokens: int) -> float:
         return round(input_tokens * self.in_price / 1e6 + output_tokens * self.out_price / 1e6, 6)
