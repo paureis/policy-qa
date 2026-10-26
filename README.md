@@ -18,6 +18,16 @@ The point of the project is not the demo. It is that every change is measured ag
 | Abstention on unanswerable questions, and forced abstention when no citation survives | done in the harness |
 | Tracing, cost per query, p95 latency | cost and latency per query reported; tracing next |
 
+## Timeline and what was built when
+
+The Meta Global AI Developer Hackathon rules require new work only, and the demo may show only what was built during the event (building period Oct 27 to Nov 4, 2026). This section exists so judges can tell the two apart; the git log carries the dates.
+
+**Before the event (dataset and groundwork, Oct 21 to 26):**
+- The dataset: 64 public policy PDFs selected and verified (`corpus/manifest.csv`) and the 160-row golden set, drafted by LLM agents and verified row by row by a person (`golden/golden.csv`). Built Oct 22 to 23.
+- Groundwork, Oct 25 (commits c001284 to 3555222, the day before kickoff): page text extraction, chunking, a BM25 and embedding retrieval baseline with a reranker option, the retrieval recall harness, a first draft of the answer and judge harness with a mock provider, per-query traces, and the judge review page. No Meta model was called; nothing here is demoed.
+
+**During the event (Oct 27 onward):** everything the demo shows. Generation on Meta models with enforced citations, the claim-level verification agent, the coverage guardrail, the Florida versus federal comparison mode, the judge validated against human verdicts, the full evaluation run with its numbers, the product UI and its live scorecard, and the write-up. Each lands as its own commit with a date.
+
 ## Quick start
 
 ```bash

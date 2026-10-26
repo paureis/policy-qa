@@ -59,3 +59,12 @@ What this says:
 Reading: MiniLM gives up 1 to 3 points against the big reranker and runs about five times faster. At 20 candidates it stays under a second on CPU and still beats plain hybrid by 2 to 3 points at both cutoffs. The live path and the batch eval can use different settings as long as the report says which; the write-up should show both.
 
 **Decision (Alvaro, Oct 25): the answering path reranks with MiniLM-L-6 over 20 candidates.** Under a second on CPU, 2 to 3 points over plain hybrid. The retrieval eval keeps bge-reranker-base over 40 as its reference setting so the ceiling is known, and the write-up shows both. `python -m policyqa.cli answer` and `eval-answers` default to the MiniLM setting; `--no-rerank` and `--rerank-model` override it.
+
+## 2026-10-26
+
+**Rules read (participant guide, published Oct 26) and what they change.**
+- Repositories must be public; three-minute demo video; submission by Nov 4, 9:00 PM ET; solo allowed.
+- "New work only" and "the demo must only highlight what was built during the Hackathon." The Oct 25 groundwork is disclosed in the README Timeline section and stays out of the demo; everything shown is built from Oct 27 on. Alternatives considered: asking the organizers first (a day of waiting), or starting a fresh repo (re-doing a day of work while the old history still exists). Disclosure is the honest and verifiable option.
+- "Basic RAG Applications" and "AI that gives medical advice" are on the banned list. This project answers coverage and billing questions from policy documents and refuses treatment or diagnosis questions. What keeps it out of "basic": citations that are checked and enforced, forced abstention, a human-verified golden set, a judge validated against human verdicts, and, built during the event, a claim-level verification agent, a Florida versus federal comparison mode, a coverage guardrail, and a live scorecard in the product.
+- Meta models are mandatory. Generation runs on Muse Spark 1.1 through the Meta Model API (OpenAI-compatible, `https://api.meta.ai/v1`), with Muse Spark Open on Baseten (`meta-models/muse-spark-open-1026`) for the open-weights comparison once its credits arrive. Claude remains the judge, validated against human verdicts; a Muse Spark judge is reported alongside for agreement.
+- Credits: $150 Meta Model API (claimed Oct 26); Baseten $100, Modal $100, Fireworks $25 requested through their forms.
