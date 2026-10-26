@@ -129,9 +129,15 @@ def _long(d: date) -> str:
 
 
 def today_ny() -> date:
-    from zoneinfo import ZoneInfo
+    try:
+        from zoneinfo import ZoneInfo
 
-    return datetime.now(ZoneInfo(NY_TZ)).date()
+        return datetime.now(ZoneInfo(NY_TZ)).date()
+    except Exception:  # noqa: BLE001 - Windows without the tzdata package has no IANA database
+        from datetime import timedelta, timezone
+
+        # Eastern time without DST rules: at most one hour off at the day boundary, never a crash.
+        return datetime.now(timezone(timedelta(hours=-5))).date()
 
 
 def format_dates(v) -> str:

@@ -312,3 +312,14 @@ def test_live_letter_through_the_real_provider_over_a_fake_transport():
     L = LiveLetter(p).draft(case_with(inv), inv, inconsistent_verdict(inv), today=TODAY)
     assert L["verification"] == {"claims": 2, "verified": 1, "struck": 1} and L["reasoning_tokens"] == 2200
     assert sent[0]["max_tokens"] == LETTER_MAX_TOKENS and sent[0]["response_format"]["json_schema"]["schema"] == LETTER_SCHEMA
+
+
+def test_today_eastern_survives_a_missing_time_zone_database(monkeypatch):
+    import datetime as dt
+    import policyqa.letter as L
+
+    def boom(_key):
+        raise LookupError("No time zone found with key America/New_York")
+
+    monkeypatch.setattr("zoneinfo.ZoneInfo", boom)
+    assert isinstance(L.today_ny(), dt.date)
