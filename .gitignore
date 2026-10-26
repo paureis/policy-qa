@@ -18,6 +18,5 @@ results/answers-mock*.json
 # review exports are regenerated from results/answers-*.json
 review/export/
 
-# Impeccable engine binary and local hook settings: reinstall with `npx impeccable install --providers=claude --scope=project`
-.claude/skills/impeccable/scripts/bin/
-.claude/settings.local.json
+# Claude Code project settings and skills (Impeccable is installed globally on the developer machine)
+.claude/
