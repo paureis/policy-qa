@@ -11,13 +11,14 @@ Citations that fail are dropped. An answer left with no valid citation is
 converted into an abstention, because an uncited claim about coverage is
 exactly the failure this system exists to prevent.
 
-The generation model is an open-weights Meta model behind an OpenAI-compatible
-chat completions endpoint (Modal, Baseten, and Fireworks all expose one). The
+The generation model is Muse Spark 1.3 on the Meta Model API (OpenAI chat
+completions protocol; text, image, and PDF input; JSON schema output). Any other
+OpenAI-compatible endpoint (Modal, Baseten, Fireworks) works the same way. The
 endpoint, key, and model name come from the environment:
 
-  POLICYQA_LLM_BASE_URL   e.g. https://api.fireworks.ai/inference/v1
+  POLICYQA_LLM_BASE_URL   e.g. https://api.meta.ai/v1
   POLICYQA_LLM_API_KEY
-  POLICYQA_LLM_MODEL      e.g. accounts/fireworks/models/llama-v3p3-70b-instruct
+  POLICYQA_LLM_MODEL      e.g. muse-spark-1.3
   POLICYQA_LLM_INPUT_USD_PER_M, POLICYQA_LLM_OUTPUT_USD_PER_M  (for cost per query)
 """
 from __future__ import annotations
@@ -155,13 +156,14 @@ def enforce_citations(data: dict, passages: list[dict]) -> tuple[str, bool, list
 class Provider:
     """OpenAI-compatible chat completions client over plain HTTP."""
 
-    def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None, timeout: float = 120.0):
+    def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None, timeout: float = 120.0, transport=None):
         self.base_url = (base_url or os.environ.get("POLICYQA_LLM_BASE_URL", "")).rstrip("/")
         self.api_key = api_key or os.environ.get("POLICYQA_LLM_API_KEY", "")
         self.model = model or os.environ.get("POLICYQA_LLM_MODEL", "")
         self.in_price = float(os.environ.get("POLICYQA_LLM_INPUT_USD_PER_M", "0") or 0)
         self.out_price = float(os.environ.get("POLICYQA_LLM_OUTPUT_USD_PER_M", "0") or 0)
         self.timeout = timeout
+        self.transport = transport  # an httpx transport, for tests (httpx.MockTransport); None means the network
         if not (self.base_url and self.model):
             raise RuntimeError("Set POLICYQA_LLM_BASE_URL and POLICYQA_LLM_MODEL (and POLICYQA_LLM_API_KEY) to call a model.")
 
@@ -175,14 +177,57 @@ class Provider:
             "temperature": 0,
             "response_format": {"type": "json_object"},
         }
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        with httpx.Client(timeout=self.timeout) as client:
+        headers = self._headers()
+        with httpx.Client(timeout=self.timeout, transport=self.transport) as client:
             r = client.post(f"{self.base_url}/chat/completions", json=body, headers=headers)
             if r.status_code == 400 and "response_format" in r.text:
                 body.pop("response_format")
                 r = client.post(f"{self.base_url}/chat/completions", json=body, headers=headers)
             r.raise_for_status()
-        j = r.json()
+        return self._unpack(r.json())
+
+    def complete_parts(self, system: str, parts: list[dict], schema: dict | None = None, max_tokens: int = 1500) -> tuple[str, int, int]:
+        """Multimodal chat completion: `parts` are OpenAI content parts (text, image_url, file).
+
+        With a JSON schema, the request asks for `response_format: json_schema` (strict).
+        A 400 that mentions response_format falls back to `json_object`, and a second
+        such 400 falls back to no response_format at all. Without a schema no
+        response_format is sent. Any other error is raised as httpx.HTTPStatusError so
+        the caller can inspect it (the PDF file-part fallback in intake.py relies on this).
+
+        Not yet exercised against the live Meta Model API (no key on this box); the
+        request shape follows the OpenAI chat completions protocol the API documents.
+        """
+        import httpx
+
+        body = {
+            "model": self.model,
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": parts}],
+            "max_tokens": max_tokens,
+            "temperature": 0,
+        }
+        ladder: list[dict | None] = [None]
+        if schema is not None:
+            ladder = [{"type": "json_schema", "json_schema": {"name": "case_card", "schema": schema, "strict": True}}, {"type": "json_object"}, None]
+        headers = self._headers()
+        with httpx.Client(timeout=self.timeout, transport=self.transport) as client:
+            for i, rf in enumerate(ladder):
+                body.pop("response_format", None)
+                if rf is not None:
+                    body["response_format"] = rf
+                r = client.post(f"{self.base_url}/chat/completions", json=body, headers=headers)
+                last = i == len(ladder) - 1
+                if r.status_code == 400 and rf is not None and not last and "response_format" in r.text:
+                    continue
+                break
+            r.raise_for_status()
+        return self._unpack(r.json())
+
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+
+    @staticmethod
+    def _unpack(j: dict) -> tuple[str, int, int]:
         text = j["choices"][0]["message"]["content"] or ""
         usage = j.get("usage") or {}
         return text, int(usage.get("prompt_tokens", 0)), int(usage.get("completion_tokens", 0))

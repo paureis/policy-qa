@@ -24,3 +24,227 @@ def test_search_and_answer_with_mock():
     r = client.post("/answer", json={"question": "Can an adult on Florida Medicaid get a fixed bridge?", "k": 3})
     body = r.json()
     assert r.status_code == 200 and "citations" in body and body["trace"]["spans"]
+
+
+# ---- case intake ----------------------------------------------------------
+
+import io  # noqa: E402
+import struct  # noqa: E402
+import zlib  # noqa: E402
+
+from api.main import extractor  # noqa: E402
+from api.cases import STORE  # noqa: E402
+
+
+def _png_1x1() -> bytes:
+    def chunk(tag, data):
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+    ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
+    idat = zlib.compress(b"\x00\xff\xff\xff")
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", idat) + chunk(b"IEND", b"")
+
+
+def _mini_pdf(lines: list[str]) -> bytes:
+    """A one-page PDF with real text objects and a correct xref, so pdftotext can read it."""
+    content = "BT /F1 11 Tf 40 750 Td 14 TL " + " ".join(f"({ln}) Tj T*" for ln in lines) + " ET"
+    objs = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+        f"<< /Length {len(content)} >>\nstream\n{content}\nendstream",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    out = io.BytesIO()
+    out.write(b"%PDF-1.4\n")
+    offsets = []
+    for i, body in enumerate(objs, start=1):
+        offsets.append(out.tell())
+        out.write(f"{i} 0 obj\n{body}\nendobj\n".encode("latin-1"))
+    xref = out.tell()
+    out.write(f"xref\n0 {len(objs) + 1}\n0000000000 65535 f \n".encode())
+    for off in offsets:
+        out.write(f"{off:010d} 00000 n \n".encode())
+    out.write(f"trailer\n<< /Size {len(objs) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode())
+    return out.getvalue()
+
+
+PNG_1X1 = _png_1x1()
+MINI_PDF = _mini_pdf(["Hello"])
+MINI_PDF_WITH_TEXT = _mini_pdf(
+    [
+        "Sunshine Health - Notice of Adverse Benefit Determination - October 14, 2026",
+        "Member: J. Doe (age 9). Service requested: private duty nursing, 8 hours per day.",
+        "Dates of service: September 1, 2026 through September 30, 2026. Amount billed: $4,320.00.",
+        "Decision: DENIED. Reason: Services exceed the authorized amount.",
+        "You have the right to appeal this decision. Appeals must be received by December 13, 2026.",
+    ]
+)
+
+DENIAL_TEXT = (
+    "Sunshine Health. Notice of Adverse Benefit Determination. Date: October 14, 2026. "
+    "Member: J. Doe, age 9. We have denied the request for private duty nursing, 8 hours per day, "
+    "for dates of service September 1 through September 30, 2026, billed at $4,320.00. "
+    "Reason: Services exceed the authorized amount. You have the right to appeal within 60 days, by December 13, 2026."
+)
+
+
+@pytest.fixture(autouse=True)
+def _fixture_mode(monkeypatch):
+    monkeypatch.delenv("POLICYQA_LLM_BASE_URL", raising=False)
+    monkeypatch.delenv("POLICYQA_LLM_MODEL", raising=False)
+    extractor.cache_clear()
+    yield
+    extractor.cache_clear()
+
+
+def _intake_text(text=DENIAL_TEXT):
+    return client.post("/case/intake", data={"text": text})
+
+
+def test_health_reports_intake_fixture():
+    assert client.get("/health").json()["intake"] == "fixture"
+
+
+def test_health_reports_configured_model(monkeypatch):
+    monkeypatch.setenv("POLICYQA_LLM_BASE_URL", "https://api.meta.ai/v1")
+    monkeypatch.setenv("POLICYQA_LLM_MODEL", "muse-spark-1.3")
+    assert client.get("/health").json()["intake"] == "muse-spark-1.3"
+
+
+def test_intake_text_fixture_mode():
+    r = _intake_text()
+    assert r.status_code == 200, r.text
+    b = r.json()
+    assert b["case_id"].startswith("c_") and len(b["case_id"]) == 8
+    assert b["source"] == "text" and b["raw_text"] == DENIAL_TEXT and b["status"] == "intake"
+    assert b["model"] == "fixture" and b["cost_usd"] == 0.0 and b["latency_ms"] >= 0 and b["created_at"].endswith("Z")
+    assert len(b["summary"]) > 100
+    card = b["card"]
+    assert list(card.keys()) == ["payer_name", "program", "member_age_group", "service", "service_code", "dates_of_service", "amount_billed", "denial_reason", "letter_date", "appeal_deadline_claimed"]
+    assert card["payer_name"] == {"value": "Sunshine Health", "confidence": "high"}
+    assert card["amount_billed"] == {"value": 4320.0, "confidence": "medium"}
+    assert card["dates_of_service"] == {"value": "2026-09-01/2026-09-30", "confidence": "high"}
+    assert STORE.get(b["case_id"]) is not None
+
+
+def test_intake_png_and_pdf_fixture_mode():
+    r = client.post("/case/intake", files={"file": ("letter.png", PNG_1X1, "image/png")})
+    assert r.status_code == 200, r.text
+    assert r.json()["source"] == "image" and "Sunshine Health" in r.json()["raw_text"]
+    r = client.post("/case/intake", files={"file": ("letter.pdf", MINI_PDF, "application/pdf")})
+    assert r.status_code == 200, r.text
+    assert r.json()["source"] == "pdf"
+
+
+def test_intake_sniffs_bytes_not_declared_type():
+    # declared PDF, really a PNG: accepted as an image
+    r = client.post("/case/intake", files={"file": ("letter.pdf", PNG_1X1, "application/pdf")})
+    assert r.status_code == 200 and r.json()["source"] == "image"
+    # declared PNG, really plain text: rejected
+    r = client.post("/case/intake", files={"file": ("letter.png", b"hello there this is not an image", "image/png")})
+    assert r.status_code == 422 and r.json()["detail"]["code"] == "unsupported_type"
+
+
+def test_intake_error_codes():
+    r = client.post("/case/intake", files={"file": ("x.gif", b"GIF89a" + b"\x00" * 20, "image/gif")})
+    assert r.status_code == 422 and r.json()["detail"]["code"] == "unsupported_type"
+    r = client.post("/case/intake", files={"file": ("big.pdf", b"%PDF-1.4" + b"\x00" * (10 * 1024 * 1024 + 1), "application/pdf")})
+    assert r.status_code == 422 and r.json()["detail"]["code"] == "too_large"
+    r = _intake_text("too short")
+    assert r.status_code == 422 and r.json()["detail"]["code"] == "text_length"
+    r = _intake_text("x" * 6001)
+    assert r.status_code == 422 and r.json()["detail"]["code"] == "text_length"
+    r = _intake_text("Dear friend, thank you for the lovely birthday wishes and the photos from the trip. " * 4)
+    assert r.status_code == 422 and r.json()["detail"]["code"] == "not_a_denial_letter"
+    r = _intake_text(DENIAL_TEXT + " Also, should I take a higher dosage of my medication while the appeal is pending?")
+    assert r.status_code == 422 and r.json()["detail"]["code"] == "out_of_scope"
+    assert "message" in r.json()["detail"]
+
+
+def test_intake_both_or_neither_is_400():
+    r = client.post("/case/intake", data={"text": DENIAL_TEXT}, files={"file": ("l.png", PNG_1X1, "image/png")})
+    assert r.status_code == 400 and r.json()["detail"]["code"] == "bad_request"
+    r = client.post("/case/intake", data={})
+    assert r.status_code == 400 and r.json()["detail"]["code"] == "bad_request"
+
+
+def test_get_case_and_404():
+    cid = _intake_text().json()["case_id"]
+    r = client.get(f"/case/{cid}")
+    assert r.status_code == 200 and r.json()["case_id"] == cid and r.json()["card"]["payer_name"]["value"] == "Sunshine Health"
+    assert client.get("/case/c_000000").status_code == 404
+    assert client.patch("/case/c_000000", json={"payer_name": "X"}).status_code == 404
+    assert client.post("/case/c_000000/investigate").status_code == 404
+
+
+def test_patch_happy_path():
+    cid = _intake_text().json()["case_id"]
+    r = client.patch(f"/case/{cid}", json={"service_code": "T1000", "amount_billed": "4,500.50", "program": "florida_kidcare", "letter_date": "2026-10-15", "dates_of_service": "2026-09-01/2026-09-15"})
+    assert r.status_code == 200, r.text
+    card = r.json()["card"]
+    assert card["service_code"] == {"value": "T1000", "confidence": "high", "edited": True}
+    assert card["amount_billed"] == {"value": 4500.5, "confidence": "high", "edited": True}
+    assert card["program"] == {"value": "florida_kidcare", "confidence": "high", "edited": True}
+    assert card["letter_date"]["value"] == "2026-10-15" and card["dates_of_service"]["value"] == "2026-09-01/2026-09-15"
+    assert card["payer_name"] == {"value": "Sunshine Health", "confidence": "high"}  # untouched, no edited flag
+    assert r.json()["status"] == "intake"
+    assert client.get(f"/case/{cid}").json()["card"]["service_code"]["edited"] is True
+
+
+def test_patch_bad_values():
+    cid = _intake_text().json()["case_id"]
+    for body, field in (
+        ({"program": "blue_cross"}, "program"),
+        ({"member_age_group": "teen"}, "member_age_group"),
+        ({"letter_date": "10/15/2026"}, "letter_date"),
+        ({"dates_of_service": "September"}, "dates_of_service"),
+        ({"amount_billed": "lots"}, "amount_billed"),
+        ({"amount_billed": 1234567}, "amount_billed"),
+        ({"payer_name": ""}, "payer_name"),
+        ({"not_a_field": "x"}, "not_a_field"),
+    ):
+        r = client.patch(f"/case/{cid}", json=body)
+        assert r.status_code == 422, (body, r.text)
+        assert r.json()["detail"]["field"] == field and r.json()["detail"]["code"] == "invalid_field"
+    assert client.patch(f"/case/{cid}", json=[1, 2]).status_code == 422
+    assert client.patch(f"/case/{cid}", json={}).status_code == 422
+
+
+def test_investigate_then_patch_conflicts():
+    cid = _intake_text().json()["case_id"]
+    r = client.post(f"/case/{cid}/investigate")
+    assert r.status_code == 200 and r.json() == {"case_id": cid, "status": "investigating"}
+    assert client.get(f"/case/{cid}").json()["status"] == "investigating"
+    r = client.patch(f"/case/{cid}", json={"payer_name": "X"})
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "wrong_status"
+    r = client.post(f"/case/{cid}/investigate")
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "wrong_status"
+
+
+def test_patch_null_clears_a_non_enum_field_but_not_an_enum():
+    from fastapi.testclient import TestClient
+    from api.main import app
+
+    client = TestClient(app)
+    case = client.post("/case/intake", data={"text": DENIAL_TEXT}).json()
+    r = client.patch(f"/case/{case['case_id']}", json={"appeal_deadline_claimed": None})
+    assert r.status_code == 200, r.text
+    cell = r.json()["card"]["appeal_deadline_claimed"]
+    assert cell == {"value": None, "confidence": "high", "edited": True}
+    r = client.patch(f"/case/{case['case_id']}", json={"program": None})
+    assert r.status_code == 422
+    assert r.json()["detail"]["code"] == "invalid_field"
+
+
+def test_malformed_patch_bodies_keep_the_error_shape():
+    from fastapi.testclient import TestClient
+    from api.main import app
+
+    client = TestClient(app)
+    case = client.post("/case/intake", data={"text": DENIAL_TEXT}).json()
+    for body in ('["service"]', '"service"', "{not json"):
+        r = client.patch(f"/case/{case['case_id']}", content=body, headers={"Content-Type": "application/json"})
+        assert r.status_code == 422, (body, r.text)
+        d = r.json()["detail"]
+        assert isinstance(d, dict) and d["code"] == "invalid_field" and d["message"], (body, r.text)

@@ -83,3 +83,14 @@ Stretch features in priority order, built only if the core lands: steelman pass 
 Division of labor: Claude owns the agent, the API, the evals, and the documents. Alvaro owns the front end (Next.js with the Impeccable design skill), the local runs, the labeling, the deploys, and the video.
 
 **Oct 26, 12:05 pm: retrieval eval reproduced on Alvaro's Windows machine** (commit cfe3365, `results/hybrid.json` and `results/hybrid-rerank.json`): hybrid 0.5899@5 and 0.6835@10, MiniLM-20 reranked 0.6115@5 and 0.7122@10, identical to the Linux build box to four decimals on the same 139 rows. Latency on his CPU: 15 ms hybrid, 415 ms reranked at p50. The five documents the build box cannot download (fl-24, hipaa-01 to 04) still need local extraction for the 150-row numbers.
+
+
+**Oct 26, 1:30 to 3:30 pm: first product code, inside the event window.** The kickoff at noon opened the building period, so the intake screen and the case intake endpoints were built the same afternoon (the README Timeline says so). Decisions made while building, all by Claude under the brief and open for Alvaro's review:
+- Model id: `muse-spark-1.3` on `https://api.meta.ai/v1` (checked Oct 26 against the Meta Model API page; the "1.1" in the two entries above was written before that check and stands as the record of the morning).
+- Two modes in the screen, `fixture` (default, no network, "Sample case" tag) and `live`, chosen by `NEXT_PUBLIC_INTAKE_MODE`; the API has the same split (`FixtureExtractor` when no model env is set). So the whole flow runs on a laptop with no key, and the first Muse Spark call changes no code.
+- One error contract for both sides: `{"detail": {"code", "message"}}`, six intake codes, plus `bad_request`, `not_found`, `wrong_status`, `invalid_field`. A cheap keyword scope check runs before any model call; the model classification can return the same two codes.
+- File type from the first bytes, never from the declared content type; 10 MB cap; text 200 to 6,000 characters on both sides.
+- PATCH sets an edited cell to confidence `high` with `edited: true`; `null` clears a non-enum field (the person says the letter does not state it) and is refused on the two enum fields, which use `unknown`.
+- `complete_parts` tries `json_schema` (strict), then `json_object`, then no `response_format`, so an endpoint that rejects a mode degrades instead of failing. PDF goes to the model as a `file` part first and falls back to `pdftotext` text if the endpoint rejects it.
+- Cases are in memory for now. The store has four methods so a file or database store can replace it without touching the routes.
+- Built but not live-tested, because no key exists: every request shape against the real Meta endpoint, whether Muse Spark honours strict `json_schema`, and the real cost and latency. `python -m policyqa.cli smoke` is the first command once the key exists.

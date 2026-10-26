@@ -9,13 +9,44 @@
   eval-answers  retrieve + generate + judge over the golden set, writes results/answers-<name>.json
   export-review  judge-subset rows of an answers file -> JSON docs for the Judge Validation Review page
   judge-agreement  graded review docs -> results/judge-agreement-<run>.json
+  smoke    one tiny chat request through the configured model; prints model, latency, tokens, cost, reply
 """
 import argparse
 import json
+import os
+import sys
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+SMOKE_ENV = ("POLICYQA_LLM_BASE_URL", "POLICYQA_LLM_MODEL", "POLICYQA_LLM_API_KEY")
+
+
+def smoke(provider=None) -> int:
+    """Run the moment the model key exists. Returns the exit code."""
+    if provider is None:
+        missing = [k for k in SMOKE_ENV if not os.environ.get(k)]
+        if missing:
+            print("Not configured. Set these variables (see .env.example): " + ", ".join(missing))
+            return 1
+        from .generate import Provider
+
+        provider = Provider()
+    t = time.perf_counter()
+    try:
+        text, n_in, n_out = provider.complete_parts("You are a connectivity check.", [{"type": "text", "text": "Reply with the single word: ready"}], max_tokens=10)
+    except Exception as e:  # noqa: BLE001 - show the failure, that is the point of the command
+        print(f"FAILED after {(time.perf_counter() - t) * 1000:.0f} ms: {type(e).__name__}: {e}")
+        return 1
+    ms = (time.perf_counter() - t) * 1000
+    print(f"model:   {provider.model}")
+    print(f"latency: {ms:.0f} ms")
+    print(f"tokens:  {n_in} in / {n_out} out")
+    print(f"cost:    ${provider.cost(n_in, n_out)}")
+    print(f"reply:   {text.strip()}")
+    return 0
 
 
 def main(argv=None):
@@ -96,7 +127,12 @@ def main(argv=None):
     ja.add_argument("docs", type=Path, help="directory of graded review documents")
     ja.add_argument("--run", required=True)
 
+    sub.add_parser("smoke", help="one tiny request through POLICYQA_LLM_*; exits 1 when unset or failing")
+
     args = ap.parse_args(argv)
+
+    if args.cmd == "smoke":
+        sys.exit(smoke())
 
     if args.cmd == "ingest":
         from .ingest import ingest

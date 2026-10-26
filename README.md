@@ -28,8 +28,9 @@ The point of the project is not the demo. Every step is measured against a human
 | Golden set: 160 questions, six types, every document covered, LLM-drafted and human-verified | done, `golden/golden.csv` |
 | Ingestion, page-bounded chunking, hybrid retrieval with reranker, recall harness | groundwork, Oct 25 (see Timeline) |
 | Answer harness: enforced citations, forced abstention, judge, cost and latency, traces | groundwork, Oct 25 |
-| Generation on Muse Spark via the Meta Model API | Oct 27 |
-| Intake from photo, PDF, or text; program routing | Oct 27 to 28 |
+| Generation on Muse Spark via the Meta Model API | wired Oct 26 (`python -m policyqa.cli smoke`, `/answer`); first live call when the key exists |
+| Intake screen (`/case/new`) and case intake endpoints from photo, PDF, or text; fixture mode until the key exists | built Oct 26, live on Muse Spark Oct 27 |
+| Program routing | Oct 28 |
 | Investigation agent with verified findings | Oct 28 |
 | Steelman, verdict, appeal letter, deadline and filing steps, evidence checklist, scope guardrail | Oct 29 |
 | Denial-case eval set (about 30 synthetic letters with known verdicts), judge validation against human verdicts | Oct 30 |
@@ -45,7 +46,7 @@ The Meta Global AI Developer Hackathon rules require new work only, and the demo
 - The dataset: 64 public policy PDFs selected and verified (`corpus/manifest.csv`) and the 160-row golden set, drafted by LLM agents and verified row by row by a person (`golden/golden.csv`). Built Oct 22 to 23.
 - Groundwork, Oct 25 (commits c001284 to 3555222, the day before kickoff): page text extraction, chunking, a BM25 and embedding retrieval baseline with a reranker option, the retrieval recall harness, a first draft of the answer and judge harness with a mock provider, per-query traces, and the judge review page. No Meta model was called; nothing here is demoed.
 
-**During the event (Oct 27 onward):** everything the demo shows. The product itself (Recourse) was designed on Oct 26 after the rules were published and built from Oct 27: intake from photo, PDF, and text on Muse Spark; program routing; the investigation agent with verified findings; the steelman pass; the verdict; the appeal letter, deadline, and evidence checklist; the scope guardrail; the denial-case evaluation set; the judge validated against human verdicts; the open-weights comparison; the live demo; the write-up. Each lands as its own commit with a date.
+**During the event (from the Oct 26 noon kickoff):** everything the demo shows. The product itself (Recourse) was designed on Oct 26 after the rules were published. The first product code landed on the afternoon of Oct 26, after the kickoff opened the building window: the intake screen in fixture mode, the case intake endpoints, the Muse Spark extractor and smoke command, with no model call made yet because no API key existed. The rest is built from Oct 27: intake from photo, PDF, and text on Muse Spark; program routing; the investigation agent with verified findings; the steelman pass; the verdict; the appeal letter, deadline, and evidence checklist; the scope guardrail; the denial-case evaluation set; the judge validated against human verdicts; the open-weights comparison; the live demo; the write-up. Each lands as its own commit with a date.
 
 ## Quick start
 
