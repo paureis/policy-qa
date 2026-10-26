@@ -24,3 +24,6 @@ review/export/
 
 # Impeccable live-mode inject journal (regenerated on every run)
 .impeccable/live/inject-journal.json
+
+# Impeccable live mode (dev only)
+.impeccable/
