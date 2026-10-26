@@ -81,3 +81,5 @@ Rubric alignment: Impact 30 (the KFF numbers and a real job done), Meta tooling 
 Stretch features in priority order, built only if the core lands: steelman pass (kept in the core, one call), dual-eligible side by side, voice intake with Muse Voice Transcribe, save the letter as a file.
 
 Division of labor: Claude owns the agent, the API, the evals, and the documents. Alvaro owns the front end (Next.js with the Impeccable design skill), the local runs, the labeling, the deploys, and the video.
+
+**Oct 26, 12:05 pm: retrieval eval reproduced on Alvaro's Windows machine** (commit cfe3365, `results/hybrid.json` and `results/hybrid-rerank.json`): hybrid 0.5899@5 and 0.6835@10, MiniLM-20 reranked 0.6115@5 and 0.7122@10, identical to the Linux build box to four decimals on the same 139 rows. Latency on his CPU: 15 ms hybrid, 415 ms reranked at p50. The five documents the build box cannot download (fl-24, hipaa-01 to 04) still need local extraction for the 150-row numbers.
