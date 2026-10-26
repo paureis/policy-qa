@@ -1,0 +1,21 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Health Plan
+Florida Medicaid Managed Medical Assistance (MMA)
+Notice of Adverse Benefit Determination
+
+Date: October 14, 2026
+Member: B. Sample, age 21 (date of birth August 2, 2005)
+Member ID: 00000000-SAMPLE
+Provider: Sample Home Nursing LLC
+
+We reviewed the request for private duty nursing, 12 hours per day, service code T1000, for dates of service September 14, 2026 through October 11, 2026. The amount billed was $6,912.00.
+
+We have denied this request.
+Reason: Private duty nursing is covered only for members under the age of 21. Our records show the member turned 21 before the dates of service.
+
+You may ask your care manager about other services you may qualify for as an adult member.
+
+You have the right to ask for a plan appeal. Your appeal must be received within 60 days of the date of this letter, by December 13, 2026. You may ask for a free copy of the rule and the records we used. After the plan appeal you may ask for a Medicaid Fair Hearing.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

@@ -274,13 +274,13 @@ class Provider:
         self._check_truncation(self.last_response, max_tokens)
         return self._unpack(self.last_response)
 
-    def complete_parts(self, system: str, parts: list[dict], schema: dict | None = None, max_tokens: int = 1500) -> tuple[str, int, int]:
+    def complete_parts(self, system: str, parts: list[dict], schema: dict | None = None, max_tokens: int = 1500, schema_name: str = "case_card") -> tuple[str, int, int]:
         """Multimodal chat completion: `parts` are OpenAI content parts (text, image_url, file).
 
         With a JSON schema, the request asks for `response_format: json_schema` (strict).
         A 400 that mentions response_format falls back to `json_object`, and a second
         such 400 falls back to no response_format at all. Without a schema no
-        response_format is sent. Any other error is raised as httpx.HTTPStatusError so
+        response_format is sent. `schema_name` names the schema in the request. Any other error is raised as httpx.HTTPStatusError so
         the caller can inspect it (the PDF file-part fallback in intake.py relies on this).
 
         Not yet exercised against the live Meta Model API (no key on this box); the
@@ -296,7 +296,7 @@ class Provider:
         }
         ladder: list[dict | None] = [None]
         if schema is not None:
-            ladder = [{"type": "json_schema", "json_schema": {"name": "case_card", "schema": schema, "strict": True}}, {"type": "json_object"}, None]
+            ladder = [{"type": "json_schema", "json_schema": {"name": schema_name, "schema": schema, "strict": True}}, {"type": "json_object"}, None]
         headers = self._headers()
         if self.reasoning_effort:
             body["reasoning_effort"] = self.reasoning_effort

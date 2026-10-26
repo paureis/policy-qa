@@ -1,0 +1,20 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Long-Term Care Plan
+Florida Medicaid Statewide Medicaid Managed Care Long-term Care (LTC) Program
+Notice of Adverse Benefit Determination
+
+Date: October 8, 2026
+Member: L. Sample, age 74
+Member ID: 00000000-SAMPLE
+Other coverage on file: Medicare Part A and Part B
+Provider: Sample Meals on Wheels Agency
+
+This letter is about home-delivered meals, 1 meal per day, service code S5170, for dates of service September 1, 2026 through September 30, 2026. The amount billed was $378.00. Your care manager noted that you have difficulty shopping for and preparing food without help.
+
+We have denied this service.
+Reason: Home-delivered meals are not a covered benefit of the Long-term Care program.
+
+You have the right to ask for a plan appeal. Your appeal must be received within 60 days of the date of this letter, by December 7, 2026. You may ask for a free copy of the rule and the records we used. After the plan appeal you may ask for a Medicaid Fair Hearing.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

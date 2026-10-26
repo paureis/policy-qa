@@ -1,0 +1,20 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Prescription Drug Plan
+Medicare Part D
+Notice of Denial of Medicare Prescription Drug Coverage
+
+Date: September 14, 2026
+Member: AA. Sample, age 69
+Member ID: 00000000-SAMPLE
+Coverage start date: September 1, 2026
+Pharmacy: Sample Pharmacy
+
+We reviewed a pharmacy claim for a 30-day supply of a prescription drug that you took before joining this plan, filled on date of service September 10, 2026. The amount billed was $512.33.
+
+We have denied coverage for this drug.
+Reason: This drug is not on the plan's formulary (list of covered drugs). Non-formulary drugs are not covered unless an exception is approved.
+
+You or your prescriber may ask for a formulary exception. You also have the right to ask for a redetermination (appeal). Your request must be received within 65 days of the date of this notice, by November 18, 2026.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

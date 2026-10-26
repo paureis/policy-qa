@@ -1,0 +1,17 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Medicare Summary Notice (sample) for Part B (Medical Insurance)
+
+Date: October 2, 2026
+Beneficiary: T. Sample, age 67
+Medicare Number: 0SAMPLE0000
+Supplier: Sample Ambulance Service
+
+Claim for non-emergency ambulance transport, basic life support, from home to a dialysis facility, service code A0428, date of service August 19, 2026. Amount the supplier charged: $612.40. Medicare approved: $0.00.
+
+Claim denied.
+Reason: Ambulance transport is covered only when other transportation would endanger your health. The records we received do not show that you could not travel safely by other means.
+
+If you disagree with this decision, you can file an appeal (redetermination). Your appeal must be received by January 30, 2027.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

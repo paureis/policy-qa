@@ -20,6 +20,15 @@ Surface:
                                  investigating -> investigated -> deciding -> decided -> drafting -> drafted,
                                  or failed with `status: "failed"` and `error` on the stage that failed
                                  (earlier stages are kept). Shapes: policyqa/verdict.py, policyqa/letter.py.
+  GET   /doc/{doc_id}/page/{page}.png?dpi=110
+                                 the real PDF page as a PNG (pdftoppm, disk cache), Cache-Control public 1 day
+  GET   /doc/{doc_id}/page/{page}/highlight?quote=&dpi=110
+                                 {doc_id, title, page, dpi, width_px, height_px, boxes_px: [{x0,y0,x1,y1}],
+                                 score, found, matched, image_url}: the quote located on the page (policyqa/pages.py)
+  POST  /doc/{doc_id}/page/{page}/vision-check  {quote, dpi?}
+                                 the highlight plus `vision`: Muse Spark reads the boxed text and confirms it holds
+                                 the quote (FixtureVision without POLICYQA_LLM_*); cached in memory per (doc, page,
+                                 quote, dpi, model). 404 not_found / bad_page, 503 no_pdf (RECOURSE_PDF_DIR).
   GET   /case/{id}/letter.txt    the appeal letter as plain text: struck sentences left out, "[cite: title,
                                  p. N]" after each verified claim. 404 not_ready until drafted, 409
                                  not_applicable when the denial matches the policy (read `explanation`).
@@ -46,9 +55,9 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -60,6 +69,7 @@ MAX_UPLOAD = 10 * 1024 * 1024
 RUN_INVESTIGATION_INLINE = False  # True: POST /case/{id}/investigate runs the whole investigation before answering (tests)
 FIXTURE_DELAY = 0.8  # seconds between fixture findings, so progress is visible on screen
 INVESTIGATION_THREADS: dict[str, threading.Thread] = {}
+VISION_CACHE: dict[tuple, dict] = {}  # (doc_id, page, quote, dpi, model) -> vision result; a second open costs nothing
 
 app = FastAPI(title="Recourse API", version="0.1.0")
 
@@ -167,7 +177,14 @@ def health():
         "intake": os.environ.get("POLICYQA_LLM_MODEL") if _live_configured() else "fixture",
         "investigation": investigation_mode(),
         "verdict": verdict_mode(),
+        "pdfs": _pdf_count(),
     }
+
+
+def _pdf_count() -> int:
+    from policyqa.pages import pdf_count
+
+    return pdf_count()
 
 
 @app.get("/search")
@@ -426,3 +443,65 @@ def case_letter_txt(case_id: str):
     if not letter.get("applicable"):
         raise _err(409, "not_applicable", "The denial matches the policy, so there is no appeal letter. Read the explanation instead.")
     return PlainTextResponse(letter_text(letter), headers={"Content-Disposition": f'inline; filename="recourse-appeal-{case_id}.txt"'})
+
+
+# ---- highlighted page images ----------------------------------------------
+
+_PAGE_STATUS = {"not_found": 404, "bad_page": 404, "no_pdf": 503, "render_failed": 500}
+DPI_MIN, DPI_MAX = 50, 300
+QUOTE_MIN, QUOTE_MAX = 15, 2000
+
+
+def _page_err(e) -> HTTPException:
+    return _err(_PAGE_STATUS.get(e.code, 500), e.code, e.message)
+
+
+def vision_provider():
+    """Muse Spark (the shared provider) when POLICYQA_LLM_* are set, else FixtureVision."""
+    from policyqa.pages import FixtureVision
+
+    return provider() if _live_configured() else FixtureVision()
+
+
+class VisionCheckRequest(BaseModel):
+    quote: str = Field(min_length=QUOTE_MIN, max_length=QUOTE_MAX)
+    dpi: int = Field(default=110, ge=DPI_MIN, le=DPI_MAX)
+
+
+@app.get("/doc/{doc_id}/page/{page}.png")
+def doc_page_png(doc_id: str, page: int, dpi: int = Query(default=110, ge=DPI_MIN, le=DPI_MAX)):
+    from policyqa.pages import PageError, render_page
+
+    try:
+        png = render_page(doc_id, page, dpi)
+    except PageError as e:
+        raise _page_err(e)
+    return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/doc/{doc_id}/page/{page}/highlight")
+def doc_page_highlight(doc_id: str, page: int, quote: str = Query(min_length=QUOTE_MIN, max_length=QUOTE_MAX), dpi: int = Query(default=110, ge=DPI_MIN, le=DPI_MAX)):
+    from policyqa.pages import PageError, highlight
+
+    try:
+        return highlight(doc_id, page, quote, dpi)
+    except PageError as e:
+        raise _page_err(e)
+
+
+@app.post("/doc/{doc_id}/page/{page}/vision-check")
+def doc_page_vision_check(doc_id: str, page: int, req: VisionCheckRequest):
+    from policyqa import pages
+
+    try:
+        hl = pages.highlight(doc_id, page, req.quote, req.dpi)
+        vp = vision_provider()
+        key = (doc_id, page, req.quote, req.dpi, getattr(vp, "model", "?"))
+        vision = VISION_CACHE.get(key)
+        if vision is None:
+            vision = pages.vision_check(doc_id, page, req.quote, vp, dpi=req.dpi, hl=hl)
+            if vision.get("checked"):  # failures are not cached, so the next open retries
+                VISION_CACHE[key] = vision
+    except pages.PageError as e:
+        raise _page_err(e)
+    return {**hl, "vision": vision}

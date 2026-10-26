@@ -1,0 +1,17 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Medicare Summary Notice (sample) for Part A (Hospital Insurance)
+
+Date: October 22, 2026
+Beneficiary: CC. Sample, age 79
+Medicare Number: 0SAMPLE0000
+Provider: Sample Skilled Nursing and Rehabilitation Center
+
+Claim for a skilled nursing facility stay, dates of service September 4, 2026 through September 24, 2026. The beneficiary was in Sample Memorial Hospital from August 31 to September 3, 2026: 2 days in outpatient observation, then 1 inpatient day. Amount the provider charged: $9,870.00. Medicare approved: $0.00.
+
+Claim denied.
+Reason: Part A covers skilled nursing facility care only after a qualifying inpatient hospital stay of at least 3 days in a row. Your hospital records show 1 inpatient day; the 2 days before admission were outpatient observation.
+
+If you disagree with this decision, you can file an appeal (redetermination). Your appeal must be received by February 19, 2027.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

@@ -1,0 +1,17 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Medicare Summary Notice (sample) for Part A (Hospital Insurance)
+
+Date: October 20, 2026
+Beneficiary: BB. Sample, age 84
+Medicare Number: 0SAMPLE0000
+Provider: Sample Hospice of Florida
+
+Claim for hospice care, routine home care, service code Q5001, dates of service September 1, 2026 through September 30, 2026. This was the fourth hospice benefit period. The hospice recertified the terminal illness for this period. Amount the provider charged: $6,840.00. Medicare approved: $0.00.
+
+Claim denied.
+Reason: Medicare hospice coverage is limited to two 90-day periods and one 60-day period. The beneficiary has used all available hospice benefit periods.
+
+If you disagree with this decision, you can file an appeal (redetermination). Your appeal must be received by February 17, 2027.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

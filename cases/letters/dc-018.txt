@@ -1,0 +1,18 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Medicare Summary Notice (sample) for Part B (Medical Insurance)
+
+Date: October 1, 2026
+Beneficiary: R. Sample, age 72
+Medicare Number: 0SAMPLE0000
+Supplier: Sample Optical Supply
+
+Claim for eyeglass frames, item code V2020, date of service August 27, 2026. Amount the supplier charged: $289.00. Medicare approved: $0.00. You may be billed: $289.00.
+The frames were ordered after cataract surgery with insertion of an intraocular lens on July 30, 2026.
+
+Claim denied.
+Reason: Medicare does not cover eyeglasses or contact lenses.
+
+If you disagree with this decision, you can file an appeal (redetermination). Your appeal must be received by January 29, 2027.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

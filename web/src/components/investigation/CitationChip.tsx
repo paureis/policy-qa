@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { InlinePageViewer, usePageViewer, viewerPanelId } from "./PageViewer";
 
 /* What a chip needs: a finding's Citation and the verdict's CitationRef both fit. */
 export interface ChipCitation {
@@ -43,16 +44,47 @@ export function CitationChip({ citation }: { citation: ChipCitation }) {
   );
 }
 
-/* The quoted excerpt with its title and page as the caption. */
+/*
+  The quoted excerpt with its title and page as the caption, and "See the
+  page" when a page viewer provider is present: the cited page as an image
+  with the quote highlighted (below the quote on the phone, beside the case
+  at desktop width). Collapsing the quote closes its viewer.
+*/
 export function QuoteFigure({ id, citation }: { id: string; citation: ChipCitation }) {
   const title = citation.title?.trim() || citation.doc_id;
+  const viewer = usePageViewer();
+  const closeIf = viewer?.actions.closeIf;
+  useEffect(() => {
+    if (!closeIf) return;
+    return () => closeIf(id);
+  }, [closeIf, id]);
+  const pageOpen = viewer?.state.open?.key === id;
   return (
-    <figure id={id} className="mt-2 mb-2 border-l-4 border-federal pl-4">
-      <blockquote className="text-[18px] leading-relaxed lg:text-[17px]">“{citation.quote}”</blockquote>
-      <figcaption className="mt-2 text-[15px] text-muted">
-        {title}, page {citation.page}. This quote was found on the cited page.
-      </figcaption>
-    </figure>
+    <>
+      <figure id={id} className="mt-2 mb-2 border-l-4 border-federal pl-4">
+        <blockquote className="text-[18px] leading-relaxed lg:text-[17px]">“{citation.quote}”</blockquote>
+        <figcaption className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[15px] text-muted">
+          <span>
+            {title}, page {citation.page}. This quote was found on the cited page.
+          </span>
+          {viewer ? (
+            <button
+              type="button"
+              aria-expanded={pageOpen}
+              aria-controls={pageOpen ? viewerPanelId(id) : undefined}
+              onClick={() => viewer.actions.toggle(id, citation)}
+              className={`inline-flex min-h-11 items-center rounded-sm border border-ink px-3 text-[16px] font-semibold text-ink ${
+                pageOpen ? "bg-paper" : "bg-bond"
+              }`}
+              data-see-page="true"
+            >
+              See the page
+            </button>
+          ) : null}
+        </figcaption>
+      </figure>
+      <InlinePageViewer viewerKey={id} />
+    </>
   );
 }
 

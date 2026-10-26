@@ -1,0 +1,19 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Health Plan
+Florida Medicaid Managed Medical Assistance (MMA)
+Pharmacy Benefit Notice
+
+Date: October 5, 2026
+Member: I. Sample, age 61
+Member ID: 00000000-SAMPLE
+Pharmacy: Sample Community Pharmacy
+
+This notice is about a pharmacy claim for blood glucose test strips, 300 strips for one month, item code A4253, filled on date of service October 1, 2026. The amount billed was $412.80.
+
+The claim has been denied.
+Reason: The quantity requested (300 test strips per month) is more than the plan's quantity limit for test strips. The prior authorization request for a higher quantity was not approved.
+
+You may appeal this decision. Call the number on your member ID card to learn how.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

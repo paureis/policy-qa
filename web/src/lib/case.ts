@@ -4,6 +4,8 @@
   in step with it.
 */
 
+import { PAGE_FIXTURES } from "./page-fixtures";
+
 export const PROGRAMS = [
   "florida_medicaid_mma",
   "florida_medicaid_ltc",
@@ -1452,4 +1454,189 @@ function fixtureChain(
   if (t < FIXTURE_DECIDE_MS + FIXTURE_DECIDED_MS) return { status: "decided", verdict, letter: null };
   if (t < FIXTURE_DECIDE_MS + FIXTURE_DECIDED_MS + FIXTURE_DRAFT_MS) return { status: "drafting", verdict, letter: null };
   return { status: "drafted", verdict, letter };
+}
+
+/* ---------- Page viewer: the cited PDF page with the quote highlighted ---------- */
+
+export const PAGE_DPI = 110;
+/* The API answers 422 for a quote shorter than this. */
+export const QUOTE_MIN = 15;
+
+/* One box per line of the quote, in image pixels at PAGE_DPI. */
+export interface PageBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/* GET /doc/{doc_id}/page/{page}/highlight */
+export interface PageHighlight {
+  doc_id: string;
+  title: string | null;
+  page: number;
+  dpi: number;
+  width_px: number;
+  height_px: number;
+  boxes_px: PageBox[];
+  score: number;
+  found: boolean;
+  /* "/doc/{doc_id}/page/{page}.png?dpi=110", relative to the API. */
+  image_url: string;
+}
+
+export interface VisionCheck {
+  checked: boolean;
+  model: string;
+  text_in_highlight: string;
+  agrees: boolean;
+  latency_ms: number;
+  cost_usd: number;
+  error?: string | null;
+}
+
+/* POST /doc/{doc_id}/page/{page}/vision-check: the highlight fields plus the vision result. */
+export interface VisionCheckResponse extends PageHighlight {
+  vision: VisionCheck;
+}
+
+export type PageErrorCode = "no_pdf" | "not_found" | "too_short" | "unreachable" | "timeout" | "rejected";
+
+export class PageError extends Error {
+  code: PageErrorCode;
+  /* The document's public source, when known: from the API's no_pdf detail or the manifest. */
+  sourceUrl: string | null;
+  constructor(code: PageErrorCode, message?: string, sourceUrl: string | null = null) {
+    super(message ?? PAGE_ERROR_COPY[code]);
+    this.name = "PageError";
+    this.code = code;
+    this.sourceUrl = sourceUrl;
+  }
+}
+
+export const PAGE_ERROR_COPY: Record<PageErrorCode, string> = {
+  no_pdf: "The PDF for this document is not on this server. Open it at its source.",
+  not_found: "This document is not in the corpus this server knows.",
+  too_short: "This quote is too short to place on the page.",
+  unreachable: "We could not reach the service to load the page. Check your connection and try again.",
+  timeout: "The page has not come back after 30 seconds.",
+  rejected: "The service could not show this page.",
+};
+
+/* Source URLs from corpus/manifest.csv for the documents the fixture cites. */
+const DOC_SOURCES: Record<string, string> = {
+  "fl-04": "https://ahca.myflorida.com//file/medicaid/Private_Duty_Nursing_Services_February2026.pdf",
+  "fl-21":
+    "https://ahca.myflorida.com/file/medicaid/Health_Exhibit%20II-A_Managed%20Medical%20Assistance%20(MMA)%20Program_July%202026.pdf",
+  "fed-02": "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/Downloads/bp102c07.pdf",
+  "fed-17": "https://www.cms.gov/files/document/mln006562-medicare-parts-b-appeals-process.pdf",
+};
+
+export function docSourceUrl(docId: string): string | null {
+  return DOC_SOURCES[docId] ?? null;
+}
+
+/* The <img> src for a highlight: the API's image_url in live mode, the bundled fixture page otherwise. */
+export function pageImageSrc(h: Pick<PageHighlight, "image_url">): string {
+  if (/^https?:\/\//.test(h.image_url)) return h.image_url;
+  return INTAKE_MODE === "live" ? `${API_URL}${h.image_url}` : h.image_url;
+}
+
+function pagePath(docId: string, page: number): string {
+  return `/doc/${encodeURIComponent(docId)}/page/${encodeURIComponent(String(page))}`;
+}
+
+async function readPageError(res: Response, docId: string): Promise<PageError> {
+  let detail: { code?: string; message?: string; source_url?: string; url?: string } | undefined;
+  try {
+    const body = (await res.json()) as { detail?: unknown };
+    if (typeof body.detail === "object" && body.detail) detail = body.detail as typeof detail;
+  } catch {
+    /* no body */
+  }
+  if (res.status === 404) return new PageError("not_found");
+  if (res.status === 422) return new PageError("too_short");
+  if (detail?.code === "no_pdf") {
+    return new PageError("no_pdf", undefined, detail.source_url || detail.url || docSourceUrl(docId));
+  }
+  if (res.status >= 500) return new PageError("unreachable");
+  return new PageError("rejected", detail?.message || undefined);
+}
+
+async function pageFetch(path: string, init: RequestInit, signal?: AbortSignal): Promise<Response> {
+  try {
+    return await liveFetch(path, init, signal);
+  } catch (err) {
+    if (err instanceof IntakeError) throw new PageError(err.code === "timeout" ? "timeout" : "unreachable");
+    throw err;
+  }
+}
+
+function checkQuote(quote: string): void {
+  if (quote.trim().length < QUOTE_MIN) throw new PageError("too_short");
+}
+
+const FIXTURE_HIGHLIGHT_MS = 450;
+const FIXTURE_VISION_MS = 1200;
+const FIXTURE_NO_PDF = new Set(["fed-02", "fed-17"]);
+
+function fixtureHighlightFor(docId: string, page: number, quote: string): PageHighlight {
+  if (FIXTURE_NO_PDF.has(docId)) throw new PageError("no_pdf", undefined, docSourceUrl(docId));
+  const fx = PAGE_FIXTURES.find((f) => f.doc_id === docId && f.page === page);
+  if (!fx) throw new PageError(DOC_SOURCES[docId] ? "no_pdf" : "not_found", undefined, docSourceUrl(docId));
+  const found = fx.found && quote.includes(fx.quote);
+  return {
+    doc_id: fx.doc_id,
+    title: fx.title,
+    page: fx.page,
+    dpi: PAGE_DPI,
+    width_px: fx.width_px,
+    height_px: fx.height_px,
+    boxes_px: found ? fx.boxes_px.map((b) => ({ ...b })) : [],
+    score: found ? 1 : 0,
+    found,
+    image_url: fx.image_url,
+  };
+}
+
+/* GET /doc/{doc_id}/page/{page}/highlight?quote=…&dpi=110. Throws PageError. */
+export async function getHighlight(docId: string, page: number, quote: string, signal?: AbortSignal): Promise<PageHighlight> {
+  checkQuote(quote);
+  if (INTAKE_MODE !== "live") {
+    await sleep(FIXTURE_HIGHLIGHT_MS, signal);
+    return fixtureHighlightFor(docId, page, quote);
+  }
+  const q = `quote=${encodeURIComponent(quote)}&dpi=${PAGE_DPI}`;
+  const res = await pageFetch(`${pagePath(docId, page)}/highlight?${q}`, { method: "GET" }, signal);
+  if (!res.ok) throw await readPageError(res, docId);
+  return (await res.json()) as PageHighlight;
+}
+
+/* POST /doc/{doc_id}/page/{page}/vision-check with {quote}. Throws PageError. */
+export async function visionCheck(docId: string, page: number, quote: string, signal?: AbortSignal): Promise<VisionCheckResponse> {
+  checkQuote(quote);
+  if (INTAKE_MODE !== "live") {
+    await sleep(FIXTURE_VISION_MS, signal);
+    const h = fixtureHighlightFor(docId, page, quote);
+    const fx = PAGE_FIXTURES.find((f) => f.doc_id === docId && f.page === page);
+    return {
+      ...h,
+      vision: {
+        checked: true,
+        model: FIXTURE_MODEL,
+        text_in_highlight: `[synthetic fixture] ${fx?.quote ?? ""}`,
+        agrees: true,
+        latency_ms: FIXTURE_VISION_MS,
+        cost_usd: 0,
+        error: null,
+      },
+    };
+  }
+  const res = await pageFetch(
+    `${pagePath(docId, page)}/vision-check`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quote }) },
+    signal,
+  );
+  if (!res.ok) throw await readPageError(res, docId);
+  return (await res.json()) as VisionCheckResponse;
 }

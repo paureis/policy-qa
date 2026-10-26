@@ -1,0 +1,22 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Medical Group
+Patient Statement and Explanation of Benefits
+
+Statement date: October 13, 2026
+Patient: U. Sample, age 66
+Coverage on file: Medicare Part B (primary); Florida Medicaid, Qualified Medicare Beneficiary (QMB) program (secondary)
+
+Date of service: September 3, 2026
+Service: office visit, established patient, procedure code 99214
+Amount billed: $135.30
+Medicare approved: $108.24
+Medicare paid: $86.59
+Medicaid paid: $0.00 (claim for the coinsurance denied)
+Balance due from patient: $21.65
+
+Reason for patient balance: Florida Medicaid did not pay the Medicare coinsurance for this visit, so the remaining balance is the patient's responsibility.
+
+Please pay the balance due within 30 days to avoid referral to collections. Call our billing office with questions.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

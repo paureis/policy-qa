@@ -1,0 +1,19 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Healthy Kids Plan
+Florida KidCare (Florida Healthy Kids)
+Pharmacy Coverage Notice
+
+Date: October 5, 2026
+Member: Q. Sample, age 8
+Member ID: 00000000-SAMPLE
+Pharmacy: Sample Children's Pharmacy
+
+This notice is about a pharmacy claim for a brand-name prescription drug filled on date of service October 2, 2026. The prescriber wrote "dispense as written" on the prescription. The amount billed was $264.19.
+
+The claim for the brand-name drug was denied.
+Reason: A generic version of this medication is available. The plan covers the brand-name drug only when a generic cannot be used.
+
+You may file an appeal by phone or in writing within 60 calendar days of the date of this notice, by December 4, 2026.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

@@ -1,0 +1,17 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Medicare Summary Notice (sample) for Part B (Medical Insurance)
+
+Date: September 28, 2026
+Beneficiary: S. Sample, age 70
+Medicare Number: 0SAMPLE0000
+Supplier: Sample Hearing Center
+
+Claim for hearing aids, digital, behind the ear, both ears, item code V5261, date of service August 11, 2026. The hearing aids were ordered by the beneficiary's doctor. Amount the supplier charged: $4,200.00. Medicare approved: $0.00.
+
+Claim denied.
+Reason: Medicare does not cover hearing aids or exams for fitting hearing aids.
+
+If you disagree with this decision, you can file an appeal (redetermination). Your appeal must be received by January 26, 2027.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

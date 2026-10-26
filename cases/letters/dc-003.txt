@@ -1,0 +1,19 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Health Plan
+Florida Medicaid Managed Medical Assistance (MMA)
+Notice of Adverse Benefit Determination
+
+Date: September 23, 2026
+Member: C. Sample, age 58
+Member ID: 00000000-SAMPLE
+Provider: Sample Home Health Agency
+
+This notice is about a claim for a home health skilled nursing visit, the second visit of the day, for date of service August 14, 2026. The amount billed was $96.00. The first visit that day was paid.
+
+We have denied payment for the second visit.
+Reason: Intermittent home health visits rendered less than an hour apart are not covered. The second visit on August 14, 2026 began 40 minutes after the first visit ended.
+
+You have the right to ask for a plan appeal. Your appeal must be received within 60 days of the date of this letter, by November 22, 2026. You may ask for a free copy of the rule and the records we used. After the plan appeal you may ask for a Medicaid Fair Hearing.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

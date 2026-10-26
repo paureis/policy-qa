@@ -113,3 +113,25 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/*
+  Page viewer. The panel steps in (no fade); the highlight boxes draw left
+  to right over 150 ms. Reduced motion: neither (the rule above stops both).
+*/
+@media (prefers-reduced-motion: no-preference) {
+  .step-in {
+    animation: step-in 120ms steps(2, end) both;
+  }
+  .hl-box {
+    transition: width 150ms ease-out;
+  }
+}
+
+@keyframes step-in {
+  from {
+    transform: translateY(8px);
+  }
+  to {
+    transform: none;
+  }
+}

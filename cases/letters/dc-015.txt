@@ -1,0 +1,19 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Healthy Kids Plan
+Florida KidCare (Florida Healthy Kids)
+Notice of Adverse Benefit Determination
+
+Date: October 15, 2026
+Member: O. Sample, age 15
+Member ID: 00000000-SAMPLE
+Provider: Sample Chiropractic Clinic
+
+This letter is about a claim for a chiropractic visit, procedure code 98940, on date of service October 6, 2026. This was the 13th chiropractic visit this year. The amount billed was $55.00.
+
+We have denied payment for this visit.
+Reason: Chiropractic services are limited to 12 visits per year. The member has already received 12 visits this year.
+
+You may file an appeal by phone or in writing within 30 days of the date of this letter, by November 14, 2026.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -610,3 +611,125 @@ def test_an_error_outside_the_stages_still_fails_the_running_stage(monkeypatch, 
     client.post(f"/case/{cid}/investigate")
     b = client.get(f"/case/{cid}").json()
     assert b["status"] == "failed" and b["verdict"]["status"] == "failed" and "trace store broke" in b["verdict"]["error"]
+
+
+# ---- highlighted page images ----------------------------------------------
+
+FL04_PDF = Path(api_main.ROOT) / "data" / "pdfs" / "fl-04.pdf"
+PDN_QUOTE = "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient"
+needs_fl04 = pytest.mark.skipif(not (FL04_PDF.exists() and FL04_PDF.stat().st_size > 10_000), reason="data/pdfs/fl-04.pdf is not fetched on this machine")
+
+
+@pytest.fixture()
+def page_cache(monkeypatch, tmp_path):
+    monkeypatch.setenv("RECOURSE_PAGE_CACHE", str(tmp_path / "pages"))
+    monkeypatch.delenv("RECOURSE_PDF_DIR", raising=False)
+    api_main.VISION_CACHE.clear()
+    yield tmp_path
+    api_main.VISION_CACHE.clear()
+
+
+@needs_fl04
+def test_page_png_route(page_cache):
+    r = client.get("/doc/fl-04/page/5.png", params={"dpi": 110})
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"] == "image/png" and r.headers["cache-control"] == "public, max-age=86400"
+    assert r.content.startswith(b"\x89PNG") and len(r.content) > 50_000
+    assert client.get("/doc/fl-04/page/5.png").status_code == 200  # dpi defaults to 110
+
+
+def test_page_png_unknown_doc_is_404(page_cache):
+    r = client.get("/doc/zz-99/page/1.png")
+    assert r.status_code == 404 and r.json()["detail"]["code"] == "not_found"
+
+
+@needs_fl04
+def test_page_png_bad_page_is_404(page_cache):
+    r = client.get("/doc/fl-04/page/99.png")
+    assert r.status_code == 404 and r.json()["detail"]["code"] == "bad_page"
+
+
+def test_page_png_without_the_pdf_is_503(page_cache, monkeypatch):
+    empty = page_cache / "no-pdfs"
+    empty.mkdir()
+    monkeypatch.setenv("RECOURSE_PDF_DIR", str(empty))
+    r = client.get("/doc/fl-04/page/5.png")
+    assert r.status_code == 503 and r.json()["detail"]["code"] == "no_pdf"
+    r = client.get("/doc/fl-04/page/5/highlight", params={"quote": PDN_QUOTE})
+    assert r.status_code == 503 and r.json()["detail"]["code"] == "no_pdf"
+    assert client.get("/health").json()["pdfs"] == 0
+
+
+def test_page_png_dpi_out_of_range_is_422(page_cache):
+    r = client.get("/doc/fl-04/page/5.png", params={"dpi": 2000})
+    assert r.status_code == 422 and r.json()["detail"]["code"] == "invalid_field"
+
+
+@needs_fl04
+def test_highlight_route(page_cache):
+    r = client.get("/doc/fl-04/page/5/highlight", params={"quote": PDN_QUOTE})
+    assert r.status_code == 200, r.text
+    h = r.json()
+    assert h["doc_id"] == "fl-04" and h["page"] == 5 and h["dpi"] == 110 and h["found"] is True and h["score"] == 1.0
+    assert (h["width_px"], h["height_px"]) == (935, 1210) and h["image_url"] == "/doc/fl-04/page/5.png?dpi=110"
+    assert h["boxes_px"] and set(h["boxes_px"][0]) == {"x0", "y0", "x1", "y1"}
+    assert h["title"].startswith("Florida Medicaid")
+
+
+def test_highlight_short_quote_is_422(page_cache):
+    r = client.get("/doc/fl-04/page/5/highlight", params={"quote": "24 hours"})
+    assert r.status_code == 422 and r.json()["detail"]["code"] == "invalid_field" and r.json()["detail"]["field"] == "quote"
+
+
+def test_highlight_unknown_doc_is_404(page_cache):
+    r = client.get("/doc/zz-99/page/1/highlight", params={"quote": PDN_QUOTE})
+    assert r.status_code == 404 and r.json()["detail"]["code"] == "not_found"
+
+
+@needs_fl04
+def test_vision_check_route_fixture_mode_and_cache(page_cache, monkeypatch):
+    r = client.post("/doc/fl-04/page/5/vision-check", json={"quote": PDN_QUOTE})
+    assert r.status_code == 200, r.text
+    b = r.json()
+    assert b["found"] is True and b["boxes_px"] and b["image_url"] == "/doc/fl-04/page/5.png?dpi=110"
+    assert b["vision"]["checked"] is True and b["vision"]["model"] == "fixture" and b["vision"]["agrees"] is True
+    assert b["vision"]["text_in_highlight"] == PDN_QUOTE
+    # the second open is served from memory: the check does not run again
+    import policyqa.pages as pages_mod
+
+    monkeypatch.setattr(pages_mod, "vision_check", lambda *a, **k: (_ for _ in ()).throw(AssertionError("ran twice")))
+    assert client.post("/doc/fl-04/page/5/vision-check", json={"quote": PDN_QUOTE}).json() == b
+
+
+@needs_fl04
+def test_vision_check_route_live_mode_uses_the_provider(page_cache, monkeypatch):
+    calls = []
+
+    class Fake:
+        model = "muse-spark-1.3"
+        last_response = {}
+
+        def complete_parts(self, system, parts, schema=None, max_tokens=1500, **kw):
+            calls.append(parts)
+            return json.dumps({"text_in_highlight": PDN_QUOTE, "contains_quote": True}), 10, 5
+
+        def cost(self, a, b):
+            return 0.0
+
+    monkeypatch.setenv("POLICYQA_LLM_BASE_URL", "https://api.meta.ai/v1")
+    monkeypatch.setenv("POLICYQA_LLM_MODEL", "muse-spark-1.3")
+    monkeypatch.setattr(api_main, "provider", lambda: Fake())
+    b = client.post("/doc/fl-04/page/5/vision-check", json={"quote": PDN_QUOTE, "dpi": 110}).json()
+    assert b["vision"]["model"] == "muse-spark-1.3" and b["vision"]["agrees"] is True and len(calls) == 1
+
+
+def test_vision_check_route_short_quote_is_422(page_cache):
+    r = client.post("/doc/fl-04/page/5/vision-check", json={"quote": "too short"})
+    assert r.status_code == 422 and r.json()["detail"]["field"] == "quote"
+
+
+def test_health_counts_pdfs(page_cache):
+    from policyqa.pages import pdf_count
+
+    n = client.get("/health").json()["pdfs"]
+    assert isinstance(n, int) and n == pdf_count()

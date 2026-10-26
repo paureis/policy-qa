@@ -1,0 +1,19 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Medicare Advantage Plan
+Medicare Advantage HMO
+Notice of Denial of Payment
+
+Date: September 30, 2026
+Member: V. Sample, age 68
+Member ID: 00000000-SAMPLE
+Provider: Sample Coastal Hospital (out of network)
+
+This notice is about a claim for an emergency department visit, procedure code 99284, on date of service August 30, 2026, while you were traveling outside the plan's service area. The amount billed was $2,184.00.
+
+We have denied payment for this claim.
+Reason: The emergency room visit was at an out-of-network hospital and was not approved in advance. Out-of-network services require prior authorization.
+
+You have the right to ask for a reconsideration (appeal). Your request must be received within 65 days of the date of this notice, by December 4, 2026.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

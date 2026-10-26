@@ -1,0 +1,19 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Prescription Drug Plan
+Medicare Part D
+Notice of Denial of Medicare Prescription Drug Coverage
+
+Date: October 15, 2026
+Member: Z. Sample, age 69
+Member ID: 00000000-SAMPLE
+Pharmacy: Sample Pharmacy
+
+We reviewed the request for azelaic acid 15% gel, one tube, filled on date of service October 13, 2026. The prescription says it is for rosacea. The amount billed was $98.75.
+
+We have denied coverage for this drug.
+Reason: This is a skin product used for a cosmetic purpose. Medicare Part D does not cover drugs used for cosmetic purposes.
+
+You have the right to ask us for a redetermination (appeal). Your request must be received within 65 days of the date of this notice, by December 19, 2026.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

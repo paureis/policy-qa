@@ -1,0 +1,19 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Prescription Drug Plan
+Medicare Part D
+Notice of Denial of Medicare Prescription Drug Coverage
+
+Date: October 12, 2026
+Member: Y. Sample, age 66
+Member ID: 00000000-SAMPLE
+Pharmacy: Sample Pharmacy
+
+We reviewed the request for finasteride 1 mg tablets, 30-day supply, filled on date of service October 9, 2026. The prescription notes say it is for hair loss. The amount billed was $64.20.
+
+We have denied coverage for this drug.
+Reason: This drug was prescribed for hair loss. Medicare Part D does not cover drugs used for cosmetic purposes or hair growth.
+
+You have the right to ask us for a redetermination (appeal) of this decision. Call Member Services for help with an appeal.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

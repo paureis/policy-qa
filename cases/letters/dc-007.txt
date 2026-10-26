@@ -1,0 +1,19 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Health Plan
+Florida Medicaid Managed Medical Assistance (MMA)
+Notice of Adverse Benefit Determination
+
+Date: October 13, 2026
+Member: G. Sample, age 34
+Member ID: 00000000-SAMPLE
+Transportation provider: Sample Ride Services
+
+We reviewed your request for non-emergency transportation, a round trip to a specialist appointment 48 miles from your home, service code T2003, for the trip date October 20, 2026. No amount has been billed because the trip has not taken place.
+
+We have denied this request.
+Reason: The appointment is more than 30 miles from the member's home. Transportation is covered only to providers within 30 miles.
+
+You have the right to ask for a plan appeal. Your appeal must be received within 60 days of the date of this letter, by December 12, 2026. You may ask for a free copy of the rule and the records we used. After the plan appeal you may ask for a Medicaid Fair Hearing.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

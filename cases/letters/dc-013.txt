@@ -1,0 +1,19 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Long-Term Care Plan
+Florida Medicaid Statewide Medicaid Managed Care Long-term Care (LTC) Program
+Notice of Adverse Benefit Determination
+
+Date: October 2, 2026
+Member: M. Sample, age 59
+Member ID: 00000000-SAMPLE
+Provider: Sample Home Access Contractors
+
+We reviewed the request for a home accessibility adaptation, an entry ramp at the member's home, service code S5165, for date of service September 21, 2026. The amount billed was $3,450.00. The member uses a wheelchair and cannot enter the home without help.
+
+We have denied this request.
+Reason: Home modifications such as ramps are not covered. Ramps are excluded from durable medical equipment benefits.
+
+You have the right to ask for a plan appeal. Your appeal must be received within 60 days of the date of this letter, by December 1, 2026. You may ask for a free copy of the rule and the records we used. After the plan appeal you may ask for a Medicaid Fair Hearing.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

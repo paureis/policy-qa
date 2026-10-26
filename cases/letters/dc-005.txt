@@ -1,0 +1,19 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Dental Plan
+Florida Medicaid Dental Program
+Notice of Adverse Benefit Determination
+
+Date: October 1, 2026
+Member: E. Sample, age 38
+Member ID: 00000000-SAMPLE
+Provider: Sample Family Dentistry
+
+We reviewed the request for a fixed partial denture (bridge) with one pontic, procedure code D6240, for date of service September 17, 2026. The amount billed was $1,150.00.
+
+We have denied this request.
+Reason: Fixed partial dentures (bridges) are not covered for members age 21 and older.
+
+You have the right to ask for a plan appeal. Your appeal must be received within 60 days of the date of this letter, by November 30, 2026. You may ask for a free copy of the rule and the records we used. After the plan appeal you may ask for a Medicaid Fair Hearing.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.

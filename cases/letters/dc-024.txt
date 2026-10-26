@@ -1,0 +1,19 @@
+SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.
+
+Sample Medicare Advantage Plan
+Medicare Advantage HMO
+Notice of Denial of Payment
+
+Date: October 7, 2026
+Member: X. Sample, age 73
+Member ID: 00000000-SAMPLE
+Provider: Sample Bay Hospital (out of network)
+
+This notice is about a claim for a skin biopsy, procedure code 11102, performed on date of service September 5, 2026 during your emergency visit for a wrist fracture. The emergency care for the fracture was approved and paid. The amount billed for the biopsy was $214.00.
+
+We have denied payment for the biopsy.
+Reason: The skin biopsy performed during your emergency visit was not related to the emergency. The plan does not pay for care of an unrelated non-emergency problem during emergency treatment at an out-of-network hospital.
+
+You have the right to ask for a reconsideration (appeal). Your request must be received within 65 days of the date of this notice, by December 11, 2026.
+
+This letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.
