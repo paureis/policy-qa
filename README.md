@@ -56,6 +56,18 @@ The report also gives `doc@k` (right document, any page) and `page@k` (right doc
 
 Results live in `results/<run>.json` with the full config and a per-row record, so two runs can be diffed row by row.
 
+Current numbers, 139 scorable rows on the 59 documents reachable from the build machine (the full 64-document run is pending), 300-word chunks, CPU only:
+
+| Retrieval | all@5 | all@10 | right doc @10 | MRR | p50 latency |
+|---|---|---|---|---|---|
+| BM25 | 0.453 | 0.540 | 0.755 | 0.309 | 11 ms |
+| Dense, bge-small-en-v1.5 | 0.532 | 0.691 | 0.885 | 0.395 | 105 ms |
+| Hybrid, RRF | 0.590 | 0.684 | 0.878 | 0.445 | 136 ms |
+| Hybrid + MiniLM-L-6 reranker, 20 candidates | 0.612 | 0.712 | 0.899 | 0.484 | 909 ms |
+| Hybrid + bge-reranker-base, 40 candidates | 0.655 | 0.755 | 0.907 | 0.494 | 9,138 ms |
+
+Multi-document questions (10 rows) are the weak spot at every setting, 0.3 to 0.4 at 10. One query cannot pull two documents reliably; the fix belongs in the generation layer (one sub-query per jurisdiction), and is on the list. The reasoning behind each choice, with the chunk-size sweep, is in `DECISIONS.md`.
+
 ## Design notes
 
 - Chunks never cross a page. A citation is (document, page), and a chunk that spans pages cannot be cited honestly.
