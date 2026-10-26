@@ -1,0 +1,21 @@
+[project]
+name = "policyqa"
+version = "0.1.0"
+description = "Policy Document QA with citations: hybrid retrieval over public healthcare policy PDFs, scored against a human-verified golden set."
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+  "rank_bm25>=0.2.2",
+  "sentence-transformers>=3.0",
+  "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["policyqa*"]

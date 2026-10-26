@@ -1,0 +1,13 @@
+# data never goes in the repo: PDFs, page text, indexes, model caches
+data/
+*.pdf
+*.npy
+*.jsonl
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.cache/
+models/
