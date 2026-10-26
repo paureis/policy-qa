@@ -531,6 +531,8 @@ export type CaseStatus =
   | "decided"
   | "drafting"
   | "drafted"
+  | "reviewing"
+  | "reviewed"
   | "failed";
 export type Jurisdiction = "Florida" | "Federal";
 export const JURISDICTIONS: readonly Jurisdiction[] = ["Florida", "Federal"];
@@ -623,6 +625,8 @@ export interface CaseRecord extends IntakeResponse {
   verdict?: Verdict | null;
   /* The appeal letter and the action around it, once the verdict is reached. */
   letter?: Letter | null;
+  /* The critic's self-check of the letter, once drafted. Null until it starts; absent on older API builds. */
+  critique?: Critique | null;
   created_at?: string;
   model?: string;
   cost_usd?: number;
@@ -978,11 +982,13 @@ function startFixtureInvestigation(caseId: string, at: number = Date.now()): voi
 }
 
 function fixtureCase(caseId: string, now: number): CaseRecord | null {
-  if (!/^c_(sample\d*|dual\d*|fail\d*|error\d*|consistent\d*)$/.test(caseId)) return null;
+  if (!/^c_(sample\d*|dual\d*|fail\d*|error\d*|consistent\d*|rejected\d*|checkerror\d*)$/.test(caseId)) return null;
   const dual = caseId.startsWith("c_dual");
   const consistent = caseId.startsWith("c_consistent");
   const fail = caseId.startsWith("c_fail");
   const withError = caseId.startsWith("c_error");
+  const rejected = caseId.startsWith("c_rejected");
+  const checkError = caseId.startsWith("c_checkerror");
   startFixtureInvestigation(caseId, now);
   const startedAt = fixtureStarts.get(caseId) ?? now;
   const planned = dual
@@ -1005,8 +1011,9 @@ function fixtureCase(caseId: string, now: number): CaseRecord | null {
     card.program = { value: "unknown", confidence: "high" };
     card.member_age_group = { value: "65_plus", confidence: "high" };
   }
-  /* After the last finding, the chain continues: deciding, decided, drafting, drafted. */
-  const chain = finished && !fail ? fixtureChain(dual ? "dual" : consistent ? "consistent" : "sample", now - (startedAt + latency)) : null;
+  /* After the last finding, the chain continues: deciding, decided, drafting, drafted, reviewing, reviewed. */
+  const kind = dual ? "dual" : consistent ? "consistent" : rejected ? "rejected" : checkError ? "checkerror" : "sample";
+  const chain = finished && !fail ? fixtureChain(kind, now - (startedAt + latency)) : null;
   const trace: TraceSpan[] = [
     { name: "route", ms: 2 },
     { name: "plan questions", ms: 1 },
@@ -1036,6 +1043,7 @@ function fixtureCase(caseId: string, now: number): CaseRecord | null {
     },
     verdict: chain?.verdict ?? null,
     letter: chain?.letter ?? null,
+    critique: chain?.critique ?? null,
     created_at: new Date(startedAt - 60_000).toISOString(),
   };
 }
@@ -1154,13 +1162,20 @@ export interface LetterDeadline {
   note: string;
 }
 
+export interface Paragraph {
+  sentences: LetterSentence[];
+}
+
 export interface Letter extends Usage {
   status: StepStatus;
   applicable: boolean;
   explanation: string | null;
   to: string;
   re: string;
-  paragraphs: { sentences: LetterSentence[] }[];
+  /* The accepted revision when the critic's round was accepted, else the draft. This is what is copied. */
+  paragraphs: Paragraph[];
+  /* The original draft, always. Absent on older API builds. */
+  draft_paragraphs?: Paragraph[];
   evidence_checklist: EvidenceItem[];
   deadline: LetterDeadline;
   filing: { where: string; how: string; citation: CitationRef | null };
@@ -1213,7 +1228,10 @@ export function letterVerificationLine(v: Letter["verification"]): string {
 }
 
 /* The stage line after the investigation line, by case status. Null while investigating. */
-export function stageLine(record: Pick<CaseRecord, "status" | "letter">): string | null {
+export function stageLine(record: Pick<CaseRecord, "status" | "letter" | "critique">): string | null {
+  const noLetter = record.letter?.applicable === false;
+  const c = record.critique ?? null;
+  if (critiqueFailed(record)) return noLetter ? NO_LETTER_LINE : "Appeal letter ready. The self-check could not run.";
   switch (record.status) {
     case "deciding":
       return "Weighing the payer's side…";
@@ -1222,18 +1240,245 @@ export function stageLine(record: Pick<CaseRecord, "status" | "letter">): string
     case "drafting":
       return "Drafting the appeal letter…";
     case "drafted":
-      return record.letter && record.letter.applicable === false ? "Verdict reached. No appeal letter was drafted." : "Appeal letter ready.";
+      return noLetter ? NO_LETTER_LINE : "Appeal letter ready.";
+    case "reviewing":
+      return noLetter ? NO_LETTER_LINE : "Checking the letter against itself…";
+    case "reviewed":
+      if (noLetter) return NO_LETTER_LINE;
+      if (c && c.status === "done" && !c.skipped && c.accepted) {
+        if (c.issues_found === 0) return "Letter checked: no issues found.";
+        return `Letter checked: ${c.issues_fixed} of ${c.issues_found} ${c.issues_found === 1 ? "issue" : "issues"} fixed.`;
+      }
+      return "Letter checked: the first draft stands.";
     default:
       return null;
   }
 }
 
-const WORKING: readonly CaseStatus[] = ["investigating", "investigated", "deciding", "decided", "drafting"];
+const NO_LETTER_LINE = "Verdict reached. No appeal letter was drafted.";
 
-/* Keep polling until the case is drafted or failed (one POST drives the whole chain). */
+/* The muted line under the stage line: the critic's reason when it skipped the letter. */
+export function stageNote(record: Pick<CaseRecord, "status" | "critique">): string | null {
+  const c = record.critique ?? null;
+  if (record.status === "reviewed" && c?.skipped) return c.reason?.trim() || null;
+  return null;
+}
+
+/*
+  The critic failed: its own status says so, or the case failed after the
+  letter was drafted. The letter stays usable; the self-check section says so.
+*/
+export function critiqueFailed(record: Pick<CaseRecord, "status" | "letter" | "critique">): boolean {
+  if (critiqueError(record.critique ?? null) !== null) return true;
+  return record.status === "failed" && record.letter?.status === "done";
+}
+
+const WORKING: readonly CaseStatus[] = ["investigating", "investigated", "deciding", "decided", "drafting", "reviewing"];
+
+/*
+  Keep polling until the case is reviewed or failed, or any stage failed (one
+  POST drives the whole chain). A record at drafted with no critique key is an
+  older API build, whose chain ends there.
+*/
 export function isWorking(record: CaseRecord): boolean {
-  if (record.investigation?.status === "failed" || record.verdict?.status === "failed" || record.letter?.status === "failed") return false;
+  if (
+    record.investigation?.status === "failed" ||
+    record.verdict?.status === "failed" ||
+    record.letter?.status === "failed" ||
+    record.critique?.status === "failed"
+  )
+    return false;
+  if (record.status === "drafted") return "critique" in record;
   return WORKING.includes(record.status);
+}
+
+/* ---------- Critic: the letter checks itself ---------- */
+
+export type CritiqueIssueKind =
+  | "unverified_claim"
+  | "missing_deadline"
+  | "wrong_program"
+  | "medical_statement"
+  | "unsupported_fact"
+  | "missing_request"
+  | "tone"
+  | "other";
+export type Severity = "high" | "medium" | "low";
+
+export interface CritiqueIssue {
+  kind: CritiqueIssueKind;
+  severity: Severity;
+  where: { paragraph: number; sentence: number } | null;
+  note: string;
+  fixed: boolean;
+}
+
+export interface SentenceCounts {
+  claims: number;
+  verified: number;
+  struck: number;
+}
+
+export interface CritiqueRound extends Usage {
+  round: number;
+  issues: CritiqueIssue[];
+  before: Paragraph[];
+  after: Paragraph[];
+  verification_before: SentenceCounts;
+  verification_after: SentenceCounts;
+  accepted: boolean;
+  rejected_reason: string | null;
+}
+
+export interface Critique {
+  status: StepStatus;
+  skipped: boolean;
+  reason: string | null;
+  rounds: CritiqueRound[];
+  issues_found: number;
+  issues_fixed: number;
+  accepted: boolean;
+  model: string;
+  cost_usd: number;
+  latency_ms: number;
+  error: string | null;
+}
+
+export const ISSUE_KIND_LABELS: Record<CritiqueIssueKind, string> = {
+  unverified_claim: "Unverified claim",
+  missing_deadline: "Missing deadline",
+  wrong_program: "Wrong program named",
+  medical_statement: "Medical statement",
+  unsupported_fact: "Fact not in the letter",
+  missing_request: "Missing request",
+  tone: "Tone",
+  other: "Other",
+};
+
+export const SEVERITY_LABELS: Record<Severity, string> = {
+  high: "High severity",
+  medium: "Medium severity",
+  low: "Low severity",
+};
+
+export function issueKindLabel(kind: string): string {
+  return ISSUE_KIND_LABELS[kind as CritiqueIssueKind] ?? ISSUE_KIND_LABELS.other;
+}
+
+export function severityLabel(severity: string): string {
+  return SEVERITY_LABELS[severity as Severity] ?? "Severity not given";
+}
+
+/* Text for a sentence slot: drops one trailing period so the caller can add its own. */
+export function withoutStop(text: string): string {
+  return text.trim().replace(/[.]+$/, "");
+}
+
+/* One sentence that changed between a round's before and after. */
+export interface SentenceChange {
+  paragraph: number;
+  before: LetterSentence | null;
+  after: LetterSentence | null;
+}
+
+function sameSentence(a: LetterSentence, b: LetterSentence): boolean {
+  return (
+    a.text.trim() === b.text.trim() &&
+    sentenceStruck(a) === sentenceStruck(b) &&
+    (a.citation?.doc_id ?? null) === (b.citation?.doc_id ?? null) &&
+    (a.citation?.page ?? null) === (b.citation?.page ?? null)
+  );
+}
+
+/*
+  The sentences that changed, paragraph by paragraph (matched by index).
+  Within a paragraph the unchanged sentences are aligned first (longest common
+  run), so removing one sentence does not mark every later one as changed;
+  the removed and added sentences between two unchanged ones are then paired
+  in order. A removed sentence has no after; an added one has no before.
+*/
+export function sentenceChanges(before: Paragraph[], after: Paragraph[]): SentenceChange[] {
+  const out: SentenceChange[] = [];
+  const count = Math.max(before.length, after.length);
+  for (let p = 0; p < count; p++) {
+    const b = before[p]?.sentences ?? [];
+    const a = after[p]?.sentences ?? [];
+    const lcs: number[][] = Array.from({ length: b.length + 1 }, () => new Array<number>(a.length + 1).fill(0));
+    for (let i = b.length - 1; i >= 0; i--)
+      for (let j = a.length - 1; j >= 0; j--)
+        lcs[i][j] = sameSentence(b[i], a[j]) ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    let i = 0;
+    let j = 0;
+    let removed: LetterSentence[] = [];
+    let added: LetterSentence[] = [];
+    const flush = () => {
+      for (let k = 0; k < Math.max(removed.length, added.length); k++)
+        out.push({ paragraph: p, before: removed[k] ?? null, after: added[k] ?? null });
+      removed = [];
+      added = [];
+    };
+    while (i < b.length || j < a.length) {
+      if (i < b.length && j < a.length && sameSentence(b[i], a[j])) {
+        flush();
+        i++;
+        j++;
+      } else if (j >= a.length || (i < b.length && lcs[i + 1][j] >= lcs[i][j + 1])) {
+        removed.push(b[i++]);
+      } else {
+        added.push(a[j++]);
+      }
+    }
+    flush();
+  }
+  return out;
+}
+
+/* The rounds whose revision reached the letter. */
+export function acceptedRounds(critique: Critique): CritiqueRound[] {
+  return (critique.rounds ?? []).filter((r) => r.accepted);
+}
+
+/* An issue counts as fixed only when its round's revision was accepted. */
+export function issueFixed(issue: CritiqueIssue, round: CritiqueRound): boolean {
+  return issue.fixed && round.accepted;
+}
+
+/*
+  The critic errored: its status failed, or it finished with an error and no
+  round reached the letter (the API reports a model error as status done with
+  error set). An error after an accepted round leaves that revision standing.
+*/
+export function critiqueError(critique: Critique | null): string | null {
+  if (!critique) return null;
+  const message = critique.error?.trim() || "";
+  if (critique.status === "failed") return message || "The service reported an error and gave no reason.";
+  if (message !== "" && acceptedRounds(critique).length === 0) return message;
+  return null;
+}
+
+/* A reason as a clause after a colon: one trailing period dropped, a leading capital lowered ("The revision" to "the revision"). */
+export function asClause(text: string): string {
+  const t = withoutStop(text);
+  return /^[A-Z][a-z]+\s/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+}
+
+/*
+  The Trust panel's self-check line, counts only: issues found and fixed,
+  then the letter's verified sentences after the check and before it.
+*/
+export function selfCheckLine(critique: Critique): { lead: string; detail: string } {
+  const rounds = critique.rounds ?? [];
+  const accepted = acceptedRounds(critique);
+  const first = rounds[0];
+  const last = accepted[accepted.length - 1];
+  const found = critique.issues_found;
+  const fixed = accepted.length > 0 ? critique.issues_fixed : 0;
+  const lead = `${found} ${found === 1 ? "issue" : "issues"} found, ${fixed} fixed`;
+  if (!first) return { lead, detail: "" };
+  const vb = first.verification_before;
+  if (!last) return { lead, detail: `the first draft stands, letter sentences verified ${vb.verified} of ${vb.claims}` };
+  const va = last.verification_after;
+  return { lead, detail: `letter sentences verified ${va.verified} of ${va.claims} after the check (was ${vb.verified} of ${vb.claims})` };
 }
 
 /* ----- Fixture: verdicts and letters for the sample cases ----- */
@@ -1242,6 +1487,8 @@ export function isWorking(record: CaseRecord): boolean {
 const FIXTURE_DECIDE_MS = 2400;
 const FIXTURE_DECIDED_MS = 1800;
 const FIXTURE_DRAFT_MS = 2400;
+const FIXTURE_DRAFTED_MS = 1800;
+const FIXTURE_REVIEW_MS = 2400;
 
 const ALL_FIXTURE_FINDINGS = [...FIXTURE_FINDINGS_FLORIDA, ...FIXTURE_FINDINGS_FEDERAL];
 
@@ -1442,18 +1689,226 @@ const LETTER_DUAL = (): Letter => ({
   ...usage(FIXTURE_DRAFT_MS),
 });
 
-/* The verdict and letter steps, `t` ms after the investigation finished. */
-function fixtureChain(
-  kind: "sample" | "consistent" | "dual",
-  t: number,
-): { status: CaseStatus; verdict: Verdict | null; letter: Letter | null } {
-  const verdict = kind === "dual" ? VERDICT_DUAL() : kind === "consistent" ? VERDICT_CONSISTENT() : VERDICT_SAMPLE();
+/* ----- Fixture: the critic's self-check ----- */
+
+const SAMPLE_DRAFT = (): Paragraph[] => LETTER_SAMPLE().paragraphs;
+
+/* The sample draft with the struck unverified claim removed and a request for a written decision added. */
+const SAMPLE_REVISED = (): Paragraph[] => {
+  const [p1, p2, p3] = SAMPLE_DRAFT();
+  return [
+    p1,
+    { sentences: p2.sentences.filter((x) => !x.struck) },
+    { sentences: [...p3.sentences, said("Please send me your decision on this appeal in writing.")] },
+  ];
+};
+
+/* A revision that dropped the citation from the second paragraph's claim: fewer verified sentences, so it is rejected. */
+const REJECTED_REVISION = (): Paragraph[] => {
+  const [p1, p2, p3] = SAMPLE_DRAFT();
+  return [
+    p1,
+    {
+      sentences: [
+        p2.sentences[0],
+        {
+          text: "The number of hours is set by a medical necessity review and stated on each authorization.",
+          claim: true,
+          citation: null,
+          verified: false,
+          struck: true,
+        },
+        p2.sentences[3],
+      ],
+    },
+    { sentences: [p3.sentences[0], said("I ask that you review the denial and approve the 8 hours a day billed for September 2026.")] },
+  ];
+};
+
+function fixtureRound(fields: Pick<CritiqueRound, "issues" | "before" | "after" | "verification_before" | "verification_after" | "accepted" | "rejected_reason">): CritiqueRound {
+  return { round: 1, ...fields, ...usage(FIXTURE_REVIEW_MS) };
+}
+
+const CRITIQUE_SAMPLE = (): Critique => ({
+  status: "done",
+  skipped: false,
+  reason: null,
+  rounds: [
+    fixtureRound({
+      issues: [
+        {
+          kind: "unverified_claim",
+          severity: "high",
+          where: { paragraph: 1, sentence: 2 },
+          note: "The sentence saying a physician's order overrides the authorized amount has no verified citation. It was removed.",
+          fixed: true,
+        },
+        {
+          kind: "missing_request",
+          severity: "medium",
+          where: { paragraph: 2, sentence: 2 },
+          note: "The letter did not ask the plan for a written decision on the appeal. The request was added to the last paragraph.",
+          fixed: true,
+        },
+      ],
+      before: SAMPLE_DRAFT(),
+      after: SAMPLE_REVISED(),
+      verification_before: { claims: 4, verified: 3, struck: 1 },
+      verification_after: { claims: 3, verified: 3, struck: 0 },
+      accepted: true,
+      rejected_reason: null,
+    }),
+  ],
+  issues_found: 2,
+  issues_fixed: 2,
+  accepted: true,
+  model: FIXTURE_MODEL,
+  cost_usd: 0,
+  latency_ms: FIXTURE_REVIEW_MS,
+  error: null,
+});
+
+const CRITIQUE_REJECTED = (): Critique => ({
+  status: "done",
+  skipped: false,
+  reason: null,
+  rounds: [
+    fixtureRound({
+      issues: [
+        {
+          kind: "unverified_claim",
+          severity: "high",
+          where: { paragraph: 1, sentence: 2 },
+          note: "The sentence saying a physician's order overrides the authorized amount has no verified citation.",
+          fixed: true,
+        },
+        {
+          kind: "tone",
+          severity: "low",
+          where: { paragraph: 2, sentence: 1 },
+          note: "The closing request could name the hours billed so the reviewer does not have to look them up.",
+          fixed: true,
+        },
+      ],
+      before: SAMPLE_DRAFT(),
+      after: REJECTED_REVISION(),
+      verification_before: { claims: 4, verified: 3, struck: 1 },
+      verification_after: { claims: 3, verified: 2, struck: 1 },
+      accepted: false,
+      rejected_reason: "the revised letter verified fewer sentences than the first draft (2, was 3)",
+    }),
+  ],
+  issues_found: 2,
+  issues_fixed: 0,
+  accepted: false,
+  model: FIXTURE_MODEL,
+  cost_usd: 0,
+  latency_ms: FIXTURE_REVIEW_MS,
+  error: null,
+});
+
+const CRITIQUE_SKIPPED = (reason: string): Critique => ({
+  status: "done",
+  skipped: true,
+  reason,
+  rounds: [],
+  issues_found: 0,
+  issues_fixed: 0,
+  accepted: false,
+  model: FIXTURE_MODEL,
+  cost_usd: 0,
+  latency_ms: 0,
+  error: null,
+});
+
+/* As the API reports a critic model error: the critique is done with error set, the round has no revision, the draft stands. */
+const CRITIQUE_FAILED = (): Critique => {
+  const error = "TimeoutError: the model did not answer the self-check after three attempts.";
+  return {
+    status: "done",
+    skipped: false,
+    reason: null,
+    rounds: [
+      {
+        ...fixtureRound({
+          issues: [],
+          before: SAMPLE_DRAFT(),
+          after: [],
+          verification_before: { claims: 4, verified: 3, struck: 1 },
+          verification_after: { claims: 0, verified: 0, struck: 0 },
+          accepted: false,
+          rejected_reason: null,
+        }),
+        error,
+      },
+    ],
+    issues_found: 0,
+    issues_fixed: 0,
+    accepted: false,
+    model: FIXTURE_MODEL,
+    cost_usd: 0,
+    latency_ms: FIXTURE_REVIEW_MS,
+    error,
+  };
+};
+
+const CRITIQUE_RUNNING = (): Critique => ({
+  status: "running",
+  skipped: false,
+  reason: null,
+  rounds: [],
+  issues_found: 0,
+  issues_fixed: 0,
+  accepted: false,
+  model: FIXTURE_MODEL,
+  cost_usd: 0,
+  latency_ms: 0,
+  error: null,
+});
+
+type FixtureKind = "sample" | "consistent" | "dual" | "rejected" | "checkerror";
+
+/* The letter as drafted, then as GET /case/{id} returns it once reviewed. */
+function draftedLetter(kind: FixtureKind): Letter {
   const letter = kind === "dual" ? LETTER_DUAL() : kind === "consistent" ? LETTER_CONSISTENT() : LETTER_SAMPLE();
-  if (t < 0) return { status: "investigated", verdict: null, letter: null };
-  if (t < FIXTURE_DECIDE_MS) return { status: "deciding", verdict: null, letter: null };
-  if (t < FIXTURE_DECIDE_MS + FIXTURE_DECIDED_MS) return { status: "decided", verdict, letter: null };
-  if (t < FIXTURE_DECIDE_MS + FIXTURE_DECIDED_MS + FIXTURE_DRAFT_MS) return { status: "drafting", verdict, letter: null };
-  return { status: "drafted", verdict, letter };
+  return { ...letter, draft_paragraphs: structuredClone(letter.paragraphs) };
+}
+
+function reviewed(kind: FixtureKind): { status: CaseStatus; letter: Letter; critique: Critique } {
+  const letter = draftedLetter(kind);
+  switch (kind) {
+    case "sample":
+      return {
+        status: "reviewed",
+        letter: { ...letter, paragraphs: SAMPLE_REVISED(), verification: { claims: 3, verified: 3, struck: 0 } },
+        critique: CRITIQUE_SAMPLE(),
+      };
+    case "rejected":
+      return { status: "reviewed", letter, critique: CRITIQUE_REJECTED() };
+    case "checkerror":
+      return { status: "reviewed", letter, critique: CRITIQUE_FAILED() };
+    case "consistent":
+      return { status: "reviewed", letter, critique: CRITIQUE_SKIPPED("No letter was drafted for a consistent denial.") };
+    case "dual":
+      return { status: "reviewed", letter, critique: CRITIQUE_SKIPPED("No letter was drafted because the documents do not settle the denial.") };
+  }
+}
+
+/* The verdict, letter, and self-check steps, `t` ms after the investigation finished. */
+function fixtureChain(
+  kind: FixtureKind,
+  t: number,
+): { status: CaseStatus; verdict: Verdict | null; letter: Letter | null; critique: Critique | null } {
+  const verdict = kind === "dual" ? VERDICT_DUAL() : kind === "consistent" ? VERDICT_CONSISTENT() : VERDICT_SAMPLE();
+  const draftedAt = FIXTURE_DECIDE_MS + FIXTURE_DECIDED_MS + FIXTURE_DRAFT_MS;
+  if (t < 0) return { status: "investigated", verdict: null, letter: null, critique: null };
+  if (t < FIXTURE_DECIDE_MS) return { status: "deciding", verdict: null, letter: null, critique: null };
+  if (t < FIXTURE_DECIDE_MS + FIXTURE_DECIDED_MS) return { status: "decided", verdict, letter: null, critique: null };
+  if (t < draftedAt) return { status: "drafting", verdict, letter: null, critique: null };
+  if (t < draftedAt + FIXTURE_DRAFTED_MS) return { status: "drafted", verdict, letter: draftedLetter(kind), critique: null };
+  if (t < draftedAt + FIXTURE_DRAFTED_MS + FIXTURE_REVIEW_MS)
+    return { status: "reviewing", verdict, letter: draftedLetter(kind), critique: CRITIQUE_RUNNING() };
+  return { verdict, ...reviewed(kind) };
 }
 
 /* ---------- Page viewer: the cited PDF page with the quote highlighted ---------- */

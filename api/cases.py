@@ -2,11 +2,13 @@
 
 Shape of a case (what every /case route returns):
   {case_id, source, raw_text, summary, card, status, model, cost_usd, latency_ms, created_at,
-   route, investigation, verdict, letter}
-Statuses: intake -> investigating -> investigated -> deciding -> decided -> drafting -> drafted,
-or failed at any step (the stage that failed carries `status: "failed"` and `error`).
-`route` and `investigation` are null until the investigation starts; `verdict` and `letter` are
-null until their stage starts. Shapes: policyqa/investigate.py, policyqa/verdict.py, policyqa/letter.py.
+   route, investigation, verdict, letter, critique}
+Statuses: intake -> investigating -> investigated -> deciding -> decided -> drafting -> drafted
+-> reviewing -> reviewed, or failed at any step up to the letter (the stage that failed carries
+`status: "failed"` and `error`). The critic never fails the case: a critic failure ends
+`reviewed` with the letter as drafted. `route` and `investigation` are null until the
+investigation starts; `verdict`, `letter` and `critique` are null until their stage starts.
+Shapes: policyqa/investigate.py, policyqa/verdict.py, policyqa/letter.py, policyqa/critic.py.
 
 The interface (create, get, patch, set_status, claim_for_investigation, set_investigation, set_stage)
 is small on purpose so a file-backed or SQLite store can replace it without touching the
@@ -39,7 +41,7 @@ class CaseStore:
             cid = self._new_id()
             while cid in self._cases:
                 cid = self._new_id()
-            case = {"case_id": cid, **data, "status": "intake", "created_at": self._now(), "route": None, "investigation": None, "verdict": None, "letter": None}
+            case = {"case_id": cid, **data, "status": "intake", "created_at": self._now(), "route": None, "investigation": None, "verdict": None, "letter": None, "critique": None}
             self._cases[cid] = case
             return dict(case)
 
@@ -87,10 +89,10 @@ class CaseStore:
             c["status"] = status
             return dict(c)
 
-    STAGES = ("investigation", "verdict", "letter")
+    STAGES = ("investigation", "verdict", "letter", "critique")
 
     def set_stage(self, case_id: str, field: str, value: dict | None, status: str | None = None) -> dict | None:
-        """Store a copy of one stage (investigation, verdict, or letter) and, when given, the case status."""
+        """Store a copy of one stage (investigation, verdict, letter, or critique) and, when given, the case status."""
         if field not in self.STAGES:
             raise ValueError(f"{field} is not a stage")
         with self._lock:

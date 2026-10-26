@@ -373,10 +373,12 @@ function PageViewerPanel({
             ? "The quote was not located on this page image; the verifier matched the text layer."
             : vision.kind === "checking"
               ? "Checking the highlight with vision…"
-              : vision.kind === "done"
-                ? `Vision check: the highlighted text reads “${vision.vision.text_in_highlight}” and ${
-                    vision.vision.agrees ? "matches the quote." : "does not match the quote."
-                  }`
+              : vision.kind === "done" && vision.vision.model === "fixture"
+                ? "Vision check not run: no model key on this server, so the stand-in echoed the quote. The highlight above comes from the page's text layer."
+                : vision.kind === "done"
+                  ? `Vision check: the highlighted text reads “${vision.vision.text_in_highlight}” and ${
+                      vision.vision.agrees ? "matches the quote." : "does not match the quote."
+                    }`
                 : vision.kind === "unavailable"
                   ? `Vision check unavailable: ${vision.error}.`
                   : ""}

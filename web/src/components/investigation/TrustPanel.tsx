@@ -8,6 +8,8 @@ import {
   formatCost,
   formatSeconds,
   letterVerificationLine,
+  selfCheckLine,
+  type Critique,
   type Investigation,
   type Letter,
   type Verdict,
@@ -17,19 +19,22 @@ import {
   The Trust panel: verification coverage as a count, never a percentage,
   with abstentions, struck findings, and failed questions each counted on
   their own;
-  the letter's sentences verified and struck, as counts; the cost of the case
-  to four decimals and the time, each the sum of the investigation, verdict,
-  and letter with the split shown; the models; and the trace when the API
-  sends one.
+  the letter's sentences verified and struck, as counts; the self-check's
+  issues found and fixed and the letter's verified sentences before and after
+  it; the cost of the case to four decimals and the time, each the sum of the
+  investigation, verdict, letter, and self-check with the split shown; the
+  models; and the trace when the API sends one.
 */
 export function TrustPanel({
   investigation,
   verdict = null,
   letter = null,
+  critique = null,
 }: {
   investigation: Investigation;
   verdict?: Verdict | null;
   letter?: Letter | null;
+  critique?: Critique | null;
 }) {
   const [traceOpen, setTraceOpen] = useState(false);
   const traceId = useId();
@@ -48,12 +53,15 @@ export function TrustPanel({
   ];
   if (verdict && verdict.status !== "running") steps.push({ name: "verdict", cost: verdict.cost_usd ?? 0, ms: verdict.latency_ms ?? 0, model: verdict.model });
   if (letter && letter.status !== "running") steps.push({ name: "letter", cost: letter.cost_usd ?? 0, ms: letter.latency_ms ?? 0, model: letter.model });
+  if (critique && critique.status !== "running" && !critique.skipped)
+    steps.push({ name: "self-check", cost: critique.cost_usd ?? 0, ms: critique.latency_ms ?? 0, model: critique.model });
   const totalCost = steps.reduce((s, x) => s + (Number.isFinite(x.cost) ? x.cost : 0), 0);
   const totalMs = steps.reduce((s, x) => s + (Number.isFinite(x.ms) ? x.ms : 0), 0);
   const models = [...new Set(steps.map((x) => x.model).filter((m): m is string => typeof m === "string" && m !== ""))];
   const costModel = models.every((m) => m === FIXTURE_MODEL) ? FIXTURE_MODEL : models.find((m) => m !== FIXTURE_MODEL);
   const split = steps.length > 1;
   const showLetter = letter !== null && letter.status === "done" && letter.applicable && letter.verification;
+  const selfCheck = critique && critique.status === "done" && !critique.skipped && showLetter ? selfCheckLine(critique) : null;
 
   const notes: string[] = [];
   if (notSettled > 0) notes.push(`${notSettled} ${notSettled === 1 ? "finding" : "findings"} not settled by the documents.`);
@@ -83,6 +91,14 @@ export function TrustPanel({
               {letterVerificationLine(letter.verification)}
             </span>
             <span className="mt-1 block text-[15px] text-muted">Struck sentences are shown crossed out in the letter and left out of the copy.</span>
+          </Row>
+        ) : null}
+        {selfCheck ? (
+          <Row label="Self-check">
+            <span className="font-bold" data-selfcheck-trust="true">
+              {selfCheck.lead}
+              {selfCheck.detail ? `; ${selfCheck.detail}` : ""}
+            </span>
           </Row>
         ) : null}
         <Row label="Cost of this case">

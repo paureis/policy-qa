@@ -19,7 +19,15 @@ Surface:
                                  same thread runs the Steelman and Verdict, then the Action (letter):
                                  investigating -> investigated -> deciding -> decided -> drafting -> drafted,
                                  or failed with `status: "failed"` and `error` on the stage that failed
-                                 (earlier stages are kept). Shapes: policyqa/verdict.py, policyqa/letter.py.
+                                 (earlier stages are kept). After `drafted` the critic reviews the letter:
+                                 -> reviewing -> reviewed, the end of the chain. `critique` holds the issues
+                                 and a before/after per round; `letter.paragraphs` and `letter.verification`
+                                 become the accepted revision's, `letter.draft_paragraphs` keeps the draft.
+                                 A critic that is off (RECOURSE_CRITIC_ROUNDS=0), a letter that is not
+                                 applicable, a model failure, or an exception in the critic all still end
+                                 `reviewed` (critique.skipped with a reason, critique.error, or
+                                 critique.status "failed") with the letter as drafted.
+                                 Shapes: policyqa/verdict.py, policyqa/letter.py, policyqa/critic.py.
   GET   /doc/{doc_id}/page/{page}.png?dpi=110
                                  the real PDF page as a PNG (pdftoppm, disk cache), Cache-Control public 1 day
   GET   /doc/{doc_id}/page/{page}/highlight?quote=&dpi=110
@@ -29,7 +37,8 @@ Surface:
                                  the highlight plus `vision`: Muse Spark reads the boxed text and confirms it holds
                                  the quote (FixtureVision without POLICYQA_LLM_*); cached in memory per (doc, page,
                                  quote, dpi, model). 404 not_found / bad_page, 503 no_pdf (RECOURSE_PDF_DIR).
-  GET   /case/{id}/letter.txt    the appeal letter as plain text: struck sentences left out, "[cite: title,
+  GET   /case/{id}/letter.txt    the appeal letter as plain text (the final paragraphs: the accepted revision
+                                 once reviewed): struck sentences left out, "[cite: title,
                                  p. N]" after each verified claim. 404 not_ready until drafted, 409
                                  not_applicable when the denial matches the policy (read `explanation`).
 
@@ -42,6 +51,8 @@ The investigation runs live (Muse Spark 1.3 through POLICYQA_LLM_*, hybrid retri
 data/chunks.jsonl) only when both the env and the index exist; otherwise the fixture
 investigator serves a synthetic Sunshine Health investigation. The verdict and the letter follow
 the same mode (verdict_mode): live with the investigation, else FixtureVerdict and FixtureLetter.
+The critic follows it too (critic_mode: the model, "fixture", or "off" when RECOURSE_CRITIC_ROUNDS
+is 0; default 1 round, at most 2).
 `RUN_INVESTIGATION_INLINE` makes the POST run the whole chain synchronously (tests);
 `FIXTURE_DELAY` is the pause between fixture findings and before each fixture stage.
 
@@ -144,6 +155,21 @@ def letterer():
     return LiveLetter(provider())
 
 
+def critic_mode() -> str:
+    """The critic's model, "fixture", or "off" (RECOURSE_CRITIC_ROUNDS=0); it runs live exactly when the letter does."""
+    from policyqa.critic import critic_rounds
+
+    return "off" if critic_rounds() == 0 else verdict_mode()
+
+
+def critic():
+    from policyqa.critic import FixtureCritic, LiveCritic
+
+    if verdict_mode() == "fixture":
+        return FixtureCritic(delay=FIXTURE_DELAY)
+    return LiveCritic(provider())
+
+
 @lru_cache(maxsize=1)
 def provider():
     from policyqa.generate import Provider, MockProvider
@@ -177,6 +203,7 @@ def health():
         "intake": os.environ.get("POLICYQA_LLM_MODEL") if _live_configured() else "fixture",
         "investigation": investigation_mode(),
         "verdict": verdict_mode(),
+        "critic": critic_mode(),
         "pdfs": _pdf_count(),
     }
 
@@ -340,10 +367,11 @@ def _run_investigation(case_id: str) -> None:
             _run_decision(case_id)
         except Exception as e:  # noqa: BLE001 - bookkeeping failed outside a stage: fail the stage that was running
             cur = STORE.get(case_id) or {}
-            for field in ("letter", "verdict"):
+            for field in ("critique", "letter", "verdict"):
                 stage = cur.get(field)
                 if isinstance(stage, dict) and stage.get("status") == "running":
-                    STORE.set_stage(case_id, field, {**stage, "status": "failed", "error": _err_text(e)}, "failed")
+                    # a critic failure keeps the drafted letter: the case still ends reviewed
+                    STORE.set_stage(case_id, field, {**stage, "status": "failed", "error": _err_text(e)}, "reviewed" if field == "critique" else "failed")
                     break
             else:
                 STORE.set_status(case_id, "failed")
@@ -410,6 +438,35 @@ def _run_decision(case_id: str) -> None:
         "reasoning_tokens": letter.get("reasoning_tokens"), "cost_usd": letter.get("cost_usd"), "error": letter.get("error"),
     })
     STORE.set_stage(case_id, "letter", letter, "drafted")
+    _run_critic(case_id, inv, verdict, letter)
+
+
+def _run_critic(case_id: str, inv: dict, verdict: dict, letter: dict) -> None:
+    """The critic reviews the drafted letter; the case ends `reviewed` whatever happens here."""
+    import time
+
+    from policyqa.critic import apply_critique, empty_critique
+
+    agent = critic()
+    model = getattr(agent, "model", "?")
+    STORE.set_stage(case_id, "critique", empty_critique(model), "reviewing")
+    t = time.perf_counter()
+    try:
+        critique = agent.review(STORE.get(case_id), inv, verdict, letter)
+    except Exception as e:  # noqa: BLE001 - the letter as drafted stands; the critique records why
+        _add_span(case_id, {"name": "critic", "ms": round((time.perf_counter() - t) * 1000, 1), "model": model, "error": _err_text(e)})
+        STORE.set_stage(case_id, "critique", empty_critique(model, "failed", _err_text(e)), "reviewed")
+        return
+    rounds = critique.get("rounds") or []
+    _add_span(case_id, {
+        "name": "critic", "ms": round((time.perf_counter() - t) * 1000, 1), "model": critique.get("model"),
+        "skipped": critique.get("skipped"), "rounds": len(rounds), "accepted": critique.get("accepted"),
+        "issues_found": critique.get("issues_found"), "issues_fixed": critique.get("issues_fixed"),
+        "input_tokens": sum(int(r.get("input_tokens") or 0) for r in rounds), "output_tokens": sum(int(r.get("output_tokens") or 0) for r in rounds),
+        "reasoning_tokens": sum(int(r.get("reasoning_tokens") or 0) for r in rounds), "cost_usd": critique.get("cost_usd"), "error": critique.get("error"),
+    })
+    STORE.set_stage(case_id, "letter", apply_critique(letter, critique))
+    STORE.set_stage(case_id, "critique", critique, "reviewed")
 
 
 @app.post("/case/{case_id}/investigate", status_code=202)

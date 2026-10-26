@@ -11,6 +11,7 @@ import {
   type CitationRef,
   type Letter,
   type LetterSentence,
+  type Paragraph,
 } from "@/lib/case";
 import { QuoteFigure } from "@/components/investigation/CitationChip";
 
@@ -48,27 +49,7 @@ export function AppealLetter({ letter, caseId }: { letter: Letter; caseId: strin
 
   return (
     <div className="mt-4">
-      <article
-        aria-label="Appeal letter"
-        className="border border-hairline bg-bond px-4 py-5 shadow-[0_1px_0_var(--hairline)] sm:px-7 sm:py-7"
-        data-letter="true"
-      >
-        <dl className="space-y-1 border-b border-hairline pb-4 text-[17px] leading-snug">
-          <div className="flex gap-2">
-            <dt className="shrink-0 font-bold">To:</dt>
-            <dd>{letter.to}</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="shrink-0 font-bold">Re:</dt>
-            <dd>{letter.re}</dd>
-          </div>
-        </dl>
-        <div className="mt-4 space-y-5">
-          {paragraphs.map((p, i) => (
-            <LetterParagraph key={i} sentences={p.sentences ?? []} index={i} />
-          ))}
-        </div>
-      </article>
+      <LetterFrame to={letter.to} re={letter.re} paragraphs={paragraphs} label="Appeal letter" kind="final" />
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <button type="button" onClick={onCopy} className={`${ACTION} bg-federal text-white`} data-copy="true">
@@ -96,6 +77,52 @@ export function AppealLetter({ letter, caseId }: { letter: Letter; caseId: strin
         Struck sentences are left out of the copy and the download. Each verified claim keeps a short citation in brackets.
       </p>
     </div>
+  );
+}
+
+/*
+  The letter block: bond in a hairline frame, To and Re, then the paragraphs.
+  The final letter and the read-only first draft share it, so they read alike.
+*/
+export function LetterFrame({
+  to,
+  re,
+  paragraphs,
+  label,
+  kind,
+  id,
+}: {
+  to: string;
+  re: string;
+  paragraphs: Paragraph[];
+  label: string;
+  kind: "final" | "draft";
+  id?: string;
+}) {
+  return (
+    <article
+      id={id}
+      aria-label={label}
+      className="border border-hairline bg-bond px-4 py-5 shadow-[0_1px_0_var(--hairline)] sm:px-7 sm:py-7"
+      data-letter={kind === "final" ? "true" : undefined}
+      data-draft={kind === "draft" ? "true" : undefined}
+    >
+      <dl className="space-y-1 border-b border-hairline pb-4 text-[17px] leading-snug">
+        <div className="flex gap-2">
+          <dt className="shrink-0 font-bold">To:</dt>
+          <dd>{to}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="shrink-0 font-bold">Re:</dt>
+          <dd>{re}</dd>
+        </div>
+      </dl>
+      <div className="mt-4 space-y-5">
+        {paragraphs.map((p, i) => (
+          <LetterParagraph key={i} sentences={p.sentences ?? []} index={i} />
+        ))}
+      </div>
+    </article>
   );
 }
 
@@ -150,7 +177,7 @@ function LetterParagraph({ sentences, index }: { sentences: LetterSentence[]; in
   A small chip inside a line of text. The visible pill is short so the line
   keeps its rhythm; a transparent extension makes the hit area 44px tall.
 */
-function InlineChip({
+export function InlineChip({
   citation,
   open,
   controls,

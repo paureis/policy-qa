@@ -1,18 +1,33 @@
 "use client";
 
-import type { Letter, Verdict } from "@/lib/case";
+import type { Critique, Letter, Verdict } from "@/lib/case";
 import { AppealLetter } from "./AppealLetter";
 import { DeadlineFiling } from "./DeadlineFiling";
 import { EvidenceChecklist } from "./EvidenceChecklist";
+import { SelfCheck } from "./SelfCheck";
 
 /*
   Action. With an applicable letter: the letter, copy and download, the
   evidence checklist, then the deadline and filing path. Without one: why the
   denial holds (or why no letter was drafted) and what would have made the
   service covered, then the deadline and path in case the person appeals
-  anyway.
+  anyway. The self-check sits between the letter and the checklist.
 */
-export function ActionSection({ letter, verdict, caseId, today }: { letter: Letter; verdict: Verdict | null; caseId: string; today: Date }) {
+export function ActionSection({
+  letter,
+  verdict,
+  caseId,
+  today,
+  critique = null,
+  critiqueFailure = null,
+}: {
+  letter: Letter;
+  verdict: Verdict | null;
+  caseId: string;
+  today: Date;
+  critique?: Critique | null;
+  critiqueFailure?: string | null;
+}) {
   const settledAgainst = verdict?.outcome === "consistent";
   return (
     <>
@@ -43,6 +58,7 @@ export function ActionSection({ letter, verdict, caseId, today }: { letter: Lett
           </>
         )}
       </section>
+      <SelfCheck critique={critique} letter={letter} failedReason={critiqueFailure} />
       {letter.applicable ? <EvidenceChecklist items={letter.evidence_checklist ?? []} /> : null}
       <DeadlineFiling letter={letter} today={today} />
     </>

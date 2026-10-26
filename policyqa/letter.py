@@ -25,8 +25,10 @@ rule, with `error` set; only an exception outside these steps fails the stage (a
 Letter shape: {status, applicable, explanation, to, re, paragraphs: [{sentences: [{text,
 claim, citation, verified, struck, reason}]}], evidence_checklist: [{item, why, citation}],
 evidence_note, deadline: {date, days_left, source, citation, note}, filing: {where, how,
-citation}, verification: {claims, verified, struck}, model, input_tokens, output_tokens,
-reasoning_tokens, latency_ms, cost_usd, error}.
+citation}, verification: {claims, verified, struck}, draft_paragraphs, model, input_tokens,
+output_tokens, reasoning_tokens, latency_ms, cost_usd, error}. `draft_paragraphs` is the draft
+as verified; after the critic (policyqa/critic.py) `paragraphs` and `verification` are the
+accepted revision's, and `draft_paragraphs` still holds the draft.
 """
 from __future__ import annotations
 
@@ -427,7 +429,7 @@ def empty_letter(model: str, status: str = "running", error: str | None = None) 
     return {
         "status": status, "applicable": None, "explanation": None, "to": None, "re": None, "paragraphs": [],
         "evidence_checklist": [], "evidence_note": None, "deadline": None, "filing": None,
-        "verification": {"claims": 0, "verified": 0, "struck": 0}, **_meta(model, error=error),
+        "verification": {"claims": 0, "verified": 0, "struck": 0}, "draft_paragraphs": [], **_meta(model, error=error),
     }
 
 
@@ -446,6 +448,7 @@ def _base(case: dict, investigation, today: date | None) -> dict:
         "deadline": compute_deadline(card, investigation, today=today),
         "filing": filing_path(investigation, card),
         "verification": {"claims": 0, "verified": 0, "struck": 0},
+        "draft_paragraphs": [],
     }
 
 
@@ -455,7 +458,9 @@ def assemble_letter(case: dict, investigation, verdict: dict, paragraphs: list |
         letter.update(applicable=False, explanation=consistent_explanation(verdict))
         return letter
     letter["paragraphs"] = paragraphs if paragraphs is not None else template_paragraphs(case, verdict)
-    return verify_letter(letter, investigation)
+    letter = verify_letter(letter, investigation)
+    letter["draft_paragraphs"] = json.loads(json.dumps(letter["paragraphs"]))  # the draft as verified; the critic may replace `paragraphs`
+    return letter
 
 
 def _usable_paragraphs(data) -> list:

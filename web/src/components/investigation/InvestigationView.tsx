@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ERROR_COPY,
   INTAKE_MODE,
+  critiqueFailed,
   IntakeError,
   investigate,
   isAbort,
@@ -53,8 +54,8 @@ const PRIMARY =
 
 /*
   The case's home. Loads the case by id, polls GET /case/{id} every 1.5 s
-  while the case works itself (investigation, verdict, appeal letter) until
-  drafted or failed, and shows findings, the verdict, and the action as they
+  while the case works itself (investigation, verdict, appeal letter, self-check)
+  until reviewed or failed, and shows findings, the verdict, and the action as they
   arrive. State changes step; nothing fades.
 */
 export function InvestigationView({ caseId }: { caseId: string }) {
@@ -96,8 +97,11 @@ export function InvestigationView({ caseId }: { caseId: string }) {
   const investigation = record?.investigation ?? null;
   const verdict = record?.verdict ?? null;
   const letter = record?.letter ?? null;
+  const critique = record?.critique ?? null;
+  /* A failed self-check leaves the letter usable: it is reported in the self-check section, not here. */
+  const selfCheckFailed = record !== null && critiqueFailed(record);
   const failedStep: "investigation" | "verdict" | "letter" | null =
-    record === null
+    record === null || selfCheckFailed
       ? null
       : investigation?.status === "failed"
         ? "investigation"
@@ -205,7 +209,18 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                           changeShownBelow={letterDone && !letter.applicable && verdict.outcome === "consistent"}
                         />
                       ) : null}
-                      {letterDone ? <ActionSection letter={letter} verdict={verdictDone ? verdict : null} caseId={record.case_id} today={today} /> : null}
+                      {letterDone ? (
+                        <ActionSection
+                          letter={letter}
+                          verdict={verdictDone ? verdict : null}
+                          caseId={record.case_id}
+                          today={today}
+                          critique={critique}
+                          critiqueFailure={
+                            selfCheckFailed ? critique?.error?.trim() || "The service reported an error and gave no reason." : null
+                          }
+                        />
+                      ) : null}
                     </div>
 
                     {failed && failure ? (
@@ -229,7 +244,12 @@ export function InvestigationView({ caseId }: { caseId: string }) {
 
                     {done && investigation ? (
                       <div className={dual ? "lg:max-w-[640px]" : ""}>
-                        <TrustPanel investigation={investigation} verdict={verdict} letter={letterDone ? letter : null} />
+                        <TrustPanel
+                          investigation={investigation}
+                          verdict={verdict}
+                          letter={letterDone ? letter : null}
+                          critique={letterDone ? critique : null}
+                        />
                       </div>
                     ) : null}
                   </>
