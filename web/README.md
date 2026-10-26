@@ -31,7 +31,35 @@ uvicorn api.main:app --reload --port 8000
 | `POST /case/intake` | multipart/form-data with exactly one of `file` (JPEG, PNG, WebP, or PDF, up to 10 MB, type read from the first bytes) or `text` (200 to 6,000 characters) | 200 `{case_id, source, raw_text, summary, card, model, cost_usd, latency_ms, status: "intake", created_at}` |
 | `GET /case/{case_id}` | | the case, or 404 |
 | `PATCH /case/{case_id}` | JSON object of plain values for any subset of the ten fields (dates `YYYY-MM-DD`, a range `YYYY-MM-DD/YYYY-MM-DD`, amount a number, selects the enum strings; `null` clears a non-enum field) | the full case; each edited cell becomes `{value, confidence: "high", edited: true}` |
-| `POST /case/{case_id}/investigate` | | `{case_id, status: "investigating"}` (stub until the investigation agent lands) |
+| `POST /case/{case_id}/investigate` | | 202 `{case_id, status: "investigating"}`; the investigation runs in the background and `GET /case/{case_id}` shows progress; 409 unless the case is in `intake` |
+
+### Investigation (built Oct 26 evening)
+
+After `investigate`, `GET /case/{case_id}` carries `status` (`intake`, `investigating`, `investigated`, `failed`), `route` (`{program, jurisdictions: ["Florida"] | ["Federal"] | both, dual, reason}`), and `investigation`:
+
+```json
+{
+  "status": "running | done | failed",
+  "questions_planned": 5, "questions_done": 2,
+  "findings": [{
+    "id": "f1", "question": "...", "topic": "coverage | limits | conditions | exclusions | appeal | reason | other",
+    "jurisdiction": "Florida | Federal",
+    "status": "supported | not_settled | unsupported",
+    "answer": "...",
+    "citations": [{"doc_id": "fl-04", "title": "...", "page": 3, "quote": "...", "overlap": 0.93}],
+    "struck":    [{"doc_id": "fl-04", "title": "...", "page": 4, "quote": "...", "reason": "quote not found on the cited page"}],
+    "model": "muse-spark-1.3", "input_tokens": 0, "output_tokens": 0, "reasoning_tokens": 0, "latency_ms": 0, "cost_usd": 0
+  }],
+  "coverage": {"claims": 4, "supported": 3},
+  "cost_usd": 0, "latency_ms": 0, "model": "muse-spark-1.3", "error": null,
+  "trace": {"trace_id": "...", "spans": [{"name": "question", "ms": 812}]},
+  "plan": {"source": "model | template | fixture", "...": "tokens, latency, cost"}
+}
+```
+
+How a finding gets its status: the agent routes the case (Florida, Federal, or both for a likely dual-eligible member), plans 4 to 7 questions on Muse Spark (template fallback; always one appeal and one reason question; treatment questions dropped), retrieves 5 chunks per question within the routed jurisdiction, and answers with enforced citations. `supported` means at least one quote was found verbatim on the cited page; `unsupported` means the model answered but no quote survived, so the answer is kept and shown struck out with each dropped quote and its reason; `not_settled` means the model abstained, which is a correct outcome. `coverage` is supported findings over findings that made a claim.
+
+The screen at `/case/{case_id}` (`src/app/case/[id]`, pieces in `src/components/investigation/`, brief in `web/investigation-brief.md`) polls every 1.5 s while running, shows findings as they land, strikes unsupported ones with "Could not verify", and ends with the Trust panel: verification coverage as a count, cost, time, model, trace. Intake navigates there after Confirm. Fixture ids in fixture mode: `c_sample1`, `c_dual1`, `c_fail1`.
 
 Errors come back as `{"detail": {"code", "message"}}`. Intake codes (422): `unsupported_type`, `too_large`, `text_length`, `unreadable`, `not_a_denial_letter`, `out_of_scope`; 400 `bad_request` for both or neither of file and text. Case codes: 404 `not_found`, 409 `wrong_status` (the card is editable only during intake), 422 `invalid_field` (with `field`). The screen shows the six intake codes with their own copy, any other 4xx message under "The service could not accept that", and a network failure or 5xx as "We could not reach the service".
 

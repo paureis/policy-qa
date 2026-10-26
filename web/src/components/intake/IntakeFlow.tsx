@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ACCEPTED_FILE_TYPES,
@@ -35,6 +36,7 @@ const STAGE_MS = 2000;
   confirmed) with the error and in-flight sub-states. State changes step.
 */
 export function IntakeFlow() {
+  const router = useRouter();
   const [phase, setPhase] = useState<Phase>("entry");
   const [text, setText] = useState("");
   const [textOpen, setTextOpen] = useState(false);
@@ -206,11 +208,14 @@ export function IntakeFlow() {
     void startInvestigation(saved.case_id);
   };
 
+  // Once the investigate POST returns, the case's home is /case/{id}. The
+  // "Case opened" line below stays only as the fallback when the POST fails.
   const startInvestigation = async (caseId: string) => {
     setInvestigation("pending");
     try {
       await investigate(caseId);
       setInvestigation("started");
+      router.push(`/case/${encodeURIComponent(caseId)}`);
     } catch {
       setInvestigation("failed");
     }
@@ -341,7 +346,7 @@ export function IntakeFlow() {
                     {investigation === "pending"
                       ? "Starting the investigation…"
                       : investigation === "started"
-                        ? "The investigation has started. The verdict screen is next."
+                        ? "The investigation has started. Opening the case…"
                         : "The investigation could not start."}
                   </p>
                   {investigation === "failed" ? (

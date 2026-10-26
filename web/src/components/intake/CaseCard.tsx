@@ -12,6 +12,8 @@ export interface CaseCardProps {
   landed: boolean;
   today: Date;
   caseId?: string;
+  /* h1 on the intake screen; h2 where the page already has its heading. */
+  headingTag?: "h1" | "h2";
   onChange: (key: FieldKey, value: FieldValue) => void;
   onLooksRight: (key: FieldKey) => void;
 }
@@ -20,7 +22,18 @@ export interface CaseCardProps {
   The case card: one plain-language reading of the letter, the postmark,
   then the ten contract fields in contract order.
 */
-export function CaseCard({ card, summary, flagged, locked, landed, today, caseId, onChange, onLooksRight }: CaseCardProps) {
+export function CaseCard({
+  card,
+  summary,
+  flagged,
+  locked,
+  landed,
+  today,
+  caseId,
+  headingTag: Heading = "h1",
+  onChange,
+  onLooksRight,
+}: CaseCardProps) {
   const deadline = card.appeal_deadline_claimed.value;
   const deadlineIso = typeof deadline === "string" && deadline !== "" ? deadline : null;
   const payer = card.payer_name.value;
@@ -31,9 +44,9 @@ export function CaseCard({ card, summary, flagged, locked, landed, today, caseId
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">{locked ? "Case card" : "Case card, draft"}</p>
-          <h1 id="case-card-heading" className="mt-1 text-[26px] leading-tight font-bold">
+          <Heading id="case-card-heading" className="mt-1 text-[26px] leading-tight font-bold">
             {payer ? String(payer) : "Denial letter"}
-          </h1>
+          </Heading>
           {caseId ? (
             <p className="mt-2 text-[16px] text-muted">
               Case <span className="font-mono text-ink">{caseId}</span>
