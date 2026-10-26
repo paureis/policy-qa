@@ -29,3 +29,31 @@ The case routes (intake from image, PDF, or text; investigate; verdict; letter) 
 ## Design
 
 The UI is built with the Impeccable skill installed globally on the developer machine: `/impeccable init` writes `PRODUCT.md`, `shape` plans a view, `craft` builds it, `critique`, `audit`, and `polish` review it. Those files are committed when they exist.
+
+## Case card contract (intake)
+
+`POST /case/intake` takes one of `file` (image or PDF, multipart) or `text`, and returns a case:
+
+```json
+{
+  "case_id": "c_1a2b3c",
+  "source": "image | pdf | text",
+  "raw_text": "the letter as read",
+  "card": {
+    "program":        {"value": "florida_medicaid_mma", "confidence": "high"},
+    "member_age_group": {"value": "under_21", "confidence": "medium"},
+    "service":        {"value": "private duty nursing, 8 hours/day", "confidence": "high"},
+    "service_code":   {"value": "T1000", "confidence": "low"},
+    "dates_of_service": {"value": "2026-09-01/2026-09-30", "confidence": "high"},
+    "amount_billed":  {"value": 4320.00, "confidence": "medium"},
+    "denial_reason":  {"value": "Services exceed the authorized amount.", "confidence": "high"},
+    "letter_date":    {"value": "2026-10-14", "confidence": "high"},
+    "appeal_deadline_claimed": {"value": "2026-12-13", "confidence": "medium"},
+    "payer_name":     {"value": "Sunshine Health", "confidence": "high"}
+  }
+}
+```
+
+Program values: `florida_medicaid_mma`, `florida_medicaid_ltc`, `florida_kidcare`, `medicare_a`, `medicare_b`, `medicare_advantage`, `medicare_part_d`, `unknown`. Age groups: `under_21`, `adult`, `65_plus`, `unknown`. Confidence: `high`, `medium`, `low`; the screen flags medium and low for review.
+
+`PATCH /case/{case_id}` takes any subset of card fields as plain values and returns the updated case. `POST /case/{case_id}/investigate` starts the investigation (contract follows when it lands). The intake screen has three states: uploading, reviewing the card, confirmed.
