@@ -1,16 +1,36 @@
 "use client";
 
 import { useId, useState } from "react";
-import { countErrors, findingStatus, formatCost, formatSeconds, type Investigation } from "@/lib/case";
+import {
+  FIXTURE_MODEL,
+  countErrors,
+  findingStatus,
+  formatCost,
+  formatSeconds,
+  letterVerificationLine,
+  type Investigation,
+  type Letter,
+  type Verdict,
+} from "@/lib/case";
 
 /*
   The Trust panel: verification coverage as a count, never a percentage,
   with abstentions, struck findings, and failed questions each counted on
   their own;
-  the cost of the case to four decimals; the time; the model; and the trace
-  when the API sends one.
+  the letter's sentences verified and struck, as counts; the cost of the case
+  to four decimals and the time, each the sum of the investigation, verdict,
+  and letter with the split shown; the models; and the trace when the API
+  sends one.
 */
-export function TrustPanel({ investigation }: { investigation: Investigation }) {
+export function TrustPanel({
+  investigation,
+  verdict = null,
+  letter = null,
+}: {
+  investigation: Investigation;
+  verdict?: Verdict | null;
+  letter?: Letter | null;
+}) {
   const [traceOpen, setTraceOpen] = useState(false);
   const traceId = useId();
   const { coverage, findings } = investigation;
@@ -22,15 +42,28 @@ export function TrustPanel({ investigation }: { investigation: Investigation }) 
   const spans = Array.isArray(raw) ? raw : raw && Array.isArray(raw.spans) ? raw.spans : [];
   const trace = spans.length > 0 ? spans : null;
 
+  // Steps that have reported their usage: the investigation always, then the verdict and the letter once done.
+  const steps: { name: string; cost: number; ms: number; model: string }[] = [
+    { name: "investigation", cost: investigation.cost_usd, ms: investigation.latency_ms, model: investigation.model },
+  ];
+  if (verdict && verdict.status !== "running") steps.push({ name: "verdict", cost: verdict.cost_usd ?? 0, ms: verdict.latency_ms ?? 0, model: verdict.model });
+  if (letter && letter.status !== "running") steps.push({ name: "letter", cost: letter.cost_usd ?? 0, ms: letter.latency_ms ?? 0, model: letter.model });
+  const totalCost = steps.reduce((s, x) => s + (Number.isFinite(x.cost) ? x.cost : 0), 0);
+  const totalMs = steps.reduce((s, x) => s + (Number.isFinite(x.ms) ? x.ms : 0), 0);
+  const models = [...new Set(steps.map((x) => x.model).filter((m): m is string => typeof m === "string" && m !== ""))];
+  const costModel = models.every((m) => m === FIXTURE_MODEL) ? FIXTURE_MODEL : models.find((m) => m !== FIXTURE_MODEL);
+  const split = steps.length > 1;
+  const showLetter = letter !== null && letter.status === "done" && letter.applicable && letter.verification;
+
   const notes: string[] = [];
   if (notSettled > 0) notes.push(`${notSettled} ${notSettled === 1 ? "finding" : "findings"} not settled by the documents.`);
   if (struck > 0) notes.push(`${struck} could not be verified and ${struck === 1 ? "is" : "are"} struck out above.`);
 
   return (
-    <section aria-labelledby="trust-heading" className="mt-10 border-t-4 border-ink pt-4" data-trust="true">
+    <section aria-labelledby="trust-heading" className="land mt-10 border-t-4 border-ink pt-4" data-trust="true">
       <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Trust</p>
       <h2 id="trust-heading" className="mt-1 text-[22px] leading-tight font-bold">
-        How this investigation was checked
+        {split ? "How this case was checked" : "How this investigation was checked"}
       </h2>
       <dl className="mt-4 divide-y divide-hairline border-b border-hairline">
         <Row label="Verification coverage">
@@ -44,10 +77,30 @@ export function TrustPanel({ investigation }: { investigation: Investigation }) 
             </span>
           ) : null}
         </Row>
-        <Row label="Cost of this case">{formatCost(investigation.cost_usd, investigation.model)}</Row>
-        <Row label="Time taken">{formatSeconds(investigation.latency_ms)}</Row>
-        <Row label="Model">
-          <span className="font-mono text-[16px]">{investigation.model}</span>
+        {showLetter ? (
+          <Row label="Appeal letter">
+            <span className="font-bold" data-letter-verification="true">
+              {letterVerificationLine(letter.verification)}
+            </span>
+            <span className="mt-1 block text-[15px] text-muted">Struck sentences are shown crossed out in the letter and left out of the copy.</span>
+          </Row>
+        ) : null}
+        <Row label="Cost of this case">
+          <span data-total-cost="true">{formatCost(totalCost, costModel)}</span>
+          {split ? (
+            <span className="mt-1 block text-[15px] text-muted">
+              {steps.map((x) => `${capitalize(x.name)} ${formatCost(x.cost, x.model)}`).join(", ")}
+            </span>
+          ) : null}
+        </Row>
+        <Row label="Time taken">
+          {formatSeconds(totalMs)}
+          {split ? (
+            <span className="mt-1 block text-[15px] text-muted">{steps.map((x) => `${capitalize(x.name)} ${formatSeconds(x.ms)}`).join(", ")}</span>
+          ) : null}
+        </Row>
+        <Row label={models.length > 1 ? "Models" : "Model"}>
+          <span className="font-mono text-[16px]">{models.length > 0 ? models.join(", ") : investigation.model}</span>
         </Row>
       </dl>
       {trace ? (
@@ -75,6 +128,10 @@ export function TrustPanel({ investigation }: { investigation: Investigation }) 
       ) : null}
     </section>
   );
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {

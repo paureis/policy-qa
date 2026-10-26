@@ -1,14 +1,21 @@
 "use client";
 
 import { useId, useState } from "react";
-import type { Citation } from "@/lib/case";
+
+/* What a chip needs: a finding's Citation and the verdict's CitationRef both fit. */
+export interface ChipCitation {
+  doc_id: string;
+  title: string | null;
+  page: number;
+  quote: string;
+}
 
 /*
   A verified citation: the document title and page on a button, the quoted
   excerpt inline underneath when tapped. Never a bare footnote number.
   aria-controls is set only while the excerpt is in the DOM.
 */
-export function CitationChip({ citation }: { citation: Citation }) {
+export function CitationChip({ citation }: { citation: ChipCitation }) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const title = citation.title?.trim() || citation.doc_id;
@@ -31,14 +38,32 @@ export function CitationChip({ citation }: { citation: Citation }) {
           <span className="text-muted">, page {citation.page}</span>
         </span>
       </button>
-      {open ? (
-        <figure id={id} className="mt-2 mb-2 border-l-4 border-federal pl-4">
-          <blockquote className="text-[18px] leading-relaxed lg:text-[17px]">“{citation.quote}”</blockquote>
-          <figcaption className="mt-2 text-[15px] text-muted">
-            {title}, page {citation.page}. This quote was found on the cited page.
-          </figcaption>
-        </figure>
-      ) : null}
+      {open ? <QuoteFigure id={id} citation={citation} /> : null}
     </li>
+  );
+}
+
+/* The quoted excerpt with its title and page as the caption. */
+export function QuoteFigure({ id, citation }: { id: string; citation: ChipCitation }) {
+  const title = citation.title?.trim() || citation.doc_id;
+  return (
+    <figure id={id} className="mt-2 mb-2 border-l-4 border-federal pl-4">
+      <blockquote className="text-[18px] leading-relaxed lg:text-[17px]">“{citation.quote}”</blockquote>
+      <figcaption className="mt-2 text-[15px] text-muted">
+        {title}, page {citation.page}. This quote was found on the cited page.
+      </figcaption>
+    </figure>
+  );
+}
+
+/* A list of chips, or nothing when there are none. */
+export function CitationChips({ citations, label = "Verified citations" }: { citations: ChipCitation[]; label?: string }) {
+  if (!citations || citations.length === 0) return null;
+  return (
+    <ul className="mt-3 flex flex-col gap-2" aria-label={label}>
+      {citations.map((c, i) => (
+        <CitationChip key={`${c.doc_id}-${c.page}-${i}`} citation={c} />
+      ))}
+    </ul>
   );
 }

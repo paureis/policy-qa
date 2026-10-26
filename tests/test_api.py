@@ -219,7 +219,7 @@ def test_investigate_then_patch_conflicts(monkeypatch):
     r = client.post(f"/case/{cid}/investigate")
     assert r.status_code == 202 and r.json() == {"case_id": cid, "status": "investigating"}
     m.INVESTIGATION_THREADS[cid].join(timeout=10)
-    assert client.get(f"/case/{cid}").json()["status"] == "investigated"
+    assert client.get(f"/case/{cid}").json()["status"] == "drafted"  # the chain runs on to the letter
     r = client.patch(f"/case/{cid}", json={"payer_name": "X"})
     assert r.status_code == 409 and r.json()["detail"]["code"] == "wrong_status"
     r = client.post(f"/case/{cid}/investigate")
@@ -292,7 +292,7 @@ def test_investigate_fixture_path_through_the_real_app(monkeypatch, tmp_path):
     r = client.post(f"/case/{cid}/investigate")
     assert r.status_code == 202 and r.json() == {"case_id": cid, "status": "investigating"}
     b = client.get(f"/case/{cid}").json()
-    assert b["status"] == "investigated"
+    assert b["status"] == "drafted"  # inline: investigation, verdict, and letter all ran
     assert b["route"] == {"program": "florida_medicaid_mma", "jurisdictions": ["Florida"], "dual": False, "reason": b["route"]["reason"]}
     assert b["route"]["reason"].endswith(".")
     inv = b["investigation"]
@@ -323,13 +323,13 @@ def test_investigate_background_thread_updates_the_case_as_findings_arrive(monke
     cid = _intake_text().json()["case_id"]
     assert client.post(f"/case/{cid}/investigate").status_code == 202
     b = client.get(f"/case/{cid}").json()
-    assert b["status"] in ("investigating", "investigated") and b["route"]["jurisdictions"] == ["Florida"]
+    assert b["status"] in ("investigating", "investigated", "deciding", "decided", "drafting", "drafted") and b["route"]["jurisdictions"] == ["Florida"]
     assert b["investigation"]["status"] in ("running", "done") and b["investigation"]["questions_done"] <= 5
     t = api_main.INVESTIGATION_THREADS[cid]
     assert t.daemon
     t.join(timeout=10)
     b = client.get(f"/case/{cid}").json()
-    assert b["status"] == "investigated" and b["investigation"]["questions_done"] == 5 and len(b["investigation"]["findings"]) == 5
+    assert b["status"] == "drafted" and b["investigation"]["questions_done"] == 5 and len(b["investigation"]["findings"]) == 5
 
 
 def test_investigation_failure_marks_the_case_failed(monkeypatch, tmp_path):
@@ -400,7 +400,7 @@ def test_concurrent_investigate_posts_claim_the_case_once(monkeypatch, tmp_path)
     for t in threads:
         t.join(timeout=30)
     assert sorted(codes) == [202] + [409] * 19, codes
-    assert client.get(f"/case/{cid}").json()["status"] == "investigated"
+    assert client.get(f"/case/{cid}").json()["status"] == "drafted"
 
 
 def test_claim_for_investigation_store_method():
@@ -412,3 +412,201 @@ def test_claim_for_investigation_store_method():
     assert s.get(c["case_id"])["status"] == "investigating"
     assert s.claim_for_investigation(c["case_id"]) is False
     assert s.claim_for_investigation("c_nope") is False
+
+
+# ---- steelman, verdict, letter (one POST drives the chain) ------------------------------
+
+VERDICT_KEYS = {"status", "steelman", "outcome", "proposed_outcome", "headline", "rule", "gap", "what_would_change", "model", "input_tokens", "output_tokens", "reasoning_tokens", "latency_ms", "cost_usd", "error"}
+LETTER_KEYS = {"status", "applicable", "explanation", "to", "re", "paragraphs", "evidence_checklist", "evidence_note", "deadline", "filing", "verification", "model", "input_tokens", "output_tokens", "reasoning_tokens", "latency_ms", "cost_usd", "error"}
+REF_KEYS = {"finding_id", "doc_id", "title", "page", "quote"}
+
+
+def _status_spy(monkeypatch):
+    seen = []
+    orig_inv, orig_stage = STORE.set_investigation, STORE.set_stage
+
+    def set_investigation(case_id, route, inv, status):
+        seen.append(status)
+        return orig_inv(case_id, route, inv, status)
+
+    def set_stage(case_id, field, value, status=None):
+        if status is not None:
+            seen.append(status)
+        return orig_stage(case_id, field, value, status)
+
+    monkeypatch.setattr(STORE, "set_investigation", set_investigation)
+    monkeypatch.setattr(STORE, "set_stage", set_stage)
+    return seen
+
+
+def test_new_case_has_null_verdict_and_letter():
+    b = _intake_text().json()
+    assert b["verdict"] is None and b["letter"] is None
+
+
+def test_health_reports_verdict_mode(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+    assert client.get("/health").json()["verdict"] == "fixture"
+    monkeypatch.setenv("POLICYQA_LLM_BASE_URL", "https://api.meta.ai/v1")
+    monkeypatch.setenv("POLICYQA_LLM_MODEL", "muse-spark-1.3")
+    (tmp_path / "chunks.jsonl").write_text("")
+    assert client.get("/health").json()["verdict"] == "muse-spark-1.3"
+
+
+def test_chain_runs_inline_through_every_status_with_the_fixture(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+    seen = _status_spy(monkeypatch)
+    cid = _intake_text().json()["case_id"]
+    assert client.post(f"/case/{cid}/investigate").status_code == 202
+    order = [s for i, s in enumerate(seen) if i == 0 or s != seen[i - 1]]
+    assert order == ["investigating", "investigated", "deciding", "decided", "drafting", "drafted"], seen
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "drafted" and b["investigation"]["status"] == "done"
+    v = b["verdict"]
+    assert set(v) == VERDICT_KEYS and v["status"] == "done" and v["model"] == "fixture" and v["error"] is None
+    assert v["outcome"] == "inconsistent" and v["headline"] == "The denial appears inconsistent with the policy."
+    assert set(v["steelman"]) == {"argument", "citations", "unsupported"} and set(v["rule"]) == {"statement", "citations", "unsupported"}
+    assert v["rule"]["citations"] and set(v["rule"]["citations"][0]) == REF_KEYS and v["what_would_change"] is None
+    L = b["letter"]
+    assert set(L) == LETTER_KEYS and L["status"] == "done" and L["applicable"] is True and L["model"] == "fixture"
+    assert L["to"] == "Sunshine Health" and L["re"].startswith("Appeal of the denial of private duty nursing")
+    s0 = L["paragraphs"][1]["sentences"][0]
+    assert set(s0) == {"text", "claim", "citation", "verified", "struck", "reason"}
+    assert L["verification"]["struck"] == 1 and L["verification"]["verified"] >= 1
+    assert set(L["deadline"]) == {"date", "days_left", "source", "citation", "note"} and L["deadline"]["source"] == "letter" and L["deadline"]["date"] == "2026-12-13"
+    assert set(L["filing"]) == {"where", "how", "citation"} and L["filing"]["citation"]["finding_id"]
+    assert 3 <= len(L["evidence_checklist"]) <= 7 and set(L["evidence_checklist"][0]) == {"item", "why", "citation"}
+    names = [sp["name"] for sp in b["investigation"]["trace"]["spans"]]
+    assert names[-2:] == ["steelman_verdict", "letter"]
+
+
+def test_letter_txt_route(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+    assert client.get("/case/c_nope00/letter.txt").status_code == 404
+    cid = _intake_text().json()["case_id"]
+    r = client.get(f"/case/{cid}/letter.txt")
+    assert r.status_code == 404 and r.json()["detail"]["code"] == "not_ready"
+    client.post(f"/case/{cid}/investigate")
+    r = client.get(f"/case/{cid}/letter.txt")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/plain")
+    assert r.text.startswith("To: Sunshine Health\nRe: Appeal of the denial of") and "[cite: " in r.text
+    assert "every hour a provider bills" not in r.text  # the struck sentence is not exported
+
+
+def test_letter_txt_is_409_when_the_denial_matches_the_policy(monkeypatch, tmp_path):
+    from policyqa.verdict import FixtureVerdict
+
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+
+    class Consistent(FixtureVerdict):
+        def reply(self, investigation):
+            d = super().reply(investigation)
+            d.update(outcome="consistent", what_would_change="An authorization for the extra hours.")
+            return d
+
+    monkeypatch.setattr(api_main, "verdicter", lambda: Consistent(delay=0))
+    cid = _intake_text().json()["case_id"]
+    client.post(f"/case/{cid}/investigate")
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "drafted" and b["verdict"]["outcome"] == "consistent"
+    assert b["letter"]["applicable"] is False and b["letter"]["paragraphs"] == [] and b["letter"]["explanation"]
+    r = client.get(f"/case/{cid}/letter.txt")
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "not_applicable"
+
+
+def test_a_failing_verdict_marks_the_case_failed_and_keeps_the_investigation(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+
+    class Boom:
+        model = "boom"
+
+        def decide(self, case, investigation):
+            raise RuntimeError("verdict exploded")
+
+    monkeypatch.setattr(api_main, "verdicter", lambda: Boom())
+    cid = _intake_text().json()["case_id"]
+    client.post(f"/case/{cid}/investigate")
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "failed"
+    assert b["investigation"]["status"] == "done" and len(b["investigation"]["findings"]) == 5
+    assert b["verdict"]["status"] == "failed" and "verdict exploded" in b["verdict"]["error"] and b["verdict"]["model"] == "boom"
+    assert set(b["verdict"]) == VERDICT_KEYS
+    assert b["letter"] is None
+    assert client.get(f"/case/{cid}/letter.txt").status_code == 404
+
+
+def test_a_failing_letter_keeps_the_verdict(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+
+    class Boom:
+        model = "boom"
+
+        def draft(self, case, investigation, verdict):
+            raise RuntimeError("letter exploded")
+
+    monkeypatch.setattr(api_main, "letterer", lambda: Boom())
+    cid = _intake_text().json()["case_id"]
+    client.post(f"/case/{cid}/investigate")
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "failed" and b["verdict"]["status"] == "done"
+    assert b["letter"]["status"] == "failed" and "letter exploded" in b["letter"]["error"] and set(b["letter"]) == LETTER_KEYS
+
+
+def test_failed_investigation_does_not_run_the_verdict(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+    called = []
+    monkeypatch.setattr(api_main, "verdicter", lambda: called.append(1))
+
+    class Boom:
+        model = "boom"
+
+        def route(self, card):
+            from policyqa.investigate import route_case
+
+            return route_case(card)
+
+        def investigate(self, case, on_progress=None):
+            raise RuntimeError("provider down")
+
+    monkeypatch.setattr(api_main, "investigator", lambda: Boom())
+    cid = _intake_text().json()["case_id"]
+    client.post(f"/case/{cid}/investigate")
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "failed" and b["verdict"] is None and called == []
+
+
+def test_background_chain_ends_drafted(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+    monkeypatch.setattr(api_main, "RUN_INVESTIGATION_INLINE", False)
+    monkeypatch.setattr(api_main, "FIXTURE_DELAY", 0.02)
+    investigator.cache_clear()
+    cid = _intake_text().json()["case_id"]
+    assert client.post(f"/case/{cid}/investigate").status_code == 202
+    api_main.INVESTIGATION_THREADS[cid].join(timeout=10)
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "drafted" and b["verdict"]["status"] == "done" and b["letter"]["status"] == "done"
+
+
+def test_set_stage_store_method():
+    from api.cases import CaseStore
+
+    s = CaseStore()
+    c = s.create({"card": {}})
+    v = {"status": "running"}
+    out = s.set_stage(c["case_id"], "verdict", v, "deciding")
+    v["status"] = "changed"  # the store keeps its own copy
+    assert out["status"] == "deciding" and s.get(c["case_id"])["verdict"] == {"status": "running"}
+    s.set_stage(c["case_id"], "letter", {"status": "done"})  # no status: the case status is kept
+    assert s.get(c["case_id"])["status"] == "deciding"
+    with pytest.raises(ValueError):
+        s.set_stage(c["case_id"], "card", {}, None)
+    assert s.set_stage("c_nope", "verdict", {}, "failed") is None
+
+
+def test_an_error_outside_the_stages_still_fails_the_running_stage(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+    monkeypatch.setattr(api_main, "_add_span", lambda case_id, span: (_ for _ in ()).throw(RuntimeError("trace store broke")))
+    cid = _intake_text().json()["case_id"]
+    client.post(f"/case/{cid}/investigate")
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "failed" and b["verdict"]["status"] == "failed" and "trace store broke" in b["verdict"]["error"]

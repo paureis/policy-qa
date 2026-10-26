@@ -10,19 +10,25 @@ export function DeadlineStamp({
   today,
   landed = false,
   className = "",
+  daysLeft,
+  bottomText,
 }: {
   deadlineIso: string | null;
   today: Date;
   landed?: boolean;
   className?: string;
+  /* The day count the API computed; when given it wins over today's math. */
+  daysLeft?: number | null;
+  /* The lower arc; defaults to CASE OPENED when landed, RECOURSE otherwise. */
+  bottomText?: string;
 }) {
-  const days = deadlineIso ? daysUntil(deadlineIso, today) : null;
+  const days = deadlineIso ? (typeof daysLeft === "number" ? daysLeft : daysUntil(deadlineIso, today)) : null;
   const missing = deadlineIso === null || days === null;
   const dateText = missing ? "" : formatShortDate(deadlineIso);
   const countText = missing ? "" : dayCountLabel(days);
   const label = missing
     ? "Appeal deadline: no deadline found in the letter"
-    : `Appeal deadline ${dateText}, ${countText}${landed ? ". Case opened." : ""}`;
+    : `Appeal deadline ${dateText}, ${countText}${landed && bottomText === undefined ? ". Case opened." : ""}`;
 
   return (
     <div
@@ -66,7 +72,7 @@ export function DeadlineStamp({
           fontFamily="var(--font-public-sans), 'Public Sans', system-ui, sans-serif"
         >
           <textPath href="#stamp-arc-bottom" startOffset="50%" textAnchor="middle">
-            {landed ? "CASE OPENED" : "RECOURSE"}
+            {bottomText ?? (landed ? "CASE OPENED" : "RECOURSE")}
           </textPath>
         </text>
       </svg>

@@ -2,12 +2,13 @@
 
 Shape of a case (what every /case route returns):
   {case_id, source, raw_text, summary, card, status, model, cost_usd, latency_ms, created_at,
-   route, investigation}
-Statuses: intake -> investigating -> investigated | failed (-> verdict -> letter, when those land).
-`route` and `investigation` are null until the investigation starts; see policyqa/investigate.py
-for their shapes.
+   route, investigation, verdict, letter}
+Statuses: intake -> investigating -> investigated -> deciding -> decided -> drafting -> drafted,
+or failed at any step (the stage that failed carries `status: "failed"` and `error`).
+`route` and `investigation` are null until the investigation starts; `verdict` and `letter` are
+null until their stage starts. Shapes: policyqa/investigate.py, policyqa/verdict.py, policyqa/letter.py.
 
-The interface (create, get, patch, set_status, claim_for_investigation, set_investigation)
+The interface (create, get, patch, set_status, claim_for_investigation, set_investigation, set_stage)
 is small on purpose so a file-backed or SQLite store can replace it without touching the
 routes. claim_for_investigation is the one compare-and-set: it checks that the case is in
 intake and moves it to investigating under the lock, so two posts cannot both start it.
@@ -38,7 +39,7 @@ class CaseStore:
             cid = self._new_id()
             while cid in self._cases:
                 cid = self._new_id()
-            case = {"case_id": cid, **data, "status": "intake", "created_at": self._now(), "route": None, "investigation": None}
+            case = {"case_id": cid, **data, "status": "intake", "created_at": self._now(), "route": None, "investigation": None, "verdict": None, "letter": None}
             self._cases[cid] = case
             return dict(case)
 
@@ -84,6 +85,21 @@ class CaseStore:
             c["route"] = copy.deepcopy(route)
             c["investigation"] = copy.deepcopy(investigation)
             c["status"] = status
+            return dict(c)
+
+    STAGES = ("investigation", "verdict", "letter")
+
+    def set_stage(self, case_id: str, field: str, value: dict | None, status: str | None = None) -> dict | None:
+        """Store a copy of one stage (investigation, verdict, or letter) and, when given, the case status."""
+        if field not in self.STAGES:
+            raise ValueError(f"{field} is not a stage")
+        with self._lock:
+            c = self._cases.get(case_id)
+            if c is None:
+                return None
+            c[field] = copy.deepcopy(value)
+            if status is not None:
+                c["status"] = status
             return dict(c)
 
 

@@ -63,6 +63,25 @@ How a finding gets its status: the agent routes the case (Florida, Federal, or b
 
 The screen at `/case/{case_id}` (`src/app/case/[id]`, pieces in `src/components/investigation/`, brief in `web/investigation-brief.md`) polls every 1.5 s while running, shows findings as they land, strikes unsupported ones with "Could not verify", and ends with the Trust panel: verification coverage as a count, cost, time, model, trace. Intake navigates there after Confirm. Fixture ids in fixture mode: `c_sample1`, `c_dual1`, `c_fail1`, `c_error1` (one question whose model call failed). The fixture reports model `fixture`, cost 0, and quotes marked `[synthetic fixture quote, not from the document]`, attributed to real manifest rows (fl-04, fl-21, fed-02, fed-17).
 
+### Verdict and appeal letter (built Oct 26 evening)
+
+One `POST /case/{id}/investigate` drives the whole chain: `investigating` -> `investigated` -> `deciding` -> `decided` -> `drafting` -> `drafted` (or `failed`, keeping earlier stages). `GET /case/{id}` gains `verdict` and `letter`; `GET /case/{id}/letter.txt` returns the plain-text letter with struck sentences removed and a `[cite: title, p. N]` marker after each verified claim (404 `not_ready` until drafted, 409 `not_applicable` for a consistent denial).
+
+```json
+"verdict": {"status": "done", "outcome": "inconsistent", "headline": "The denial appears inconsistent with the policy.",
+  "steelman": {"argument": "...", "citations": [{"finding_id": "f2", "doc_id": "fl-04", "title": "...", "page": 5, "quote": "..."}], "unsupported": false},
+  "rule": {"statement": "...", "citations": ["..."], "unsupported": false}, "gap": "...", "what_would_change": null,
+  "model": "muse-spark-1.3", "input_tokens": 0, "output_tokens": 0, "reasoning_tokens": 0, "latency_ms": 0, "cost_usd": 0, "error": null}
+"letter": {"status": "done", "applicable": true, "explanation": null, "to": "Sunshine Health", "re": "Appeal of the denial of ...",
+  "paragraphs": [{"sentences": [{"text": "...", "claim": true, "citation": {"finding_id": "f2", "...": "..."}, "verified": true, "struck": false}]}],
+  "evidence_checklist": [{"item": "...", "why": "...", "citation": null}],
+  "deadline": {"date": "2026-12-13", "days_left": 48, "source": "letter", "citation": null, "note": "The letter states this deadline."},
+  "filing": {"where": "...", "how": "...", "citation": null},
+  "verification": {"claims": 4, "verified": 3, "struck": 1}, "model": "...", "cost_usd": 0, "latency_ms": 0, "error": null}
+```
+
+The three verdicts are the only three (`consistent`, `inconsistent`, `not_settled`) and the headline is one of three fixed sentences. The steelman, verdict, and letter see only supported findings; every citation they give must name a supported finding and match one of its verified quotes at 4-gram overlap 0.8, or it is dropped (and the text marked `unsupported` or the sentence `struck`). A sentence that asserts the care was needed is struck whatever its claim flag. The deadline comes from the letter, else from a day count in a verified appeal quote, else "unknown". The screen (`src/components/verdict/`, `src/components/letter/`, brief in `web/verdict-brief.md`) renders the verdict block, the letter with inline citation chips and struck sentences, the evidence checklist, the deadline stamp, the filing path, copy and download, and adds the letter line to the trust panel.
+
 Errors come back as `{"detail": {"code", "message"}}`. Intake codes (422): `unsupported_type`, `too_large`, `text_length`, `unreadable`, `not_a_denial_letter`, `out_of_scope`; 400 `bad_request` for both or neither of file and text. Case codes: 404 `not_found`, 409 `wrong_status` (the card is editable only during intake), 422 `invalid_field` (with `field`). The screen shows the six intake codes with their own copy, any other 4xx message under "The service could not accept that", and a network failure or 5xx as "We could not reach the service".
 
 After extraction, copied values (service code, amount, the three dates, payer) are checked against the letter text; a value that does not appear is demoted to `low` so the screen flags it, and the cell carries `verified: true|false`. Muse Spark 1.3 is a reasoning model, so completion tokens include its thinking (`reasoning_tokens` in the usage details) and every call carries a generous `max_tokens`.

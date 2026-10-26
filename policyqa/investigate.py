@@ -596,11 +596,13 @@ class FixtureInvestigator:
         cite, struck = self._cite, self._struck
         return [
             ("coverage", f"Is {service} covered under Florida Medicaid (MMA) for a member under 21?", "supported",
-             "Yes. Florida Medicaid covers private duty nursing for recipients under 21 when it is medically necessary and prior authorized.",
-             [cite(self.pdn, 3, "Florida Medicaid covers private duty nursing services for recipients under the age of 21 years when medically necessary.")], []),
+             "Yes. Florida Medicaid covers private duty nursing for recipients under 21 when it is medically necessary and prior authorized, and services beyond the policy's coverage may be approved for them when medically necessary.",
+             [cite(self.pdn, 3, "Florida Medicaid covers private duty nursing services for recipients under the age of 21 years when medically necessary."),
+              cite(self.pdn, 6, "Services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary.")], []),
             ("limits", f"What limits apply to {service} under Florida Medicaid (MMA), such as hours per day?", "supported",
-             "Hours are limited to what the plan authorizes for the recipient; the authorization sets the hours per day and the period it covers.",
-             [cite(self.pdn, 5, "Private duty nursing services are reimbursed for the number of hours authorized for the recipient in the prior authorization.")], []),
+             "Florida Medicaid covers up to 24 hours of private duty nursing per day for a recipient who meets the policy's criteria; payment follows the hours authorized for the recipient.",
+             [cite(self.pdn, 5, "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy."),
+              cite(self.pdn, 5, "Private duty nursing services are reimbursed for the number of hours authorized for the recipient in the prior authorization.")], []),
             ("conditions", f"What conditions or prior authorization does Florida Medicaid (MMA) require for {service}?", "unsupported",
              "Prior authorization must be renewed every 180 days with a new plan of care signed by the treating physician.",
              [], [struck(self.pdn, 4, "Authorization is renewed every 180 days with a plan of care signed by the treating physician.")]),

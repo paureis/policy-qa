@@ -17,12 +17,33 @@ import { FindingsList } from "./FindingsList";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { RouteLine } from "./RouteLine";
 import { TrustPanel } from "./TrustPanel";
+import { StageLine } from "@/components/verdict/StageLine";
+import { VerdictSection } from "@/components/verdict/VerdictSection";
+import { ActionSection } from "@/components/letter/ActionSection";
 
 type View =
   | { kind: "loading" }
   | { kind: "not_found" }
   | { kind: "error"; error: IntakeError }
   | { kind: "ready"; record: CaseRecord };
+
+const FAILURE_COPY = {
+  investigation: {
+    overline: "Investigation stopped",
+    heading: "The investigation could not finish",
+    note: "Try again reloads the case. An investigation cannot be restarted once the case has left intake; the findings above are kept.",
+  },
+  verdict: {
+    overline: "Verdict stopped",
+    heading: "The verdict could not be reached",
+    note: "Try again reloads the case. A case cannot be restarted once it has left intake; the findings above are kept.",
+  },
+  letter: {
+    overline: "Appeal letter stopped",
+    heading: "The appeal letter could not be drafted",
+    note: "Try again reloads the case. A case cannot be restarted once it has left intake; the findings and the verdict above are kept.",
+  },
+} as const;
 
 const SECONDARY =
   "inline-flex min-h-12 w-full items-center justify-center rounded-sm border border-ink bg-bond px-5 text-[18px] font-semibold text-ink sm:w-auto";
@@ -31,8 +52,9 @@ const PRIMARY =
 
 /*
   The case's home. Loads the case by id, polls GET /case/{id} every 1.5 s
-  while the investigation runs, and shows findings as they arrive. State
-  changes step; nothing fades.
+  while the case works itself (investigation, verdict, appeal letter) until
+  drafted or failed, and shows findings, the verdict, and the action as they
+  arrive. State changes step; nothing fades.
 */
 export function InvestigationView({ caseId }: { caseId: string }) {
   const [view, setView] = useState<View>({ kind: "loading" });
@@ -71,9 +93,33 @@ export function InvestigationView({ caseId }: { caseId: string }) {
   const record = view.kind === "ready" ? view.record : null;
   const dual = record?.route?.dual === true;
   const investigation = record?.investigation ?? null;
-  const failed = record !== null && (record.status === "failed" || investigation?.status === "failed");
-  const done = record !== null && record.status === "investigated" && investigation?.status === "done";
+  const verdict = record?.verdict ?? null;
+  const letter = record?.letter ?? null;
+  const failedStep: "investigation" | "verdict" | "letter" | null =
+    record === null
+      ? null
+      : investigation?.status === "failed"
+        ? "investigation"
+        : verdict?.status === "failed"
+          ? "verdict"
+          : letter?.status === "failed"
+            ? "letter"
+            : record.status === "failed"
+              ? verdict === null
+                ? "investigation"
+                : letter === null
+                  ? "verdict"
+                  : "letter"
+              : null;
+  const failed = failedStep !== null;
+  const done = record !== null && record.status !== "intake" && record.status !== "investigating" && investigation?.status === "done";
+  const verdictDone = verdict !== null && verdict.status === "done";
+  const letterDone = letter !== null && letter.status === "done";
   const findings = investigation?.findings ?? [];
+  const failure = failedStep ? FAILURE_COPY[failedStep] : null;
+  const failureReason =
+    (failedStep === "letter" ? letter?.error : failedStep === "verdict" ? verdict?.error : investigation?.error)?.trim() ||
+    "The service reported an error and gave no reason.";
 
   return (
     <div className="flex min-h-full flex-col">
@@ -146,21 +192,27 @@ export function InvestigationView({ caseId }: { caseId: string }) {
               <>
                 <RouteLine route={record.route} />
                 <InvestigationProgress investigation={investigation} />
+                <StageLine record={record} />
                 <FindingsList findings={findings} route={record.route} />
 
-                {failed ? (
-                  <section role="alert" aria-labelledby="failed-heading" className="mt-8 border-t-4 border-ink pt-4" data-view="failed">
-                    <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Investigation stopped</p>
+                <div className={dual ? "lg:max-w-[640px]" : ""}>
+                  {verdictDone ? (
+                    <VerdictSection
+                      verdict={verdict}
+                      changeShownBelow={letterDone && !letter.applicable && verdict.outcome === "consistent"}
+                    />
+                  ) : null}
+                  {letterDone ? <ActionSection letter={letter} verdict={verdictDone ? verdict : null} caseId={record.case_id} today={today} /> : null}
+                </div>
+
+                {failed && failure ? (
+                  <section role="alert" aria-labelledby="failed-heading" className="mt-8 border-t-4 border-ink pt-4" data-view="failed" data-failed-step={failedStep}>
+                    <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">{failure.overline}</p>
                     <h2 id="failed-heading" className="mt-1 text-[26px] leading-tight font-bold">
-                      The investigation could not finish
+                      {failure.heading}
                     </h2>
-                    <p className="mt-4 text-[18px] leading-relaxed lg:text-[17px]">
-                      {investigation?.error?.trim() || "The service reported an error and gave no reason."}
-                    </p>
-                    <p className="mt-2 text-[16px] text-muted">
-                      Try again reloads the case. An investigation cannot be restarted once the case has left intake; the
-                      findings above are kept.
-                    </p>
+                    <p className="mt-4 text-[18px] leading-relaxed lg:text-[17px]">{failureReason}</p>
+                    <p className="mt-2 text-[16px] text-muted">{failure.note}</p>
                     <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                       <button type="button" className={PRIMARY} onClick={reload}>
                         Try again
@@ -172,7 +224,11 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                   </section>
                 ) : null}
 
-                {done && investigation ? <TrustPanel investigation={investigation} /> : null}
+                {done && investigation ? (
+                  <div className={dual ? "lg:max-w-[640px]" : ""}>
+                    <TrustPanel investigation={investigation} verdict={verdict} letter={letterDone ? letter : null} />
+                  </div>
+                ) : null}
               </>
             )}
           </div>

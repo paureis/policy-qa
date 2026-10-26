@@ -521,7 +521,15 @@ export function formatBytes(bytes: number): string {
 
 /* ---------- Investigation: contract, fixture, client ---------- */
 
-export type CaseStatus = "intake" | "investigating" | "investigated" | "failed";
+export type CaseStatus =
+  | "intake"
+  | "investigating"
+  | "investigated"
+  | "deciding"
+  | "decided"
+  | "drafting"
+  | "drafted"
+  | "failed";
 export type Jurisdiction = "Florida" | "Federal";
 export const JURISDICTIONS: readonly Jurisdiction[] = ["Florida", "Federal"];
 
@@ -609,6 +617,10 @@ export interface CaseRecord extends IntakeResponse {
   status: CaseStatus;
   route: Route | null;
   investigation: Investigation | null;
+  /* Steelman and verdict, once the investigation is done. Absent on older API builds. */
+  verdict?: Verdict | null;
+  /* The appeal letter and the action around it, once the verdict is reached. */
+  letter?: Letter | null;
   created_at?: string;
   model?: string;
   cost_usd?: number;
@@ -964,8 +976,9 @@ function startFixtureInvestigation(caseId: string, at: number = Date.now()): voi
 }
 
 function fixtureCase(caseId: string, now: number): CaseRecord | null {
-  if (!/^c_(sample\d*|dual\d*|fail\d*|error\d*)$/.test(caseId)) return null;
+  if (!/^c_(sample\d*|dual\d*|fail\d*|error\d*|consistent\d*)$/.test(caseId)) return null;
   const dual = caseId.startsWith("c_dual");
+  const consistent = caseId.startsWith("c_consistent");
   const fail = caseId.startsWith("c_fail");
   const withError = caseId.startsWith("c_error");
   startFixtureInvestigation(caseId, now);
@@ -990,6 +1003,8 @@ function fixtureCase(caseId: string, now: number): CaseRecord | null {
     card.program = { value: "unknown", confidence: "high" };
     card.member_age_group = { value: "65_plus", confidence: "high" };
   }
+  /* After the last finding, the chain continues: deciding, decided, drafting, drafted. */
+  const chain = finished && !fail ? fixtureChain(dual ? "dual" : consistent ? "consistent" : "sample", now - (startedAt + latency)) : null;
   const trace: TraceSpan[] = [
     { name: "route", ms: 2 },
     { name: "plan questions", ms: 1 },
@@ -1001,7 +1016,7 @@ function fixtureCase(caseId: string, now: number): CaseRecord | null {
     raw_text: SAMPLE_LETTER_TEXT,
     summary: SAMPLE_SUMMARY,
     card,
-    status: finished ? (fail ? "failed" : "investigated") : "investigating",
+    status: finished ? (fail ? "failed" : (chain?.status ?? "investigated")) : "investigating",
     route: dual ? ROUTE_DUAL : ROUTE_SAMPLE,
     investigation: {
       status: finished ? (fail ? "failed" : "done") : "running",
@@ -1017,6 +1032,8 @@ function fixtureCase(caseId: string, now: number): CaseRecord | null {
       error: fail && finished ? "TimeoutError: the model did not answer question 3 after three attempts." : null,
       trace,
     },
+    verdict: chain?.verdict ?? null,
+    letter: chain?.letter ?? null,
     created_at: new Date(startedAt - 60_000).toISOString(),
   };
 }
@@ -1040,14 +1057,14 @@ export function getCase(caseId: string, signal?: AbortSignal): Promise<CaseRecor
   return INTAKE_MODE === "live" ? liveGetCase(caseId, signal) : fixtureGetCase(caseId, signal);
 }
 
-/* Keep polling while the investigation runs. */
+/* Keep polling while the investigation runs (the investigation step alone). */
 export function isInvestigating(record: CaseRecord): boolean {
   return record.status === "investigating" && (record.investigation === null || record.investigation.status === "running");
 }
 
 /*
   Fetch the case, hand each version to onUpdate, and poll every POLL_MS while
-  it is investigating. Resolves with the final record. Aborting the signal
+  the case works itself (investigation, verdict, letter) until drafted or failed. Resolves with the final record. Aborting the signal
   stops the loop quietly. Errors (including not_found) propagate.
 */
 export async function pollCase(
@@ -1060,7 +1077,7 @@ export async function pollCase(
     const record = await getCase(caseId, signal);
     if (signal?.aborted) throw abortError();
     onUpdate(record);
-    if (!isInvestigating(record)) return record;
+    if (!isWorking(record)) return record;
     await sleep(intervalMs, signal);
   }
 }
@@ -1070,4 +1087,369 @@ export function groupFindings(findings: Finding[], order: Jurisdiction[] = [...J
   return order
     .map((jurisdiction) => ({ jurisdiction, findings: findings.filter((f) => f.jurisdiction === jurisdiction) }))
     .filter((g) => g.findings.length > 0);
+}
+
+/* ---------- Verdict and Action: contract, helpers, fixture ---------- */
+
+/* A citation the verdict or letter borrows from a finding: the finding's verified quote. */
+export interface CitationRef {
+  finding_id: string | null;
+  doc_id: string;
+  title: string | null;
+  page: number;
+  quote: string;
+}
+
+export type StepStatus = "running" | "done" | "failed";
+export type VerdictOutcome = "consistent" | "inconsistent" | "not_settled";
+
+/* The three verdicts, verbatim. The screen renders these from the outcome so the wording cannot drift. */
+export const VERDICT_HEADLINES: Record<VerdictOutcome, string> = {
+  consistent: "The denial matches the policy.",
+  inconsistent: "The denial appears inconsistent with the policy.",
+  not_settled: "The documents do not settle it.",
+};
+
+export interface Usage {
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  reasoning_tokens: number;
+  latency_ms: number;
+  cost_usd: number;
+  error: string | null;
+}
+
+export interface Verdict extends Usage {
+  status: StepStatus;
+  steelman: { argument: string; citations: CitationRef[]; unsupported?: boolean };
+  outcome: VerdictOutcome;
+  headline: string;
+  rule: { statement: string; citations: CitationRef[]; unsupported?: boolean };
+  gap: string;
+  what_would_change: string | null;
+}
+
+export interface LetterSentence {
+  text: string;
+  claim: boolean;
+  citation: CitationRef | null;
+  verified: boolean;
+  struck: boolean;
+}
+
+export interface EvidenceItem {
+  item: string;
+  why: string;
+  citation: CitationRef | null;
+}
+
+export interface LetterDeadline {
+  date: string | null;
+  days_left: number | null;
+  source: "letter" | "policy" | "unknown";
+  citation: CitationRef | null;
+  note: string;
+}
+
+export interface Letter extends Usage {
+  status: StepStatus;
+  applicable: boolean;
+  explanation: string | null;
+  to: string;
+  re: string;
+  paragraphs: { sentences: LetterSentence[] }[];
+  evidence_checklist: EvidenceItem[];
+  deadline: LetterDeadline;
+  filing: { where: string; how: string; citation: CitationRef | null };
+  verification: { claims: number; verified: number; struck: number };
+}
+
+/* The headline for an outcome, verbatim; the API's own text only if the outcome is unknown. */
+export function verdictHeadline(verdict: Pick<Verdict, "outcome" | "headline">): string {
+  return VERDICT_HEADLINES[verdict.outcome] ?? verdict.headline;
+}
+
+/*
+  A sentence is struck when the verifier struck it, or when it makes a claim
+  that was not verified: no claim reaches the person without a verified
+  citation.
+*/
+export function sentenceStruck(s: LetterSentence): boolean {
+  return s.struck || (s.claim && !s.verified);
+}
+
+export function citationLabel(c: { title: string | null; doc_id: string }): string {
+  return c.title?.trim() || c.doc_id;
+}
+
+/*
+  The letter as plain text: To, Re, then the paragraphs. Struck sentences are
+  left out; each verified claim is followed by "[cite: title, p. N]".
+*/
+export function letterPlainText(letter: Pick<Letter, "to" | "re" | "paragraphs">): string {
+  const head = [`To: ${letter.to}`, `Re: ${letter.re}`];
+  const body = (letter.paragraphs ?? [])
+    .map((p) =>
+      (p.sentences ?? [])
+        .filter((s) => !sentenceStruck(s))
+        .map((s) => {
+          const text = s.text.trim();
+          if (s.claim && s.verified && s.citation) return `${text} [cite: ${citationLabel(s.citation)}, p. ${s.citation.page}]`;
+          return text;
+        })
+        .join(" "),
+    )
+    .filter((p) => p !== "");
+  return `${head.join("\n")}\n\n${body.join("\n\n")}\n`;
+}
+
+/* The letter's counts as a sentence: counts, never a percentage. */
+export function letterVerificationLine(v: Letter["verification"]): string {
+  const noun = v.claims === 1 ? "letter sentence" : "letter sentences";
+  return `${v.verified} of ${v.claims} ${noun} verified; ${v.struck} struck`;
+}
+
+/* The stage line after the investigation line, by case status. Null while investigating. */
+export function stageLine(record: Pick<CaseRecord, "status" | "letter">): string | null {
+  switch (record.status) {
+    case "deciding":
+      return "Weighing the payer's side…";
+    case "decided":
+      return "Verdict reached.";
+    case "drafting":
+      return "Drafting the appeal letter…";
+    case "drafted":
+      return record.letter && record.letter.applicable === false ? "Verdict reached. No appeal letter was drafted." : "Appeal letter ready.";
+    default:
+      return null;
+  }
+}
+
+const WORKING: readonly CaseStatus[] = ["investigating", "investigated", "deciding", "decided", "drafting"];
+
+/* Keep polling until the case is drafted or failed (one POST drives the whole chain). */
+export function isWorking(record: CaseRecord): boolean {
+  if (record.investigation?.status === "failed" || record.verdict?.status === "failed" || record.letter?.status === "failed") return false;
+  return WORKING.includes(record.status);
+}
+
+/* ----- Fixture: verdicts and letters for the sample cases ----- */
+
+/* Each step lasts longer than one poll (1.5 s) so every stage line is seen. */
+const FIXTURE_DECIDE_MS = 2400;
+const FIXTURE_DECIDED_MS = 1800;
+const FIXTURE_DRAFT_MS = 2400;
+
+const ALL_FIXTURE_FINDINGS = [...FIXTURE_FINDINGS_FLORIDA, ...FIXTURE_FINDINGS_FEDERAL];
+
+/* The verified citation `index` of finding `id`, as a CitationRef. */
+function ref(id: string, index = 0): CitationRef {
+  const f = ALL_FIXTURE_FINDINGS.find((x) => x.id === id);
+  const c = f?.citations[index];
+  if (!f || !c) throw new Error(`fixture citation ${id}[${index}] missing`);
+  return { finding_id: f.id, doc_id: c.doc_id, title: c.title, page: c.page, quote: c.quote };
+}
+
+function usage(latency_ms: number): Usage {
+  return { model: FIXTURE_MODEL, input_tokens: 0, output_tokens: 0, reasoning_tokens: 0, latency_ms, cost_usd: 0, error: null };
+}
+
+function said(text: string): LetterSentence {
+  return { text, claim: false, citation: null, verified: false, struck: false };
+}
+function claimed(text: string, citation: CitationRef): LetterSentence {
+  return { text, claim: true, citation, verified: true, struck: false };
+}
+function struckClaim(text: string): LetterSentence {
+  return { text, claim: true, citation: null, verified: false, struck: true };
+}
+
+function fixtureDeadline(): LetterDeadline {
+  return {
+    date: "2026-12-13",
+    days_left: daysUntil("2026-12-13"),
+    source: "letter",
+    citation: ref("f_5", 0),
+    note: "The denial letter gives this date. It falls 60 days after the October 14, 2026 notice, which matches the appeal window in the plan contract.",
+  };
+}
+
+const FILING_SAMPLE: Letter["filing"] = {
+  where: "Sunshine Health, the plan that sent the denial letter. Use the appeals address or fax number printed on the letter.",
+  how: "File the appeal in writing within 60 calendar days of the date on the notice. To keep services going while the appeal is pending, file within 10 days of that date.",
+  citation: ref("f_5", 0),
+};
+
+const VERDICT_SAMPLE = (): Verdict => ({
+  status: "done",
+  steelman: {
+    argument:
+      "Services rendered in excess of the authorized amount are subject to the plan's reimbursement limits, so the plan may refuse to pay for hours billed beyond the authorization.",
+    citations: [ref("f_2", 1)],
+  },
+  outcome: "inconsistent",
+  headline: VERDICT_HEADLINES.inconsistent,
+  rule: {
+    statement:
+      "The number of private duty nursing hours is set through the medical necessity review and stated on the authorization for each period. The policy sets no fixed daily cap.",
+    citations: [ref("f_2", 0), ref("f_1", 0)],
+  },
+  gap: "The letter says the services exceed the authorized amount, but it never states how many hours were authorized for September. Under the policy, that number comes from a medical necessity review and must appear on the authorization, so the denial rests on a figure the letter does not show.",
+  what_would_change:
+    "A copy of the September authorization showing that fewer than 8 hours a day were approved after a medical necessity review would make the denial consistent with the policy.",
+  ...usage(FIXTURE_DECIDE_MS),
+});
+
+const LETTER_SAMPLE = (): Letter => ({
+  status: "done",
+  applicable: true,
+  explanation: null,
+  to: "Sunshine Health, Appeals",
+  re: "Appeal of the adverse benefit determination dated October 14, 2026: private duty nursing, 8 hours a day (T1000), September 1 to 30, 2026",
+  paragraphs: [
+    {
+      sentences: [
+        said(
+          "I am writing to appeal the adverse benefit determination dated October 14, 2026, which denied private duty nursing at 8 hours a day for September 1 to 30, 2026.",
+        ),
+        claimed(
+          "Florida Medicaid covers private duty nursing for members under 21 who need continuous skilled nursing at home, as ordered by the treating physician.",
+          ref("f_1", 0),
+        ),
+      ],
+    },
+    {
+      sentences: [
+        said("The notice says the services exceed the authorized amount, but it does not state how many hours were authorized."),
+        claimed(
+          "Under the coverage policy, the number of hours is set through a medical necessity review and stated on the authorization for each period.",
+          ref("f_2", 0),
+        ),
+        struckClaim("A physician's order for additional hours overrides the authorized amount for the same period."),
+        said("Please send me the authorization and the medical necessity review used for this decision."),
+      ],
+    },
+    {
+      sentences: [
+        claimed("This appeal is filed within sixty calendar days of the date on the notice, as the plan contract allows.", ref("f_5", 0)),
+        said("Please review the denial against the coverage policy and approve the hours billed for September 2026."),
+      ],
+    },
+  ],
+  evidence_checklist: [
+    { item: "The denial letter dated October 14, 2026", why: "It is the decision you are appealing.", citation: null },
+    {
+      item: "The physician's order for private duty nursing at 8 hours a day",
+      why: "The policy covers private duty nursing as ordered by the treating physician.",
+      citation: ref("f_1", 0),
+    },
+    {
+      item: "The plan's authorization for September 2026, or your written request for it",
+      why: "The policy says the authorized hours are stated on the authorization for each period.",
+      citation: ref("f_2", 0),
+    },
+    {
+      item: "Nursing visit records for September 1 to 30, 2026",
+      why: "They show the hours of nursing given at home on the dates billed.",
+      citation: null,
+    },
+    {
+      item: "The plan's medical necessity review for this request",
+      why: "The authorized hours are set through that review, so it shows how the plan reached its number.",
+      citation: ref("f_2", 0),
+    },
+  ],
+  deadline: fixtureDeadline(),
+  filing: FILING_SAMPLE,
+  verification: { claims: 4, verified: 3, struck: 1 },
+  ...usage(FIXTURE_DRAFT_MS),
+});
+
+const VERDICT_CONSISTENT = (): Verdict => ({
+  status: "done",
+  steelman: {
+    argument:
+      "Hours are set by the plan's medical necessity review and stated on the authorization, and hours billed beyond that amount are subject to the plan's reimbursement limits.",
+    citations: [ref("f_2", 0), ref("f_2", 1)],
+  },
+  outcome: "consistent",
+  headline: VERDICT_HEADLINES.consistent,
+  rule: {
+    statement:
+      "Services rendered in excess of the authorized amount are subject to the plan's reimbursement limits, and the authorized hours are those stated on the authorization for the period.",
+    citations: [ref("f_2", 1), ref("f_2", 0)],
+  },
+  gap: "There is no gap. The letter's reason is the rule: the hours billed for September exceeded the hours on the authorization, and no document found allows the plan to pay hours beyond it.",
+  what_would_change:
+    "An authorization covering 8 hours a day for September, or a request for more hours approved before the care was given.",
+  ...usage(FIXTURE_DECIDE_MS),
+});
+
+const LETTER_CONSISTENT = (): Letter => ({
+  status: "done",
+  applicable: false,
+  explanation:
+    "The plan's reason matches the written rule. Hours of private duty nursing are set on the authorization for each period, and hours billed beyond it are subject to the plan's reimbursement limits. The September claim billed more hours than were authorized, so no appeal letter is drafted.",
+  to: "",
+  re: "",
+  paragraphs: [],
+  evidence_checklist: [],
+  deadline: fixtureDeadline(),
+  filing: FILING_SAMPLE,
+  verification: { claims: 0, verified: 0, struck: 0 },
+  ...usage(FIXTURE_DRAFT_MS),
+});
+
+const VERDICT_DUAL = (): Verdict => ({
+  status: "done",
+  steelman: {
+    argument: "Medicare pays for at most 28 hours a week of home health nursing, so 8 hours a day is more than Medicare pays.",
+    citations: [],
+    unsupported: true,
+  },
+  outcome: "not_settled",
+  headline: VERDICT_HEADLINES.not_settled,
+  rule: {
+    statement:
+      "Florida Medicaid covers private duty nursing for members under 21. Medicare does not cover private duty nursing as a home health service.",
+    citations: [ref("f_1", 0), ref("f_6", 0)],
+  },
+  gap: "The letter does not say which program processed the claim, and the two programs answer differently. The case card puts the member at 65 or older, so the Florida rule for members under 21 does not apply as written, and nothing found says which rule decides this claim.",
+  what_would_change:
+    "The program named on the member's ID card, or a notice stating which program processed the claim, would let one set of rules decide this case.",
+  ...usage(FIXTURE_DECIDE_MS),
+});
+
+const LETTER_DUAL = (): Letter => ({
+  status: "done",
+  applicable: false,
+  explanation:
+    "The documents do not settle whether the denial holds, so no appeal letter is drafted. Find out which program processed the claim, then start a new case with the notice that names it.",
+  to: "",
+  re: "",
+  paragraphs: [],
+  evidence_checklist: [],
+  deadline: fixtureDeadline(),
+  filing: {
+    where: "The plan or office named on the denial letter.",
+    how: "Ask in writing which program processed the claim. The appeal path depends on the answer.",
+    citation: null,
+  },
+  verification: { claims: 0, verified: 0, struck: 0 },
+  ...usage(FIXTURE_DRAFT_MS),
+});
+
+/* The verdict and letter steps, `t` ms after the investigation finished. */
+function fixtureChain(
+  kind: "sample" | "consistent" | "dual",
+  t: number,
+): { status: CaseStatus; verdict: Verdict | null; letter: Letter | null } {
+  const verdict = kind === "dual" ? VERDICT_DUAL() : kind === "consistent" ? VERDICT_CONSISTENT() : VERDICT_SAMPLE();
+  const letter = kind === "dual" ? LETTER_DUAL() : kind === "consistent" ? LETTER_CONSISTENT() : LETTER_SAMPLE();
+  if (t < 0) return { status: "investigated", verdict: null, letter: null };
+  if (t < FIXTURE_DECIDE_MS) return { status: "deciding", verdict: null, letter: null };
+  if (t < FIXTURE_DECIDE_MS + FIXTURE_DECIDED_MS) return { status: "decided", verdict, letter: null };
+  if (t < FIXTURE_DECIDE_MS + FIXTURE_DECIDED_MS + FIXTURE_DRAFT_MS) return { status: "drafting", verdict, letter: null };
+  return { status: "drafted", verdict, letter };
 }

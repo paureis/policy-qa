@@ -29,7 +29,7 @@ export function FindingCard({ finding, showJurisdiction = false }: { finding: Fi
   const status = findingStatus(finding);
   const passages = finding.passages;
   return (
-    <article aria-labelledby={headingId} className="border-t border-hairline pt-4 pb-5" data-finding={finding.id} data-status={status}>
+    <article aria-labelledby={headingId} className="land border-t border-hairline pt-4 pb-5" data-finding={finding.id} data-status={status}>
       <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">
         {TOPIC_LABELS[finding.topic]}
         {showJurisdiction ? ` · ${finding.jurisdiction}` : ""}

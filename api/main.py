@@ -15,21 +15,28 @@ Surface:
                                  is atomic (CaseStore.claim_for_investigation): of concurrent posts,
                                  one gets 202 and the rest 409 wrong_status. Findings carry `passages`
                                  and may be `status: "error"` with an `error` string; coverage has
-                                 `errors` (see policyqa/investigate.py).
+                                 `errors` (see policyqa/investigate.py). When the investigation is done the
+                                 same thread runs the Steelman and Verdict, then the Action (letter):
+                                 investigating -> investigated -> deciding -> decided -> drafting -> drafted,
+                                 or failed with `status: "failed"` and `error` on the stage that failed
+                                 (earlier stages are kept). Shapes: policyqa/verdict.py, policyqa/letter.py.
+  GET   /case/{id}/letter.txt    the appeal letter as plain text: struck sentences left out, "[cite: title,
+                                 p. N]" after each verified claim. 404 not_ready until drafted, 409
+                                 not_applicable when the denial matches the policy (read `explanation`).
 
 Errors are {"detail": {"code": ..., "message": ...}}: 400 bad_request, 404 not_found,
-409 wrong_status, 422 one of the intake codes (unsupported_type, too_large,
+404 not_ready, 409 wrong_status, 409 not_applicable, 422 one of the intake codes (unsupported_type, too_large,
 text_length, unreadable, not_a_denial_letter, out_of_scope) or invalid_field
 (with "field").
 
 The investigation runs live (Muse Spark 1.3 through POLICYQA_LLM_*, hybrid retrieval over
 data/chunks.jsonl) only when both the env and the index exist; otherwise the fixture
-investigator serves a synthetic Sunshine Health investigation. `RUN_INVESTIGATION_INLINE`
-makes the POST run it synchronously (tests); `FIXTURE_DELAY` is the pause between fixture
-findings.
+investigator serves a synthetic Sunshine Health investigation. The verdict and the letter follow
+the same mode (verdict_mode): live with the investigation, else FixtureVerdict and FixtureLetter.
+`RUN_INVESTIGATION_INLINE` makes the POST run the whole chain synchronously (tests);
+`FIXTURE_DELAY` is the pause between fixture findings and before each fixture stage.
 
 Run: uvicorn api.main:app --reload --port 8000
-Verdict and letter endpoints land as the agent is built.
 """
 from __future__ import annotations
 
@@ -41,7 +48,7 @@ from pathlib import Path
 
 from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -106,6 +113,27 @@ def investigator():
     return LiveInvestigator(retriever(), provider())
 
 
+def verdict_mode() -> str:
+    """The verdict and the letter run live exactly when the investigation does, so a live verdict never argues from fixture findings."""
+    return investigation_mode()
+
+
+def verdicter():
+    from policyqa.verdict import FixtureVerdict, LiveVerdict
+
+    if verdict_mode() == "fixture":
+        return FixtureVerdict(delay=FIXTURE_DELAY)
+    return LiveVerdict(provider())
+
+
+def letterer():
+    from policyqa.letter import FixtureLetter, LiveLetter
+
+    if verdict_mode() == "fixture":
+        return FixtureLetter(delay=FIXTURE_DELAY)
+    return LiveLetter(provider())
+
+
 @lru_cache(maxsize=1)
 def provider():
     from policyqa.generate import Provider, MockProvider
@@ -138,6 +166,7 @@ def health():
         "model": os.environ.get("POLICYQA_LLM_MODEL") or "mock",
         "intake": os.environ.get("POLICYQA_LLM_MODEL") if _live_configured() else "fixture",
         "investigation": investigation_mode(),
+        "verdict": verdict_mode(),
     }
 
 
@@ -288,6 +317,82 @@ def _run_investigation(case_id: str) -> None:
         cur = (STORE.get(case_id) or {}).get("investigation") or _empty_investigation(getattr(investigator(), "model", "?"))
         cur.update(status="failed", error=f"{type(e).__name__}: {e}"[:500], finished_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
         STORE.set_investigation(case_id, route, cur, "failed")
+        return
+    if final.get("status") == "done":
+        try:
+            _run_decision(case_id)
+        except Exception as e:  # noqa: BLE001 - bookkeeping failed outside a stage: fail the stage that was running
+            cur = STORE.get(case_id) or {}
+            for field in ("letter", "verdict"):
+                stage = cur.get(field)
+                if isinstance(stage, dict) and stage.get("status") == "running":
+                    STORE.set_stage(case_id, field, {**stage, "status": "failed", "error": _err_text(e)}, "failed")
+                    break
+            else:
+                STORE.set_status(case_id, "failed")
+
+
+def _add_span(case_id: str, span: dict) -> None:
+    """Append a stage span to the investigation's trace, so the case keeps one readable trace."""
+    inv = (STORE.get(case_id) or {}).get("investigation")
+    if not isinstance(inv, dict):
+        return
+    trace = inv.setdefault("trace", {"spans": []})
+    trace.setdefault("spans", []).append(span)
+    trace["total_ms"] = round(sum(float(s.get("ms", 0)) for s in trace["spans"]), 1)
+    STORE.set_stage(case_id, "investigation", inv)
+
+
+def _err_text(e: BaseException) -> str:
+    return f"{type(e).__name__}: {e}"[:500]
+
+
+def _run_decision(case_id: str) -> None:
+    """Steelman and Verdict, then the Action stage, each stored as it lands. Never raises."""
+    import time
+
+    from policyqa.letter import empty_letter
+    from policyqa.verdict import empty_verdict
+
+    c = STORE.get(case_id)
+    inv = c["investigation"]
+    agent = verdicter()
+    model = getattr(agent, "model", "?")
+    STORE.set_stage(case_id, "verdict", empty_verdict(model), "deciding")
+    t = time.perf_counter()
+    try:
+        verdict = agent.decide(c, inv)
+    except Exception as e:  # noqa: BLE001 - the stage records the failure; the investigation is kept
+        _add_span(case_id, {"name": "steelman_verdict", "ms": round((time.perf_counter() - t) * 1000, 1), "model": model, "error": _err_text(e)})
+        STORE.set_stage(case_id, "verdict", empty_verdict(model, "failed", _err_text(e)), "failed")
+        return
+    _add_span(case_id, {
+        "name": "steelman_verdict", "ms": round((time.perf_counter() - t) * 1000, 1), "model": verdict.get("model"),
+        "outcome": verdict.get("outcome"), "proposed_outcome": verdict.get("proposed_outcome"),
+        "rule_citations": len((verdict.get("rule") or {}).get("citations") or []),
+        "steelman_citations": len((verdict.get("steelman") or {}).get("citations") or []),
+        "input_tokens": verdict.get("input_tokens"), "output_tokens": verdict.get("output_tokens"),
+        "reasoning_tokens": verdict.get("reasoning_tokens"), "cost_usd": verdict.get("cost_usd"), "error": verdict.get("error"),
+    })
+    STORE.set_stage(case_id, "verdict", verdict, "decided")
+
+    agent = letterer()
+    model = getattr(agent, "model", "?")
+    STORE.set_stage(case_id, "letter", empty_letter(model), "drafting")
+    t = time.perf_counter()
+    try:
+        letter = agent.draft(STORE.get(case_id), inv, verdict)
+    except Exception as e:  # noqa: BLE001
+        _add_span(case_id, {"name": "letter", "ms": round((time.perf_counter() - t) * 1000, 1), "model": model, "error": _err_text(e)})
+        STORE.set_stage(case_id, "letter", empty_letter(model, "failed", _err_text(e)), "failed")
+        return
+    _add_span(case_id, {
+        "name": "letter", "ms": round((time.perf_counter() - t) * 1000, 1), "model": letter.get("model"),
+        "applicable": letter.get("applicable"), **(letter.get("verification") or {}),
+        "input_tokens": letter.get("input_tokens"), "output_tokens": letter.get("output_tokens"),
+        "reasoning_tokens": letter.get("reasoning_tokens"), "cost_usd": letter.get("cost_usd"), "error": letter.get("error"),
+    })
+    STORE.set_stage(case_id, "letter", letter, "drafted")
 
 
 @app.post("/case/{case_id}/investigate", status_code=202)
@@ -308,3 +413,16 @@ def case_investigate(case_id: str):
         INVESTIGATION_THREADS[case_id] = t
         t.start()
     return {"case_id": case_id, "status": "investigating"}
+
+
+@app.get("/case/{case_id}/letter.txt")
+def case_letter_txt(case_id: str):
+    from policyqa.letter import letter_text
+
+    c = _load_case(case_id)
+    letter = c.get("letter")
+    if not isinstance(letter, dict) or letter.get("status") != "done":
+        raise _err(404, "not_ready", f"The appeal letter for case {case_id} is not drafted yet.")
+    if not letter.get("applicable"):
+        raise _err(409, "not_applicable", "The denial matches the policy, so there is no appeal letter. Read the explanation instead.")
+    return PlainTextResponse(letter_text(letter), headers={"Content-Disposition": f'inline; filename="recourse-appeal-{case_id}.txt"'})
