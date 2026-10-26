@@ -21,3 +21,6 @@ review/export/
 # Claude Code project settings and skills (Impeccable is installed globally on the developer machine)
 .claude/
 *.egg-info/
+
+# Impeccable live-mode inject journal (regenerated on every run)
+.impeccable/live/inject-journal.json
