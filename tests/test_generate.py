@@ -114,3 +114,55 @@ def test_partial_answer_opening_with_not_covered_is_not_an_abstention():
     data = {"answer": "Not covered by the corpus.", "abstain": False, "citations": []}
     answer, abstained, kept, proposed, dropped, forced = enforce_citations(data, passages)
     assert abstained and not forced
+
+
+def _transport_with(responses):
+    import httpx
+
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        body = responses[min(len(calls) - 1, len(responses) - 1)]
+        if isinstance(body, tuple):
+            return httpx.Response(body[0], json=body[1])
+        return httpx.Response(200, json=body)
+
+    return httpx.MockTransport(handler), calls
+
+
+def _ok(content="{\"answer\": \"x\"}", finish="stop", reasoning=5):
+    return {"choices": [{"finish_reason": finish, "message": {"content": content}}], "usage": {"prompt_tokens": 10, "completion_tokens": 20, "completion_tokens_details": {"reasoning_tokens": reasoning}}}
+
+
+def test_truncated_response_raises_a_clear_error():
+    import pytest
+    from policyqa.generate import Provider, TruncatedResponse
+
+    transport, calls = _transport_with([_ok(content="", finish="length", reasoning=2000)])
+    p = Provider(base_url="http://x", api_key="k", model="m", transport=transport)
+    with pytest.raises(TruncatedResponse) as e:
+        p.complete("s", "u", max_tokens=2000)
+    assert "max_tokens=2000" in str(e.value) and "2000 reasoning" in str(e.value)
+    with pytest.raises(TruncatedResponse):
+        p.complete_parts("s", [{"type": "text", "text": "u"}], max_tokens=2000)
+
+
+def test_reasoning_effort_sent_when_set_and_dropped_on_400():
+    import json
+    from policyqa.generate import Provider
+
+    transport, calls = _transport_with([_ok()])
+    p = Provider(base_url="http://x", api_key="k", model="m", transport=transport, reasoning_effort="low")
+    p.complete_parts("s", [{"type": "text", "text": "u"}], max_tokens=100)
+    assert json.loads(calls[0].content)["reasoning_effort"] == "low"
+
+    transport, calls = _transport_with([(400, {"error": "unknown parameter reasoning_effort"}), _ok()])
+    p = Provider(base_url="http://x", api_key="k", model="m", transport=transport, reasoning_effort="low")
+    text, _, _ = p.complete("s", "u", max_tokens=100)
+    assert len(calls) == 2 and "reasoning_effort" not in json.loads(calls[1].content) and text
+
+    transport, calls = _transport_with([_ok()])
+    p = Provider(base_url="http://x", api_key="k", model="m", transport=transport)
+    p.complete("s", "u", max_tokens=100)
+    assert "reasoning_effort" not in json.loads(calls[0].content)

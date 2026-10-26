@@ -214,10 +214,19 @@ def enforce_citations(data: dict, passages: list[dict]) -> tuple[str, bool, list
     return r.answer, r.abstained, r.kept, r.proposed, r.dropped, r.forced_abstain
 
 
-class Provider:
-    """OpenAI-compatible chat completions client over plain HTTP."""
+class TruncatedResponse(RuntimeError):
+    """The model hit max_tokens before finishing. On a reasoning model the thinking can
+    consume the whole budget and leave the content empty or cut off mid-JSON."""
 
-    def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None, timeout: float = 120.0, transport=None):
+
+class Provider:
+    """OpenAI-compatible chat completions client over plain HTTP.
+
+    POLICYQA_LLM_REASONING_EFFORT (for example "low") is sent as `reasoning_effort` when
+    set; an endpoint that rejects it with a 400 gets the same request without it.
+    """
+
+    def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None, timeout: float = 120.0, transport=None, reasoning_effort: str | None = None):
         self.base_url = (base_url or os.environ.get("POLICYQA_LLM_BASE_URL", "")).rstrip("/")
         self.api_key = api_key or os.environ.get("POLICYQA_LLM_API_KEY", "")
         self.model = model or os.environ.get("POLICYQA_LLM_MODEL", "")
@@ -226,6 +235,7 @@ class Provider:
         self.timeout = timeout
         self.transport = transport  # an httpx transport, for tests (httpx.MockTransport); None means the network
         self._local = threading.local()
+        self.reasoning_effort = reasoning_effort if reasoning_effort is not None else (os.environ.get("POLICYQA_LLM_REASONING_EFFORT") or None)
         if not (self.base_url and self.model):
             raise RuntimeError("Set POLICYQA_LLM_BASE_URL and POLICYQA_LLM_MODEL (and POLICYQA_LLM_API_KEY) to call a model.")
 
@@ -249,13 +259,19 @@ class Provider:
             "response_format": {"type": "json_object"},
         }
         headers = self._headers()
+        if self.reasoning_effort:
+            body["reasoning_effort"] = self.reasoning_effort
         with httpx.Client(timeout=self.timeout, transport=self.transport) as client:
             r = client.post(f"{self.base_url}/chat/completions", json=body, headers=headers)
+            if r.status_code == 400 and "reasoning" in r.text and "reasoning_effort" in body:
+                body.pop("reasoning_effort")
+                r = client.post(f"{self.base_url}/chat/completions", json=body, headers=headers)
             if r.status_code == 400 and "response_format" in r.text:
                 body.pop("response_format")
                 r = client.post(f"{self.base_url}/chat/completions", json=body, headers=headers)
             r.raise_for_status()
         self.last_response = r.json()
+        self._check_truncation(self.last_response, max_tokens)
         return self._unpack(self.last_response)
 
     def complete_parts(self, system: str, parts: list[dict], schema: dict | None = None, max_tokens: int = 1500) -> tuple[str, int, int]:
@@ -282,19 +298,33 @@ class Provider:
         if schema is not None:
             ladder = [{"type": "json_schema", "json_schema": {"name": "case_card", "schema": schema, "strict": True}}, {"type": "json_object"}, None]
         headers = self._headers()
+        if self.reasoning_effort:
+            body["reasoning_effort"] = self.reasoning_effort
         with httpx.Client(timeout=self.timeout, transport=self.transport) as client:
             for i, rf in enumerate(ladder):
                 body.pop("response_format", None)
                 if rf is not None:
                     body["response_format"] = rf
                 r = client.post(f"{self.base_url}/chat/completions", json=body, headers=headers)
+                if r.status_code == 400 and "reasoning" in r.text and "reasoning_effort" in body:
+                    body.pop("reasoning_effort")
+                    r = client.post(f"{self.base_url}/chat/completions", json=body, headers=headers)
                 last = i == len(ladder) - 1
                 if r.status_code == 400 and rf is not None and not last and "response_format" in r.text:
                     continue
                 break
             r.raise_for_status()
         self.last_response = r.json()
+        self._check_truncation(self.last_response, max_tokens)
         return self._unpack(self.last_response)
+
+    @staticmethod
+    def _check_truncation(j: dict, max_tokens: int) -> None:
+        choice = (j.get("choices") or [{}])[0]
+        if choice.get("finish_reason") == "length":
+            usage = j.get("usage") or {}
+            reasoning = (usage.get("completion_tokens_details") or {}).get("reasoning_tokens", 0)
+            raise TruncatedResponse(f"model hit the token budget (max_tokens={max_tokens}) before finishing; {usage.get('completion_tokens', 0)} completion tokens of which {reasoning} reasoning")
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}

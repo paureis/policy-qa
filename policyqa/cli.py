@@ -24,8 +24,9 @@ ROOT = Path(__file__).resolve().parent.parent
 SMOKE_ENV = ("POLICYQA_LLM_BASE_URL", "POLICYQA_LLM_MODEL", "POLICYQA_LLM_API_KEY")
 
 
-def smoke(provider=None, raw: bool = False) -> int:
-    """Run the moment the model key exists. Returns the exit code. `raw` prints the full response JSON."""
+def smoke(provider=None, raw: bool = False, effort: str | None = None) -> int:
+    """Run the moment the model key exists. Returns the exit code. `raw` prints the full response JSON;
+    `effort` sends reasoning_effort for this one request (to see whether the endpoint accepts it)."""
     if provider is None:
         missing = [k for k in SMOKE_ENV if not os.environ.get(k)]
         if missing:
@@ -33,7 +34,7 @@ def smoke(provider=None, raw: bool = False) -> int:
             return 1
         from .generate import Provider
 
-        provider = Provider()
+        provider = Provider(reasoning_effort=effort)
     t = time.perf_counter()
     try:
         text, n_in, n_out = provider.complete_parts("You are a connectivity check.", [{"type": "text", "text": "Reply with the single word: ready"}], max_tokens=200)
@@ -45,6 +46,9 @@ def smoke(provider=None, raw: bool = False) -> int:
     print(f"latency: {ms:.0f} ms")
     print(f"tokens:  {n_in} in / {n_out} out")
     print(f"cost:    ${provider.cost(n_in, n_out)}")
+    details = ((getattr(provider, "last_response", None) or {}).get("usage") or {}).get("completion_tokens_details") or {}
+    if details.get("reasoning_tokens") is not None:
+        print(f"reasoning tokens: {details.get('reasoning_tokens')}" + (f" (reasoning_effort={provider.reasoning_effort})" if getattr(provider, "reasoning_effort", None) else ""))
     print(f"reply:   {text.strip()}")
     if not text.strip():
         print("note:    empty content; a reasoning model may have spent the tokens on thinking. Run with --raw to see the full response.")
@@ -133,11 +137,12 @@ def main(argv=None):
 
     sm = sub.add_parser("smoke", help="one tiny request through POLICYQA_LLM_*; exits 1 when unset or failing")
     sm.add_argument("--raw", action="store_true", help="print the full response JSON")
+    sm.add_argument("--effort", default=None, help="send reasoning_effort (low, medium, high) for this request")
 
     args = ap.parse_args(argv)
 
     if args.cmd == "smoke":
-        sys.exit(smoke(raw=args.raw))
+        sys.exit(smoke(raw=args.raw, effort=args.effort))
 
     if args.cmd == "ingest":
         from .ingest import ingest
