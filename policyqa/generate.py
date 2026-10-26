@@ -11,6 +11,16 @@ Citations that fail are dropped. An answer left with no valid citation is
 converted into an abstention, because an uncited claim about coverage is
 exactly the failure this system exists to prevent.
 
+When the passages settle only part of a question, the model answers that part
+with citations and ends with one sentence on what the passages do not state; it
+abstains only when no passage bears on the question (SYSTEM_PROMPT rule 3). A
+partial answer is enforced like any other: no surviving citation, no answer.
+
+`answer_question(..., context=...)` puts one case sentence above the passages
+(the investigation names the program there); the shared SYSTEM_PROMPT is unchanged
+by it. `Provider.last_response` is kept per thread, because the investigation runs
+several answers at once on one Provider and reads each reply's usage afterwards.
+
 The generation model is Muse Spark 1.3 on the Meta Model API (OpenAI chat
 completions protocol; text, image, and PDF input; JSON schema output). Any other
 OpenAI-compatible endpoint (Modal, Baseten, Fireworks) works the same way. The
@@ -26,6 +36,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import threading
 import time
 from dataclasses import dataclass, field, asdict
 
@@ -40,7 +51,7 @@ SYSTEM_PROMPT = """You answer questions about healthcare coverage and policy usi
 Rules:
 1. Use only the passages. Do not use outside knowledge, even if you are sure of it.
 2. Every factual claim in your answer must be supported by a passage you cite. Cite by passage tag ([P1], [P2], ...) and copy a short verbatim quote (one to three sentences) from that passage that supports the claim.
-3. If the passages do not answer the question, set "abstain" to true and make the answer exactly: "Not covered by the corpus." Do not guess. Do not answer a nearby question instead.
+3. If the passages settle part of the question, answer that part with citations and end with one sentence saying what the passages do not state. Set "abstain" to true, and make the answer exactly "Not covered by the corpus.", only when no passage bears on the question. Do not guess. Do not answer a nearby question instead.
 4. Keep the answer to one to three plain sentences a patient or billing clerk could act on. Include numbers, limits, and conditions exactly as the passages state them.
 5. When two passages from different jurisdictions (for example Florida Medicaid and Medicare) both apply, answer for each and cite both.
 
@@ -102,11 +113,13 @@ def format_passages(hits: list[Hit]) -> list[dict]:
     return out
 
 
-def build_user_message(question: str, passages: list[dict]) -> str:
+def build_user_message(question: str, passages: list[dict], context: str | None = None) -> str:
+    """Passages tagged [P1], [P2], ... then the question. `context`, when given, is a case sentence placed first."""
     parts = []
     for p in passages:
         parts.append(f"[{p['tag']}] {p['title']} ({p['jurisdiction']}), page {p['page']}\n{p['text']}")
-    return "Passages:\n\n" + "\n\n".join(parts) + f"\n\nQuestion: {question}"
+    head = f"{context.strip()}\n\n" if context and context.strip() else ""
+    return head + "Passages:\n\n" + "\n\n".join(parts) + f"\n\nQuestion: {question}"
 
 
 _JSON_BLOCK = re.compile(r"\{.*\}", re.S)
@@ -180,7 +193,9 @@ def enforce_citations_detailed(data: dict, passages: list[dict]) -> Enforcement:
         else:
             struck.append({"doc_id": p["doc_id"], "title": p.get("title"), "page": p["page"], "quote": quote, "reason": STRUCK_NOT_FOUND})
     original = str(data.get("answer", "")).strip()
-    abstained = bool(data.get("abstain")) or original.lower().startswith("not covered")
+    # An abstention is the flag or the exact abstain sentence. A partial answer that opens
+    # with "Not covered for adults; ..." is an answer, not an abstention.
+    abstained = bool(data.get("abstain")) or original.rstrip(".").lower() == ABSTAIN_TEXT.rstrip(".").lower()
     answer = original
     forced = False
     if abstained:
@@ -210,8 +225,18 @@ class Provider:
         self.out_price = float(os.environ.get("POLICYQA_LLM_OUTPUT_USD_PER_M", "0") or 0)
         self.timeout = timeout
         self.transport = transport  # an httpx transport, for tests (httpx.MockTransport); None means the network
+        self._local = threading.local()
         if not (self.base_url and self.model):
             raise RuntimeError("Set POLICYQA_LLM_BASE_URL and POLICYQA_LLM_MODEL (and POLICYQA_LLM_API_KEY) to call a model.")
+
+    @property
+    def last_response(self) -> dict | None:
+        """The raw JSON of this thread's last reply (None before the first call on this thread)."""
+        return getattr(self._local, "last_response", None)
+
+    @last_response.setter
+    def last_response(self, value: dict | None) -> None:
+        self._local.last_response = value
 
     def complete(self, system: str, user: str, max_tokens: int = 2000) -> tuple[str, int, int]:
         import httpx
@@ -307,11 +332,11 @@ class MockProvider:
         return 0.0
 
 
-def answer_question(question: str, hits: list[Hit], provider, max_tokens: int = 2000, trace=None) -> Answer:
+def answer_question(question: str, hits: list[Hit], provider, max_tokens: int = 2000, trace=None, context: str | None = None) -> Answer:
     from contextlib import nullcontext
 
     passages = format_passages(hits)
-    user = build_user_message(question, passages)
+    user = build_user_message(question, passages, context=context)
     t = time.perf_counter()
     raw, n_in, n_out = "", 0, 0
     error = None

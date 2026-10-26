@@ -48,7 +48,7 @@ export function CaseHeader({ record, today }: { record: CaseRecord; today: Date 
       <button
         type="button"
         aria-expanded={open}
-        aria-controls={fullId}
+        aria-controls={open ? fullId : undefined}
         onClick={() => setOpen((o) => !o)}
         className="mt-3 inline-flex min-h-11 items-center rounded-sm px-1 text-[16px] font-semibold text-ink underline underline-offset-4"
       >

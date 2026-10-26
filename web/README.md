@@ -44,22 +44,24 @@ After `investigate`, `GET /case/{case_id}` carries `status` (`intake`, `investig
   "findings": [{
     "id": "f1", "question": "...", "topic": "coverage | limits | conditions | exclusions | appeal | reason | other",
     "jurisdiction": "Florida | Federal",
-    "status": "supported | not_settled | unsupported",
+    "status": "supported | not_settled | unsupported | error",
     "answer": "...",
+    "error": "set only when status is error: what went wrong with the model call",
     "citations": [{"doc_id": "fl-04", "title": "...", "page": 3, "quote": "...", "overlap": 0.93}],
     "struck":    [{"doc_id": "fl-04", "title": "...", "page": 4, "quote": "...", "reason": "quote not found on the cited page"}],
+    "passages":  [{"chunk_id": "...", "doc_id": "fl-04", "title": "...", "page": 3}],
     "model": "muse-spark-1.3", "input_tokens": 0, "output_tokens": 0, "reasoning_tokens": 0, "latency_ms": 0, "cost_usd": 0
   }],
-  "coverage": {"claims": 4, "supported": 3},
+  "coverage": {"claims": 4, "supported": 3, "errors": 0},
   "cost_usd": 0, "latency_ms": 0, "model": "muse-spark-1.3", "error": null,
   "trace": {"trace_id": "...", "spans": [{"name": "question", "ms": 812}]},
   "plan": {"source": "model | template | fixture", "...": "tokens, latency, cost"}
 }
 ```
 
-How a finding gets its status: the agent routes the case (Florida, Federal, or both for a likely dual-eligible member), plans 4 to 7 questions on Muse Spark (template fallback; always one appeal and one reason question; treatment questions dropped), retrieves 5 chunks per question within the routed jurisdiction, and answers with enforced citations. `supported` means at least one quote was found verbatim on the cited page; `unsupported` means the model answered but no quote survived, so the answer is kept and shown struck out with each dropped quote and its reason; `not_settled` means the model abstained, which is a correct outcome. `coverage` is supported findings over findings that made a claim.
+How a finding gets its status: the agent routes the case (Florida, Federal, or both for a likely dual-eligible member), plans 4 to 7 questions on Muse Spark (template fallback; always one appeal and one reason question; treatment questions dropped), retrieves 5 chunks per question within the routed jurisdiction, and answers with enforced citations. `supported` means at least one quote was found verbatim on the cited page; `unsupported` means the model answered but no quote survived, so the answer is kept and shown struck out with each dropped quote and its reason; `not_settled` means the model abstained, which is a correct outcome; `error` means the model call failed, so the question was not investigated (`citations` and `struck` empty, `answer` empty, `error` set), counted in `coverage.errors` and never as an abstention. `struck` reasons are exactly `quote not found on the cited page`, `cited a passage that was not shown` (doc_id, title, and page are null), and `quote too short to verify`, and any finding may carry them, supported ones included. `route.reason` is one full sentence. `coverage` is supported findings over findings that made a claim.
 
-The screen at `/case/{case_id}` (`src/app/case/[id]`, pieces in `src/components/investigation/`, brief in `web/investigation-brief.md`) polls every 1.5 s while running, shows findings as they land, strikes unsupported ones with "Could not verify", and ends with the Trust panel: verification coverage as a count, cost, time, model, trace. Intake navigates there after Confirm. Fixture ids in fixture mode: `c_sample1`, `c_dual1`, `c_fail1`.
+The screen at `/case/{case_id}` (`src/app/case/[id]`, pieces in `src/components/investigation/`, brief in `web/investigation-brief.md`) polls every 1.5 s while running, shows findings as they land, strikes unsupported ones with "Could not verify", and ends with the Trust panel: verification coverage as a count, cost, time, model, trace. Intake navigates there after Confirm. Fixture ids in fixture mode: `c_sample1`, `c_dual1`, `c_fail1`, `c_error1` (one question whose model call failed). The fixture reports model `fixture`, cost 0, and quotes marked `[synthetic fixture quote, not from the document]`, attributed to real manifest rows (fl-04, fl-21, fed-02, fed-17).
 
 Errors come back as `{"detail": {"code", "message"}}`. Intake codes (422): `unsupported_type`, `too_large`, `text_length`, `unreadable`, `not_a_denial_letter`, `out_of_scope`; 400 `bad_request` for both or neither of file and text. Case codes: 404 `not_found`, 409 `wrong_status` (the card is editable only during intake), 422 `invalid_field` (with `field`). The screen shows the six intake codes with their own copy, any other 4xx message under "The service could not accept that", and a network failure or 5xx as "We could not reach the service".
 

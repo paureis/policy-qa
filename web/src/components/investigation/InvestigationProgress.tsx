@@ -1,4 +1,4 @@
-import type { Investigation } from "@/lib/case";
+import { countErrors, type Investigation } from "@/lib/case";
 
 /*
   One stepped line: "Question 3 of 6". It is a polite live region, so a
@@ -12,7 +12,13 @@ export function InvestigationProgress({ investigation }: { investigation: Invest
   let line: string;
   if (investigation === null || planned === 0) line = "Planning the questions…";
   else if (running) line = `Question ${Math.min(done + 1, planned)} of ${planned}…`;
-  else if (investigation.status === "done") line = `${planned} ${planned === 1 ? "question" : "questions"} answered.`;
+  else if (investigation.status === "done") {
+    // A question whose model call failed was not investigated; it is never counted as answered.
+    const errors = countErrors(investigation);
+    const investigated = Math.max(0, done - errors);
+    const lead = `${investigated} ${investigated === 1 ? "question" : "questions"} investigated`;
+    line = errors > 0 ? `${lead}, ${errors} could not be completed.` : `${lead}.`;
+  }
   else line = `Stopped after question ${done} of ${planned}.`;
 
   return (

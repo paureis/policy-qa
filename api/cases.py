@@ -7,8 +7,10 @@ Statuses: intake -> investigating -> investigated | failed (-> verdict -> letter
 `route` and `investigation` are null until the investigation starts; see policyqa/investigate.py
 for their shapes.
 
-The interface (create, get, patch, set_status, set_investigation) is small on purpose
-so a file-backed or SQLite store can replace it without touching the routes.
+The interface (create, get, patch, set_status, claim_for_investigation, set_investigation)
+is small on purpose so a file-backed or SQLite store can replace it without touching the
+routes. claim_for_investigation is the one compare-and-set: it checks that the case is in
+intake and moves it to investigating under the lock, so two posts cannot both start it.
 """
 from __future__ import annotations
 
@@ -63,6 +65,15 @@ class CaseStore:
                 return None
             c["status"] = status
             return dict(c)
+
+    def claim_for_investigation(self, case_id: str) -> bool:
+        """Move an `intake` case to `investigating` atomically. False when the case is missing or already past intake."""
+        with self._lock:
+            c = self._cases.get(case_id)
+            if c is None or c["status"] != "intake":
+                return False
+            c["status"] = "investigating"
+            return True
 
     def set_investigation(self, case_id: str, route: dict | None, investigation: dict | None, status: str) -> dict | None:
         """Store a snapshot of the route and the investigation (copied, so the running thread's dict can keep changing) and the case status."""

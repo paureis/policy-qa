@@ -53,3 +53,64 @@ def test_unpack_accepts_content_as_parts():
     assert Provider._unpack(j) == ("ready!", 3, 2)
     j = {"choices": [{"message": {"content": None, "reasoning_content": "thinking"}}], "usage": {}}
     assert Provider._unpack(j) == ("", 0, 0)
+
+
+def test_system_prompt_allows_partial_answers_and_keeps_rules_and_shape():
+    from policyqa.generate import SYSTEM_PROMPT
+
+    assert "If the passages settle part of the question, answer that part with citations" in SYSTEM_PROMPT
+    assert "end with one sentence saying what the passages do not state" in SYSTEM_PROMPT
+    assert "only when no passage bears on the question" in SYSTEM_PROMPT
+    assert "Every factual claim in your answer must be supported by a passage you cite" in SYSTEM_PROMPT
+    assert '{"answer": "...", "abstain": false, "citations": [{"passage": "P1", "quote": "..."}]}' in SYSTEM_PROMPT
+
+
+def test_build_user_message_puts_case_context_first():
+    from policyqa.generate import build_user_message
+
+    msg = build_user_message("Is it covered?", [{**PASSAGES[0], "tag": "P1"}], context="The case is under Florida Medicaid (MMA).")
+    assert msg.startswith("The case is under Florida Medicaid (MMA).\n\nPassages:")
+    assert msg.endswith("Question: Is it covered?")
+    assert build_user_message("Q?", [{**PASSAGES[0], "tag": "P1"}]).startswith("Passages:")
+
+
+def test_provider_last_response_is_per_thread():
+    """Parallel answers share one Provider; each thread must read its own reply's usage."""
+    import threading
+
+    import httpx
+
+    from policyqa.generate import Provider, reasoning_tokens
+
+    def handler(request):
+        n = 11 if b"first" in request.content else 22
+        return httpx.Response(200, json={"choices": [{"message": {"content": "{}"}}], "usage": {"prompt_tokens": 1, "completion_tokens": 1, "completion_tokens_details": {"reasoning_tokens": n}}})
+
+    p = Provider(base_url="http://x/v1", api_key="k", model="m", transport=httpx.MockTransport(handler))
+    p.complete("s", "first")
+    seen = {}
+
+    def other():
+        seen["before"] = getattr(p, "last_response", None)
+        p.complete("s", "second")
+        seen["after"] = reasoning_tokens(p)
+
+    t = threading.Thread(target=other)
+    t.start()
+    t.join()
+    assert seen == {"before": None, "after": 22}
+    assert reasoning_tokens(p) == 11
+
+
+def test_partial_answer_opening_with_not_covered_is_not_an_abstention():
+    from policyqa.generate import enforce_citations, format_passages
+    from policyqa.retrieve import Hit
+
+    text = "Florida Medicaid covers private duty nursing for recipients under 21 years of age when medically necessary. Adults are not covered."
+    passages = format_passages([Hit({"chunk_id": "c1", "doc_id": "fl-04", "page": 3, "title": "PDN policy", "jurisdiction": "Florida", "text": text}, 1.0, "bm25")])
+    data = {"answer": "Not covered for adults; covered for recipients under 21 when medically necessary.", "abstain": False, "citations": [{"passage": "P1", "quote": "covers private duty nursing for recipients under 21 years of age when medically necessary"}]}
+    answer, abstained, kept, proposed, dropped, forced = enforce_citations(data, passages)
+    assert not abstained and len(kept) == 1 and answer.startswith("Not covered for adults")
+    data = {"answer": "Not covered by the corpus.", "abstain": False, "citations": []}
+    answer, abstained, kept, proposed, dropped, forced = enforce_citations(data, passages)
+    assert abstained and not forced

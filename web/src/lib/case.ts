@@ -526,29 +526,40 @@ export type Jurisdiction = "Florida" | "Federal";
 export const JURISDICTIONS: readonly Jurisdiction[] = ["Florida", "Federal"];
 
 export type FindingTopic = "coverage" | "limits" | "conditions" | "exclusions" | "appeal" | "reason" | "other";
-export type FindingStatus = "supported" | "not_settled" | "unsupported";
+/* "error" means the model call failed: nothing was investigated, which is not an abstention. */
+export type FindingStatus = "supported" | "not_settled" | "unsupported" | "error";
 
 export interface Route {
   program: string;
   jurisdictions: Jurisdiction[];
   dual: boolean;
+  /* One full sentence from the API, ending with a period. */
   reason: string;
 }
 
 export interface Citation {
   doc_id: string;
-  title: string;
+  title: string | null;
   page: number;
   quote: string;
   overlap: number;
 }
 
+/* A citation the verifier dropped. A quote from a passage that was not shown has no document, title, or page. */
 export interface StruckCitation {
-  doc_id: string;
-  title: string;
-  page: number;
+  doc_id: string | null;
+  title: string | null;
+  page: number | null;
   quote: string;
   reason: string;
+}
+
+/* A passage retrieved and shown to the model for one question. */
+export interface PassageShown {
+  chunk_id: string;
+  doc_id: string;
+  title: string | null;
+  page: number;
 }
 
 export interface Finding {
@@ -560,6 +571,9 @@ export interface Finding {
   answer: string;
   citations: Citation[];
   struck: StruckCitation[];
+  /* Set when status is "error": what went wrong with the model call. */
+  error?: string | null;
+  passages?: PassageShown[];
   model: string;
   input_tokens: number;
   output_tokens: number;
@@ -582,7 +596,7 @@ export interface Investigation {
   questions_planned: number;
   questions_done: number;
   findings: Finding[];
-  coverage: { claims: number; supported: number };
+  coverage: { claims: number; supported: number; errors?: number };
   cost_usd: number;
   latency_ms: number;
   model: string;
@@ -613,28 +627,114 @@ export const TOPIC_LABELS: Record<FindingTopic, string> = {
   other: "Other",
 };
 
+/* Program names for the route line. */
 export const JURISDICTION_LABELS: Record<Jurisdiction, string> = {
   Florida: "Florida Medicaid",
   Federal: "Medicare",
 };
 
+/* Group headings on a dual case: the federal corpus holds more than Medicare. */
+export const JURISDICTION_HEADINGS: Record<Jurisdiction, string> = {
+  Florida: "Florida Medicaid",
+  Federal: "Medicare and federal rules",
+};
+
 export const NOT_SETTLED_LABEL = "The documents do not settle this";
 export const COULD_NOT_VERIFY_LABEL = "Could not verify";
+export const COULD_NOT_INVESTIGATE_LABEL = "Could not investigate this question";
 
-/* The route in plain words. */
+/* The verifier's three reasons, exactly as the API sends them. */
+export const STRUCK_NOT_FOUND = "quote not found on the cited page";
+export const STRUCK_NOT_SHOWN = "cited a passage that was not shown";
+export const STRUCK_TOO_SHORT = "quote too short to verify";
+
+/* The model name the fixture reports, so no screen mistakes it for a real run. */
+export const FIXTURE_MODEL = "fixture";
+
+const LEGACY_ERROR_PREFIX = "Could not investigate";
+
+/*
+  The status the screen renders. Older API builds sent a failed model call as
+  not_settled with an answer starting "Could not investigate"; that is an
+  error, never an abstention.
+*/
+export function findingStatus(finding: Finding): FindingStatus {
+  if (finding.status === "error") return "error";
+  if (finding.status === "not_settled" && finding.answer.trim().startsWith(LEGACY_ERROR_PREFIX)) return "error";
+  return finding.status;
+}
+
+/* What went wrong with an error finding, in the API's words. Empty when it gave none. */
+export function findingError(finding: Finding): string {
+  const direct = finding.error?.trim();
+  if (direct) return direct;
+  const answer = finding.answer.trim();
+  if (!answer.startsWith(LEGACY_ERROR_PREFIX)) return "";
+  const colon = answer.indexOf(":");
+  return colon >= 0 ? answer.slice(colon + 1).trim() : "";
+}
+
+/* Questions whose model call failed. The API's count wins; the findings are the fallback. */
+export function countErrors(investigation: Investigation): number {
+  const sent = investigation.coverage?.errors;
+  if (typeof sent === "number" && Number.isFinite(sent)) return sent;
+  return investigation.findings.filter((f) => findingStatus(f) === "error").length;
+}
+
+/* "Claimed from {title}, page {n}", never with an empty title or page. */
+export function struckSource(s: StruckCitation): string {
+  const title = s.title?.trim() || s.doc_id?.trim() || "";
+  const page = typeof s.page === "number" ? s.page : null;
+  if (title && page !== null) return `Claimed from ${title}, page ${page}.`;
+  if (title) return `Claimed from ${title}.`;
+  if (page !== null) return `Claimed from page ${page} of a document that was not named.`;
+  return "Claimed from a passage that was not shown.";
+}
+
+/* Why an unsupported finding is struck out, in words that fit the verifier's reasons. */
+export function unsupportedExplanation(struck: StruckCitation[]): string {
+  const tail = "so the answer is struck out and not used.";
+  if (struck.length === 0) return `The model answered but gave no citation, ${tail}`;
+  const reasons = new Set(struck.map((s) => s.reason.trim()));
+  if (reasons.size === 1 && reasons.has(STRUCK_NOT_SHOWN)) {
+    return `The model answered, but it cited passages it was not given, ${tail}`;
+  }
+  if (reasons.size === 1 && reasons.has(STRUCK_NOT_FOUND)) {
+    return `The model answered, but the verifier could not find its quote on the cited page, ${tail}`;
+  }
+  if (reasons.size === 1 && reasons.has(STRUCK_TOO_SHORT)) {
+    return `The model answered, but its quotes were too short to check against the page, ${tail}`;
+  }
+  return `The model answered, but none of its quotes could be checked on the cited page, ${tail}`;
+}
+
+/* A reason as one sentence: capital first letter, exactly one period. */
+function asSentence(text: string): string {
+  const t = text.trim().replace(/[.\s]+$/, "");
+  if (!t) return "";
+  return `${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
+}
+
+/* The route in plain words, then the API's reason as its own sentence. */
 export function routeLine(route: Route): string {
+  let lead: string;
   if (route.dual) {
     const names = route.jurisdictions.map((j) => JURISDICTION_LABELS[j]);
     const pair = names.length >= 2 ? `${names[0]} and ${names[1]}` : (names[0] ?? "two programs");
-    const why = route.reason.trim().replace(/\.$/, "");
-    return `Investigating under ${pair}, side by side${why ? `, because ${why}` : ""}.`;
+    lead = `Investigating under ${pair}, side by side.`;
+  } else {
+    const known = route.program !== "unknown" ? PROGRAM_LABELS[route.program as Program] : undefined;
+    const label = known ?? (route.jurisdictions[0] ? JURISDICTION_LABELS[route.jurisdictions[0]] : route.program);
+    lead = `Investigating under ${label}.`;
   }
-  const label = PROGRAM_LABELS[route.program as Program] ?? route.program;
-  return `Investigating under ${label}.`;
+  const why = asSentence(route.reason ?? "");
+  return why ? `${lead} ${why}` : lead;
 }
 
-export function formatCost(usd: number): string {
-  return `$${usd.toFixed(4)}`;
+/* Dollars to four decimals. A zero from a real model means its prices are not configured, not that it was free. */
+export function formatCost(usd: number, model?: string): string {
+  const base = `$${usd.toFixed(4)}`;
+  return usd === 0 && model !== undefined && model !== FIXTURE_MODEL ? `${base} (prices not set)` : base;
 }
 
 export function formatSeconds(ms: number): string {
@@ -645,200 +745,216 @@ export function formatSeconds(ms: number): string {
 /* ---------- Fixture: the Sunshine Health sample investigated ---------- */
 
 const FIXTURE_REVEAL_MS = 800;
-const FIXTURE_MODEL = "muse-spark-1.3";
 
 /*
-  Synthetic quotes attributed to plausible document titles and pages. They are
-  demonstration text, not the documents' words; live mode shows verified quotes.
+  Synthetic quotes, marked as such the way the API fixture marks them,
+  attributed to real rows of corpus/manifest.csv. They are demonstration
+  text, not the documents' words; live mode shows verified quotes. Cost is
+  zero and latencies are the reveal delay: nothing here is a recorded run.
 */
+const SYNTHETIC = "[synthetic fixture quote, not from the document] ";
+const ABSTAIN_TEXT = "Not covered by the corpus.";
+
+const DOC_PDN = {
+  doc_id: "fl-04",
+  title: "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+};
+const DOC_MMA = {
+  doc_id: "fl-21",
+  title: "SMMC Model Health Plan Contract, Exhibit II-A: Managed Medical Assistance (MMA) Program",
+};
+const DOC_HOME_HEALTH = {
+  doc_id: "fed-02",
+  title: "Medicare Benefit Policy Manual (Pub 100-02), Chapter 7: Home Health Services",
+};
+const DOC_APPEALS = {
+  doc_id: "fed-17",
+  title: "Medicare Parts A & B Appeals Process (MLN006562)",
+};
+
+function cite(doc: { doc_id: string; title: string }, page: number, quote: string, overlap = 1.0): Citation {
+  return { ...doc, page, quote: SYNTHETIC + quote, overlap };
+}
+
+function strike(doc: { doc_id: string; title: string } | null, page: number | null, quote: string, reason: string): StruckCitation {
+  return doc ? { ...doc, page, quote: SYNTHETIC + quote, reason } : { doc_id: null, title: null, page: null, quote: SYNTHETIC + quote, reason };
+}
+
+function shown(id: string, jurisdiction: Jurisdiction): PassageShown[] {
+  const docs = jurisdiction === "Florida" ? [DOC_PDN, DOC_PDN, DOC_PDN, DOC_MMA, DOC_MMA] : [DOC_HOME_HEALTH, DOC_HOME_HEALTH, DOC_HOME_HEALTH, DOC_APPEALS, DOC_APPEALS];
+  const pages = jurisdiction === "Florida" ? [3, 4, 5, 41, 43] : [42, 44, 51, 6, 7];
+  return docs.map((d, i) => ({ chunk_id: `${d.doc_id}:p${pages[i]}:${id}`, doc_id: d.doc_id, title: d.title, page: pages[i] }));
+}
+
+function fixtureFinding(
+  id: string,
+  jurisdiction: Jurisdiction,
+  topic: FindingTopic,
+  question: string,
+  status: FindingStatus,
+  answer: string,
+  citations: Citation[],
+  struck: StruckCitation[],
+  extra: Partial<Finding> = {},
+): Finding {
+  return {
+    id,
+    question,
+    topic,
+    jurisdiction,
+    status,
+    answer,
+    citations,
+    struck,
+    passages: shown(id, jurisdiction),
+    model: FIXTURE_MODEL,
+    input_tokens: 0,
+    output_tokens: 0,
+    reasoning_tokens: 0,
+    latency_ms: FIXTURE_REVEAL_MS,
+    cost_usd: 0,
+    ...extra,
+  };
+}
+
 const FIXTURE_FINDINGS_FLORIDA: Finding[] = [
-  {
-    id: "f_1",
-    question: "Is private duty nursing a covered service for a Florida Medicaid member under 21?",
-    topic: "coverage",
-    jurisdiction: "Florida",
-    status: "supported",
-    answer:
-      "Yes. The policy covers private duty nursing for members under 21 when a physician orders it and the member needs continuous skilled nursing at home.",
-    citations: [
-      {
-        doc_id: "fl_pdn_policy",
-        title: "Florida Medicaid Private Duty Nursing Services Coverage Policy",
-        page: 3,
-        quote:
-          "Florida Medicaid covers private duty nursing services for recipients under the age of 21 who require continuous skilled nursing care in the home, as ordered by the treating physician.",
-        overlap: 1.0,
-      },
+  fixtureFinding(
+    "f_1",
+    "Florida",
+    "coverage",
+    "Is private duty nursing a covered service for a Florida Medicaid member under 21?",
+    "supported",
+    "Yes. The policy covers private duty nursing for members under 21 when a physician orders it and the member needs continuous skilled nursing at home.",
+    [
+      cite(
+        DOC_PDN,
+        3,
+        "Florida Medicaid covers private duty nursing services for recipients under the age of 21 who require continuous skilled nursing care in the home, as ordered by the treating physician.",
+      ),
     ],
-    struck: [],
-    model: FIXTURE_MODEL,
-    input_tokens: 2140,
-    output_tokens: 96,
-    reasoning_tokens: 410,
-    latency_ms: 2380,
-    cost_usd: 0.0021,
-  },
-  {
-    id: "f_2",
-    question: "Does the policy set a limit on the hours of private duty nursing a member can receive each day?",
-    topic: "limits",
-    jurisdiction: "Florida",
-    status: "supported",
-    answer:
-      "The policy does not fix a daily cap. Hours are set by the plan's medical necessity review for each authorization period, and the authorization states the number approved.",
-    citations: [
-      {
-        doc_id: "fl_pdn_policy",
-        title: "Florida Medicaid Private Duty Nursing Services Coverage Policy",
-        page: 5,
-        quote:
-          "The number of hours authorized is determined through the medical necessity review and is stated on the authorization for each authorization period.",
-        overlap: 1.0,
-      },
-      {
-        doc_id: "fl_auth_handbook",
-        title: "Florida Medicaid Authorization Requirements Policy",
-        page: 8,
-        quote: "Services rendered in excess of the authorized amount are subject to the plan's reimbursement limits.",
-        overlap: 0.93,
-      },
+    [],
+  ),
+  fixtureFinding(
+    "f_2",
+    "Florida",
+    "limits",
+    "Does the policy set a limit on the hours of private duty nursing a member can receive each day?",
+    "supported",
+    "The policy does not fix a daily cap. Hours are set by the plan's medical necessity review for each authorization period, and the authorization states the number approved.",
+    [
+      cite(
+        DOC_PDN,
+        5,
+        "The number of hours authorized is determined through the medical necessity review and is stated on the authorization for each authorization period.",
+      ),
+      cite(DOC_MMA, 38, "Services rendered in excess of the authorized amount are subject to the plan's reimbursement limits.", 0.93),
     ],
-    struck: [],
-    model: FIXTURE_MODEL,
-    input_tokens: 2310,
-    output_tokens: 112,
-    reasoning_tokens: 530,
-    latency_ms: 2910,
-    cost_usd: 0.0024,
-  },
-  {
-    id: "f_3",
-    question: "Must the plan tell the member how many hours it authorized before the services start?",
-    topic: "conditions",
-    jurisdiction: "Florida",
-    status: "not_settled",
-    answer: "",
-    citations: [],
-    struck: [],
-    model: FIXTURE_MODEL,
-    input_tokens: 2050,
-    output_tokens: 40,
-    reasoning_tokens: 290,
-    latency_ms: 1760,
-    cost_usd: 0.0016,
-  },
-  {
-    id: "f_4",
-    question: "Can the plan deny hours that exceed the authorization when the physician's order supports the higher amount?",
-    topic: "exclusions",
-    jurisdiction: "Florida",
-    status: "unsupported",
-    answer:
-      "No. The policy states that a physician's order for additional hours overrides the authorized amount for the same period.",
-    citations: [],
-    struck: [
-      {
-        doc_id: "fl_pdn_policy",
-        title: "Florida Medicaid Private Duty Nursing Services Coverage Policy",
-        page: 7,
-        quote: "A physician's order for additional hours overrides the authorized amount for the same period.",
-        reason: "This sentence is not on page 7. The closest text has 31 percent of its words.",
-      },
+    [strike(null, null, "Private duty nursing is limited to 16 hours per day for any recipient.", STRUCK_NOT_SHOWN)],
+  ),
+  fixtureFinding(
+    "f_3",
+    "Florida",
+    "conditions",
+    "Must the plan tell the member how many hours it authorized before the services start?",
+    "not_settled",
+    ABSTAIN_TEXT,
+    [],
+    [],
+  ),
+  fixtureFinding(
+    "f_4",
+    "Florida",
+    "exclusions",
+    "Can the plan deny hours that exceed the authorization when the physician's order supports the higher amount?",
+    "unsupported",
+    "No. The policy states that a physician's order for additional hours overrides the authorized amount for the same period.",
+    [],
+    [strike(DOC_PDN, 7, "A physician's order for additional hours overrides the authorized amount for the same period.", STRUCK_NOT_FOUND)],
+  ),
+  fixtureFinding(
+    "f_5",
+    "Florida",
+    "appeal",
+    "How long does a Florida Medicaid managed care member have to appeal an adverse benefit determination?",
+    "supported",
+    "60 calendar days from the date on the notice, which matches the December 13, 2026 deadline the letter claims. The member may also ask for continued services while the appeal is pending if the request is made within 10 days.",
+    [
+      cite(DOC_MMA, 41, "An enrollee may file an appeal within sixty (60) calendar days from the date on the notice of adverse benefit determination."),
+      cite(
+        DOC_MMA,
+        43,
+        "Benefits shall continue if the enrollee files the appeal within ten (10) days of the date of the notice of adverse benefit determination.",
+        0.97,
+      ),
     ],
-    model: FIXTURE_MODEL,
-    input_tokens: 2270,
-    output_tokens: 88,
-    reasoning_tokens: 470,
-    latency_ms: 2640,
-    cost_usd: 0.0023,
-  },
-  {
-    id: "f_5",
-    question: "How long does a Florida Medicaid managed care member have to appeal an adverse benefit determination?",
-    topic: "appeal",
-    jurisdiction: "Florida",
-    status: "supported",
-    answer:
-      "60 calendar days from the date on the notice, which matches the December 13, 2026 deadline the letter claims. The member may also ask for continued services while the appeal is pending if the request is made within 10 days.",
-    citations: [
-      {
-        doc_id: "fl_smmc_contract_appeals",
-        title: "Statewide Medicaid Managed Care Contract, Grievance and Appeal System",
-        page: 214,
-        quote:
-          "An enrollee may file an appeal within sixty (60) calendar days from the date on the notice of adverse benefit determination.",
-        overlap: 1.0,
-      },
-      {
-        doc_id: "fl_smmc_contract_appeals",
-        title: "Statewide Medicaid Managed Care Contract, Grievance and Appeal System",
-        page: 216,
-        quote:
-          "Benefits shall continue if the enrollee files the appeal within ten (10) days of the date of the notice of adverse benefit determination.",
-        overlap: 0.97,
-      },
-    ],
-    struck: [],
-    model: FIXTURE_MODEL,
-    input_tokens: 2490,
-    output_tokens: 134,
-    reasoning_tokens: 580,
-    latency_ms: 3120,
-    cost_usd: 0.0027,
-  },
+    [strike(DOC_MMA, 43, "within ten days", STRUCK_TOO_SHORT)],
+  ),
 ];
 
 const FIXTURE_FINDINGS_FEDERAL: Finding[] = [
-  {
-    id: "f_6",
-    question: "Does Medicare cover private duty nursing at home?",
-    topic: "coverage",
-    jurisdiction: "Federal",
-    status: "supported",
-    answer:
-      "No. Medicare home health covers intermittent skilled nursing only; continuous or full-time nursing at home is excluded.",
-    citations: [
-      {
-        doc_id: "cms_benefit_policy_ch7",
-        title: "Medicare Benefit Policy Manual, Chapter 7, Home Health Services",
-        page: 42,
-        quote: "Private duty nursing is not a covered home health service under Medicare.",
-        overlap: 1.0,
-      },
-    ],
-    struck: [],
-    model: FIXTURE_MODEL,
-    input_tokens: 1980,
-    output_tokens: 72,
-    reasoning_tokens: 350,
-    latency_ms: 2050,
-    cost_usd: 0.0019,
-  },
-  {
-    id: "f_7",
-    question: "How long does a Medicare beneficiary have to request a redetermination?",
-    topic: "appeal",
-    jurisdiction: "Federal",
-    status: "supported",
-    answer: "120 days from the date of receipt of the initial determination.",
-    citations: [
-      {
-        doc_id: "cms_claims_processing_ch29",
-        title: "Medicare Claims Processing Manual, Chapter 29, Appeals",
-        page: 31,
-        quote: "A request for redetermination must be filed within 120 days of the date of receipt of the notice of initial determination.",
-        overlap: 1.0,
-      },
-    ],
-    struck: [],
-    model: FIXTURE_MODEL,
-    input_tokens: 2010,
-    output_tokens: 48,
-    reasoning_tokens: 300,
-    latency_ms: 1890,
-    cost_usd: 0.0018,
-  },
+  fixtureFinding(
+    "f_6",
+    "Federal",
+    "coverage",
+    "Does Medicare cover private duty nursing at home?",
+    "supported",
+    "No. Medicare home health covers intermittent skilled nursing only; continuous or full-time nursing at home is excluded.",
+    [cite(DOC_HOME_HEALTH, 42, "Private duty nursing is not a covered home health service under Medicare.")],
+    [],
+  ),
+  fixtureFinding(
+    "f_7",
+    "Federal",
+    "limits",
+    "Does Medicare limit how many hours of home health nursing a member can receive each week?",
+    "unsupported",
+    "Yes. Medicare pays for at most 28 hours a week of combined skilled nursing and home health aide services.",
+    [],
+    [strike(null, null, "Combined skilled nursing and home health aide services may not exceed 28 hours per week.", STRUCK_NOT_SHOWN)],
+  ),
+  fixtureFinding(
+    "f_8",
+    "Federal",
+    "appeal",
+    "How long does a Medicare beneficiary have to request a redetermination?",
+    "supported",
+    "120 days from the date of receipt of the initial determination.",
+    [cite(DOC_APPEALS, 7, "A request for redetermination must be filed within 120 days of the date of receipt of the notice of initial determination.")],
+    [],
+  ),
 ];
+
+/* c_error*: the sample with one question whose model call failed. */
+const FIXTURE_FINDINGS_ERROR: Finding[] = [
+  ...FIXTURE_FINDINGS_FLORIDA.slice(0, 3),
+  fixtureFinding(
+    "f_e",
+    "Florida",
+    "reason",
+    "What do the rules say when services exceed the authorized amount?",
+    "error",
+    "",
+    [],
+    [],
+    { error: "ReadTimeout: the model did not answer within the time limit.", passages: undefined },
+  ),
+  ...FIXTURE_FINDINGS_FLORIDA.slice(3),
+];
+
+/* Route reasons as the API words them: one full sentence each. */
+const ROUTE_SAMPLE: Route = {
+  program: "florida_medicaid_mma",
+  jurisdictions: ["Florida"],
+  dual: false,
+  reason: "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+};
+const ROUTE_DUAL: Route = {
+  program: "unknown",
+  jurisdictions: ["Florida", "Federal"],
+  dual: true,
+  reason:
+    "The letter does not say which program paid for the care, so the Florida Medicaid rules and the federal Medicare rules are checked side by side.",
+};
 
 const fixtureStarts = new Map<string, number>();
 
@@ -848,38 +964,35 @@ function startFixtureInvestigation(caseId: string, at: number = Date.now()): voi
 }
 
 function fixtureCase(caseId: string, now: number): CaseRecord | null {
-  if (!/^c_(sample\d*|dual\d*|fail\d*)$/.test(caseId)) return null;
+  if (!/^c_(sample\d*|dual\d*|fail\d*|error\d*)$/.test(caseId)) return null;
   const dual = caseId.startsWith("c_dual");
   const fail = caseId.startsWith("c_fail");
+  const withError = caseId.startsWith("c_error");
   startFixtureInvestigation(caseId, now);
   const startedAt = fixtureStarts.get(caseId) ?? now;
-  const planned = dual ? [...FIXTURE_FINDINGS_FLORIDA, ...FIXTURE_FINDINGS_FEDERAL] : FIXTURE_FINDINGS_FLORIDA;
+  const planned = dual
+    ? [...FIXTURE_FINDINGS_FLORIDA, ...FIXTURE_FINDINGS_FEDERAL]
+    : withError
+      ? FIXTURE_FINDINGS_ERROR
+      : FIXTURE_FINDINGS_FLORIDA;
   const elapsed = Math.max(0, now - startedAt);
   const revealed = Math.min(planned.length, Math.floor(elapsed / FIXTURE_REVEAL_MS));
   const failAt = 2;
   const done = fail ? Math.min(revealed, failAt) : revealed;
   const findings = planned.slice(0, done);
   const finished = fail ? revealed >= failAt : done === planned.length;
-  const claims = findings.filter((f) => f.status !== "not_settled").length;
   const supported = findings.filter((f) => f.status === "supported").length;
-  const cost = findings.reduce((s, f) => s + f.cost_usd, 0);
-  const latency = finished ? planned.slice(0, done).reduce((s, f) => s + f.latency_ms, 0) + 640 : elapsed;
+  const unsupported = findings.filter((f) => f.status === "unsupported").length;
+  const errors = findings.filter((f) => f.status === "error").length;
+  const latency = finished ? planned.slice(0, done).reduce((s, f) => s + f.latency_ms, 0) + 120 : elapsed;
   const card: CaseCard = structuredClone(SAMPLE_CARD);
   if (dual) {
     card.program = { value: "unknown", confidence: "high" };
     card.member_age_group = { value: "65_plus", confidence: "high" };
   }
-  const route: Route = dual
-    ? {
-        program: "unknown",
-        jurisdictions: ["Florida", "Federal"],
-        dual: true,
-        reason: "the letter names a Medicaid plan but the member is 65 or older and may also have Medicare",
-      }
-    : { program: "florida_medicaid_mma", jurisdictions: ["Florida"], dual: false, reason: "the letter names a Florida Medicaid MMA plan" };
   const trace: TraceSpan[] = [
-    { name: "route", ms: 210 },
-    { name: "plan questions", ms: 430 },
+    { name: "route", ms: 2 },
+    { name: "plan questions", ms: 1 },
     ...findings.map((f, i) => ({ name: `question ${i + 1}: retrieve, answer, verify`, ms: f.latency_ms })),
   ];
   return {
@@ -889,7 +1002,7 @@ function fixtureCase(caseId: string, now: number): CaseRecord | null {
     summary: SAMPLE_SUMMARY,
     card,
     status: finished ? (fail ? "failed" : "investigated") : "investigating",
-    route,
+    route: dual ? ROUTE_DUAL : ROUTE_SAMPLE,
     investigation: {
       status: finished ? (fail ? "failed" : "done") : "running",
       started_at: new Date(startedAt).toISOString(),
@@ -897,11 +1010,11 @@ function fixtureCase(caseId: string, now: number): CaseRecord | null {
       questions_planned: planned.length,
       questions_done: done,
       findings,
-      coverage: { claims, supported },
-      cost_usd: Number(cost.toFixed(4)),
+      coverage: { claims: supported + unsupported, supported, errors },
+      cost_usd: 0,
       latency_ms: latency,
       model: FIXTURE_MODEL,
-      error: fail && finished ? "The model did not answer question 3 after three attempts (upstream timeout)." : null,
+      error: fail && finished ? "TimeoutError: the model did not answer question 3 after three attempts." : null,
       trace,
     },
     created_at: new Date(startedAt - 60_000).toISOString(),

@@ -1,6 +1,6 @@
 "use client";
 
-import { JURISDICTION_LABELS, groupFindings, type Finding, type Route } from "@/lib/case";
+import { JURISDICTION_HEADINGS, groupFindings, type Finding, type Route } from "@/lib/case";
 import { FindingCard } from "./FindingCard";
 
 /*
@@ -29,7 +29,7 @@ export function FindingsList({ findings, route }: { findings: Finding[]; route: 
     <section aria-label="Findings" className="mt-6 lg:grid lg:grid-cols-2 lg:gap-x-10" aria-live="polite">
       {groups.map((g) => (
         <div key={g.jurisdiction} className="mb-8 lg:mb-0" data-jurisdiction={g.jurisdiction}>
-          <h2 className="text-[20px] font-bold">{JURISDICTION_LABELS[g.jurisdiction]}</h2>
+          <h2 className="text-[20px] font-bold">{JURISDICTION_HEADINGS[g.jurisdiction]}</h2>
           {g.findings.map((f) => (
             <FindingCard key={f.id} finding={f} />
           ))}

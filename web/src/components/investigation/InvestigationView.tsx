@@ -91,14 +91,17 @@ export function InvestigationView({ caseId }: { caseId: string }) {
         ) : null}
 
         {view.kind === "not_found" ? (
-          <div data-view="not_found">
-            <p className="text-[18px] lg:text-[17px]" role="alert">
-              We could not find case <span className="font-mono">{caseId}</span>. {ERROR_COPY.not_found.body}
+          <section data-view="not_found" aria-labelledby="not-found-heading" className="border-t-4 border-ink pt-4">
+            <h1 id="not-found-heading" className="text-[26px] leading-tight font-bold">
+              {ERROR_COPY.not_found.title}
+            </h1>
+            <p className="mt-4 text-[18px] leading-relaxed lg:text-[17px]" role="alert">
+              There is no case <span className="font-mono">{caseId}</span>. {ERROR_COPY.not_found.body}
             </p>
             <Link href="/case/new" className={`${PRIMARY} mt-5`}>
               Start a new case
             </Link>
-          </div>
+          </section>
         ) : null}
 
         {view.kind === "error" ? (

@@ -299,10 +299,11 @@ def test_investigate_fixture_path_through_the_real_app(monkeypatch, tmp_path):
     assert inv["status"] == "done" and inv["error"] is None and inv["model"] == "fixture"
     assert inv["questions_planned"] == 5 and inv["questions_done"] == 5 and len(inv["findings"]) == 5
     assert set(inv) >= {"status", "started_at", "finished_at", "questions_planned", "questions_done", "findings", "coverage", "cost_usd", "latency_ms", "model", "error", "trace"}
-    assert inv["coverage"] == {"claims": 4, "supported": 3}
+    assert inv["coverage"] == {"claims": 4, "supported": 3, "errors": 0}
     assert {f["status"] for f in inv["findings"]} == {"supported", "not_settled", "unsupported"}
     f = inv["findings"][0]
-    assert set(f) == {"id", "question", "topic", "jurisdiction", "status", "answer", "citations", "struck", "model", "input_tokens", "output_tokens", "reasoning_tokens", "latency_ms", "cost_usd"}
+    assert set(f) == {"id", "question", "topic", "jurisdiction", "status", "answer", "citations", "struck", "passages", "error", "model", "input_tokens", "output_tokens", "reasoning_tokens", "latency_ms", "cost_usd"}
+    assert f["error"] is None and set(f["passages"][0]) == {"chunk_id", "doc_id", "title", "page"}
     assert set(f["citations"][0]) == {"doc_id", "title", "page", "quote", "overlap"}
     struck = next(x for x in inv["findings"] if x["status"] == "unsupported")["struck"][0]
     assert set(struck) == {"doc_id", "title", "page", "quote", "reason"}
@@ -364,3 +365,50 @@ def test_set_investigation_store_method():
     inv["findings"].append({"id": "f2"})  # the store keeps its own copy
     assert out["status"] == "investigating" and len(s.get(c["case_id"])["investigation"]["findings"]) == 1
     assert s.set_investigation("c_nope", None, None, "failed") is None
+
+
+def test_concurrent_investigate_posts_claim_the_case_once(monkeypatch, tmp_path):
+    """20 posts at once: exactly one 202, the rest 409. The slow route() widens the window a check-then-set would lose."""
+    import threading
+    import time
+
+    from policyqa.investigate import FixtureInvestigator
+
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+
+    class SlowRoute(FixtureInvestigator):
+        def route(self, card):
+            time.sleep(0.05)
+            return super().route(card)
+
+    slow = SlowRoute(delay=0)
+    monkeypatch.setattr(api_main, "investigator", lambda: slow)
+    cid = _intake_text().json()["case_id"]
+    barrier = threading.Barrier(20)
+    codes = []
+    lock = threading.Lock()
+
+    def post():
+        barrier.wait()
+        r = client.post(f"/case/{cid}/investigate")
+        with lock:
+            codes.append(r.status_code)
+
+    threads = [threading.Thread(target=post) for _ in range(20)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=30)
+    assert sorted(codes) == [202] + [409] * 19, codes
+    assert client.get(f"/case/{cid}").json()["status"] == "investigated"
+
+
+def test_claim_for_investigation_store_method():
+    from api.cases import CaseStore
+
+    s = CaseStore()
+    c = s.create({"card": {}})
+    assert s.claim_for_investigation(c["case_id"]) is True
+    assert s.get(c["case_id"])["status"] == "investigating"
+    assert s.claim_for_investigation(c["case_id"]) is False
+    assert s.claim_for_investigation("c_nope") is False

@@ -1,10 +1,12 @@
 "use client";
 
 import { useId, useState } from "react";
-import { formatCost, formatSeconds, type Investigation } from "@/lib/case";
+import { countErrors, findingStatus, formatCost, formatSeconds, type Investigation } from "@/lib/case";
 
 /*
-  The Trust panel: verification coverage as a count, never a percentage;
+  The Trust panel: verification coverage as a count, never a percentage,
+  with abstentions, struck findings, and failed questions each counted on
+  their own;
   the cost of the case to four decimals; the time; the model; and the trace
   when the API sends one.
 */
@@ -12,8 +14,9 @@ export function TrustPanel({ investigation }: { investigation: Investigation }) 
   const [traceOpen, setTraceOpen] = useState(false);
   const traceId = useId();
   const { coverage, findings } = investigation;
-  const notSettled = findings.filter((f) => f.status === "not_settled").length;
-  const struck = findings.filter((f) => f.status === "unsupported").length;
+  const notSettled = findings.filter((f) => findingStatus(f) === "not_settled").length;
+  const struck = findings.filter((f) => findingStatus(f) === "unsupported").length;
+  const errors = countErrors(investigation);
   // The API sends the trace as an object with a spans list; the fixture sends the list itself.
   const raw = investigation.trace;
   const spans = Array.isArray(raw) ? raw : raw && Array.isArray(raw.spans) ? raw.spans : [];
@@ -35,8 +38,13 @@ export function TrustPanel({ investigation }: { investigation: Investigation }) 
             {coverage.supported} of {coverage.claims} findings verified
           </span>
           {notes.length > 0 ? <span className="mt-1 block text-[15px] text-muted">{notes.join(" ")}</span> : null}
+          {errors > 0 ? (
+            <span className="mt-1 block text-[15px] font-semibold text-ink" data-errors={errors}>
+              {errors === 1 ? "1 question could not be investigated." : `${errors} questions could not be investigated.`}
+            </span>
+          ) : null}
         </Row>
-        <Row label="Cost of this case">{formatCost(investigation.cost_usd)}</Row>
+        <Row label="Cost of this case">{formatCost(investigation.cost_usd, investigation.model)}</Row>
         <Row label="Time taken">{formatSeconds(investigation.latency_ms)}</Row>
         <Row label="Model">
           <span className="font-mono text-[16px]">{investigation.model}</span>
@@ -47,7 +55,7 @@ export function TrustPanel({ investigation }: { investigation: Investigation }) 
           <button
             type="button"
             aria-expanded={traceOpen}
-            aria-controls={traceId}
+            aria-controls={traceOpen ? traceId : undefined}
             onClick={() => setTraceOpen((o) => !o)}
             className="inline-flex min-h-11 items-center rounded-sm border border-ink bg-bond px-4 text-[16px] font-semibold text-ink"
           >

@@ -11,7 +11,11 @@ Surface:
   PATCH /case/{id}               {field: plain value, ...} -> the case; edited cells become high
   POST  /case/{id}/investigate   202 {case_id, status: "investigating"}; runs the investigation in a
                                  background thread; poll GET /case/{id} to watch findings arrive;
-                                 the case ends as `investigated` or `failed`
+                                 the case ends as `investigated` or `failed`. The move out of intake
+                                 is atomic (CaseStore.claim_for_investigation): of concurrent posts,
+                                 one gets 202 and the rest 409 wrong_status. Findings carry `passages`
+                                 and may be `status: "error"` with an `error` string; coverage has
+                                 `errors` (see policyqa/investigate.py).
 
 Errors are {"detail": {"code": ..., "message": ...}}: 400 bad_request, 404 not_found,
 409 wrong_status, 422 one of the intake codes (unsupported_type, too_large,
@@ -291,10 +295,11 @@ def case_investigate(case_id: str):
     from policyqa.investigate import _empty_investigation
 
     c = _load_case(case_id)
-    if c["status"] != "intake":
-        raise _err(409, "wrong_status", f"Case {case_id} is already {c['status']}.")
     inv = investigator()
-    route = inv.route(c["card"]).to_dict()
+    route = inv.route(c["card"]).to_dict()  # pure; computed before the claim so a failure here leaves the case in intake
+    if not STORE.claim_for_investigation(case_id):
+        current = (STORE.get(case_id) or c)["status"]
+        raise _err(409, "wrong_status", f"Case {case_id} is already {current}.")
     STORE.set_investigation(case_id, route, _empty_investigation(getattr(inv, "model", "?")), "investigating")
     if RUN_INVESTIGATION_INLINE:
         _run_investigation(case_id)

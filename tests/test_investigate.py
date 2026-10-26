@@ -180,7 +180,7 @@ def test_plan_drops_out_of_scope_and_malformed_questions_and_adds_missing_appeal
 def test_plan_caps_at_seven_questions():
     c = card()
     r = route_case(c)
-    many = {"questions": [{"topic": "other", "question": f"Question number {i} about private duty nursing under Florida Medicaid?"} for i in range(12)] + GOOD_PLAN["questions"][-2:]}
+    many = {"questions": [{"topic": "other", "question": f"Question number {i}: which rule covers private duty nursing under Florida Medicaid?"} for i in range(12)] + GOOD_PLAN["questions"][-2:]}
     qs = plan_questions(c, r, FakePlanProvider(json.dumps(many)))
     assert len(qs) == 7 and "appeal" in [q.topic for q in qs] and "reason" in [q.topic for q in qs]
 
@@ -334,39 +334,46 @@ def test_investigate_case_end_to_end_with_fakes():
     app = by_topic["appeal"]
     assert app["status"] == "not_settled" and app["citations"] == [] and app["struck"] == []
 
-    # the provider raised inside answer_question: not_settled with the error class, case still done
+    # the provider raised inside answer_question: an error finding, not an abstention; case still done
     con = by_topic["conditions"]
-    assert con["status"] == "not_settled" and con["answer"] == "Could not investigate this question: RuntimeError" and con["struck"] == []
-    # the retriever raised: same treatment
+    assert con["status"] == "error" and con["answer"] == "" and con["error"] == "RuntimeError: model timeout"
+    assert con["citations"] == [] and con["struck"] == []
+    assert [p["doc_id"] for p in con["passages"]] == ["fl-04", "fl-21"]  # retrieval worked, so the passages are kept
+    # the retriever raised: same treatment, no passages
     exc = by_topic["exclusions"]
-    assert exc["status"] == "not_settled" and exc["answer"] == "Could not investigate this question: RuntimeError"
+    assert exc["status"] == "error" and exc["answer"] == "" and exc["error"] == "RuntimeError: index exploded" and exc["passages"] == []
+    assert all(f["error"] is None for f in inv["findings"] if f["status"] != "error")
 
     assert by_topic["reason"]["status"] == "supported"
 
     for f in inv["findings"]:
-        assert set(f) >= {"id", "question", "topic", "jurisdiction", "status", "answer", "citations", "struck", "model", "input_tokens", "output_tokens", "reasoning_tokens", "latency_ms", "cost_usd"}
+        assert set(f) >= {"id", "question", "topic", "jurisdiction", "status", "answer", "citations", "struck", "passages", "error", "model", "input_tokens", "output_tokens", "reasoning_tokens", "latency_ms", "cost_usd"}
         assert f["model"] == "fake-muse" and f["latency_ms"] >= 0
     assert cov["input_tokens"] == 400 and cov["output_tokens"] == 120 and cov["reasoning_tokens"] == 90 and cov["cost_usd"] == 0.0005
 
-    # coverage math: claims = supported + unsupported
-    assert inv["coverage"] == {"claims": 3, "supported": 2}
+    # coverage math: claims = supported + unsupported; errors are counted apart
+    assert inv["coverage"] == {"claims": 3, "supported": 2, "errors": 2}
     assert inv["cost_usd"] == pytest.approx(0.0005 * 4, abs=1e-9)  # four model answers (two questions failed before cost)
     assert inv["latency_ms"] >= 0
     assert provider.max_tokens >= 2000
-    assert all(k == 5 and len(j) == 1 for _, k, j in retriever.calls)
+    assert all(k == 8 * 4 and len(j) == 1 for _, k, j in retriever.calls)  # 8 passages from a pool of 32 candidates
 
     # progress: one call per finding, growing, plus the final one
     assert len(seen) == 7
     assert [p["questions_done"] for p in seen] == [1, 2, 3, 4, 5, 6, 6]
     assert seen[0]["status"] == "running" and seen[-1]["status"] == "done"
-    assert seen[0]["findings"][0]["id"] == "f1" and len(seen[2]["findings"]) == 3
+    assert len(seen[0]["findings"]) == 1 and len(seen[2]["findings"]) == 3
+    # every snapshot lists its findings in planned order, whatever order they finished in
+    for p in seen:
+        ids = [int(f["id"][1:]) for f in p["findings"]]
+        assert ids == sorted(ids)
 
     # trace: spans per question
     tr = inv["trace"]
     assert set(tr) >= {"trace_id", "spans", "total_ms", "question"}
     names = [s["name"] for s in tr["spans"]]
     assert names.count("question") == 6 and "route" in names and "plan" in names
-    assert [s["id"] for s in tr["spans"] if s["name"] == "question"] == ["f1", "f2", "f3", "f4", "f5", "f6"]
+    assert sorted(s["id"] for s in tr["spans"] if s["name"] == "question") == ["f1", "f2", "f3", "f4", "f5", "f6"]
     assert inv.get("plan", {}).get("source") == "template"
 
 
@@ -402,7 +409,7 @@ def test_fixture_investigator_shows_all_three_states_from_real_manifest_titles()
     assert inv["questions_planned"] == 5 and inv["questions_done"] == 5 and len(inv["findings"]) == 5
     statuses = [f["status"] for f in inv["findings"]]
     assert statuses.count("not_settled") == 1 and statuses.count("unsupported") == 1 and statuses.count("supported") == 3
-    assert inv["coverage"] == {"claims": 4, "supported": 3}
+    assert inv["coverage"] == {"claims": 4, "supported": 3, "errors": 0}
     assert {f["topic"] for f in inv["findings"]} >= {"coverage", "appeal", "reason"}
     for f in inv["findings"]:
         for c in f["citations"] + f["struck"]:
@@ -417,3 +424,259 @@ def test_fixture_investigator_shows_all_three_states_from_real_manifest_titles()
     assert inv["trace"]["spans"] and inv["trace"].get("synthetic") is True
     assert FixtureInvestigator().delay == 0.8
     assert fx.route(case["card"]).jurisdictions == ["Florida"]
+
+
+# ---- Oct 26 live-run fixes ----------------------------------------------------
+
+import csv  # noqa: E402
+import threading  # noqa: E402
+import time  # noqa: E402
+
+MANIFEST_ROWS = {r["id"]: r for r in csv.DictReader(open(Path(__file__).resolve().parent.parent / "corpus" / "manifest.csv", encoding="utf-8"))}
+
+
+def test_appeal_question_is_about_the_programs_process_not_the_service():
+    from policyqa.investigate import PLAN_SYSTEM_PROMPT
+
+    c = card()
+    appeal = next(q for q in template_questions(c, route_case(c)) if q.topic == "appeal")
+    assert "nursing" not in appeal.question.lower()
+    assert "Florida Medicaid (MMA)" in appeal.question
+    for word in ("adverse benefit determination", "fair hearing", "deadline", "file"):
+        assert word in appeal.question
+    assert "do not name the service" in PLAN_SYSTEM_PROMPT
+
+
+def _hit_row(doc, i, jur="Florida", title=None, text="private duty nursing prior authorization hours"):
+    return Hit({"chunk_id": f"{doc}:p{i:03d}:0", "doc_id": doc, "page": i, "title": title or f"Title of {doc}", "jurisdiction": jur, "text": text}, 1.0, "bm25")
+
+
+def test_select_passages_caps_per_document_and_excludes():
+    from policyqa.investigate import select_passages
+
+    hits = [_hit_row("fl-04", i) for i in range(1, 11)] + [_hit_row("fl-27", 1), _hit_row("fl-21", 1), _hit_row("fl-21", 2), _hit_row("fl-03", 1)]
+    out = select_passages(hits, k=8, per_doc_cap=3, exclude={"fl-27"})
+    assert [h.chunk["doc_id"] for h in out] == ["fl-04", "fl-04", "fl-04", "fl-21", "fl-21", "fl-03"]
+    assert [h.chunk["page"] for h in out[:3]] == [1, 2, 3]  # rank order kept inside a document
+    # no cap: the first eight, one document fills the list
+    assert {h.chunk["doc_id"] for h in select_passages(hits, k=8, per_doc_cap=None)} == {"fl-04"}
+
+
+def test_retrieval_on_a_small_index_caps_one_dominant_document(tmp_path):
+    from policyqa.index import Index
+    from policyqa.investigate import retrieve_passages
+    from policyqa.retrieve import Retriever
+
+    rows = [{"chunk_id": f"fl-04:p{i:03d}:0", "doc_id": "fl-04", "page": i, "pos": 0, "title": "PDN policy", "jurisdiction": "Florida", "text": f"appeal fair hearing deadline appeal fair hearing deadline page {i}"} for i in range(1, 13)]
+    for d in ("fl-21", "fl-22", "fl-23"):
+        rows += [{"chunk_id": f"{d}:p{i:03d}:0", "doc_id": d, "page": i, "pos": 0, "title": d, "jurisdiction": "Florida", "text": f"enrollee appeal fair hearing page {i} contract terms"} for i in range(1, 4)]
+    rows += [{"chunk_id": "fed-17:p001:0", "doc_id": "fed-17", "page": 1, "pos": 0, "title": "Medicare appeals", "jurisdiction": "Federal", "text": "appeal fair hearing deadline appeal fair hearing deadline"}]
+    with open(tmp_path / "chunks.jsonl", "w", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r) + "\n")
+    r = Retriever(Index(tmp_path / "chunks.jsonl"), mode="bm25")
+    q = "appeal fair hearing deadline"
+    assert {h.chunk["doc_id"] for h in r.search(q, k=8, jurisdictions={"Florida"})} == {"fl-04"}  # without the cap
+    hits = retrieve_passages(r, q, "Florida", k=8, per_doc_cap=3)
+    docs = [h.chunk["doc_id"] for h in hits]
+    assert len(hits) == 8 and max(docs.count(d) for d in docs) <= 3 and docs[:3] == ["fl-04"] * 3
+    assert "fed-17" not in docs
+    assert "fl-21" not in [h.chunk["doc_id"] for h in retrieve_passages(r, q, "Florida", k=8, per_doc_cap=3, exclude={"fl-21"})]
+
+
+def test_program_excludes_from_the_real_manifest():
+    from policyqa.investigate import program_excludes
+
+    kid = {d for d, r in MANIFEST_ROWS.items() if "kidcare" in r["title"].lower() or "healthy kids" in r["title"].lower()}
+    assert "fl-27" in kid
+    assert program_excludes("florida_medicaid_mma") == kid
+    assert program_excludes("florida_medicaid_ltc") == kid
+    assert "fl-27" in program_excludes("florida_medicaid_mma")
+    for p in ("florida_kidcare", "medicare_a", "medicare_b", "medicare_advantage", "medicare_part_d", "unknown", None):
+        assert program_excludes(p) == set()
+
+
+class RecordingProvider:
+    """Records each user message; answers from P1 with a verbatim quote. Thread-safe enough for counting."""
+
+    model = "rec"
+
+    def __init__(self, sleep=0.0, slow_word=None):
+        self.users = []
+        self.sleep = sleep
+        self.slow_word = slow_word
+        self.lock = threading.Lock()
+        self.active = 0
+        self.max_active = 0
+
+    def complete(self, system, user, max_tokens=600):
+        with self.lock:
+            self.users.append(user)
+            self.active += 1
+            self.max_active = max(self.max_active, self.active)
+        try:
+            q = user.rsplit("Question:", 1)[1].lower()
+            time.sleep(self.sleep * (2 if self.slow_word and self.slow_word in q else 1))
+            m = user.split("[P1]", 1)[1].split("\n", 2)[1] if "[P1]" in user else ""
+            quote = " ".join(m.split()[:12])
+            return json.dumps({"answer": "From the passage.", "abstain": False, "citations": [{"passage": "P1", "quote": quote}]}), 100, 20
+        finally:
+            with self.lock:
+                self.active -= 1
+
+    def cost(self, n_in, n_out):
+        return 0.001
+
+
+class PoolRetriever:
+    """Returns a fixed ranked pool: ten fl-04 chunks, then a KidCare chunk, then other documents."""
+
+    def __init__(self):
+        self.calls = []
+
+    def search(self, query, k=5, jurisdictions=None, **kw):
+        self.calls.append((query, k, jurisdictions))
+        j = next(iter(jurisdictions))
+        pool = [_hit_row("fl-04", i, j, text=f"Private duty nursing rule number {i} applies to recipients under 21 years of age.") for i in range(1, 11)]
+        pool += [_hit_row("fl-27", 1, j, text="Florida Healthy Kids covers many services for enrolled children and families.")]
+        pool += [_hit_row(d, 1, j, text=f"Document {d} states a rule for enrollees in the managed care plan.") for d in ("fl-21", "fl-22", "fl-20", "fl-16", "fl-03")]
+        return pool[:k]
+
+
+def test_investigation_records_passages_capped_excluded_and_names_the_program():
+    case = {"case_id": "c_cap", "card": card()}
+    prov = RecordingProvider()
+    inv = investigate_case(case, PoolRetriever(), prov)
+    assert inv["status"] == "done"
+    for f in inv["findings"]:
+        docs = [p["doc_id"] for p in f["passages"]]
+        assert len(docs) == 8 and "fl-27" not in docs and max(docs.count(d) for d in docs) <= 3
+        assert docs == ["fl-04"] * 3 + ["fl-21", "fl-22", "fl-20", "fl-16", "fl-03"]
+        assert set(f["passages"][0]) == {"chunk_id", "doc_id", "title", "page"}
+        assert f["passages"][0] == {"chunk_id": "fl-04:p001:0", "doc_id": "fl-04", "title": "Title of fl-04", "page": 1}
+    sentence = "The case is under Florida Medicaid (MMA). Prefer passages about that program; if a passage is about another program, do not use it."
+    assert all(sentence in u for u in prov.users)
+    from policyqa.generate import SYSTEM_PROMPT
+
+    assert "Prefer passages about that program" not in SYSTEM_PROMPT
+
+
+def test_dual_route_names_the_program_of_each_jurisdiction():
+    case = {"case_id": "c_dual2", "card": card(member_age_group="65_plus")}
+    prov = RecordingProvider()
+    inv = investigate_case(case, PoolRetriever(), prov)
+    assert {f["jurisdiction"] for f in inv["findings"]} == {"Florida", "Federal"}
+    assert any("The case is under Florida Medicaid (MMA)." in u for u in prov.users)
+    assert any("The case is under Medicare." in u for u in prov.users)
+
+
+def test_parallel_answers_keep_order_and_count_progress():
+    case = {"case_id": "c_par", "card": card()}
+    prov = RecordingProvider(sleep=0.05, slow_word="covered")  # the first question takes twice as long
+    seen = []
+    t = time.perf_counter()
+    inv = investigate_case(case, PoolRetriever(), prov, on_progress=lambda p: seen.append(p))
+    wall = time.perf_counter() - t
+    assert inv["status"] == "done" and len(inv["findings"]) == 6
+    assert wall < 0.25, wall  # serial would be 0.35 s (one 0.1 s answer and five 0.05 s answers)
+    assert prov.max_active == 3
+    assert [f["id"] for f in inv["findings"]] == ["f1", "f2", "f3", "f4", "f5", "f6"]
+    assert [f["topic"] for f in inv["findings"]] == ["coverage", "limits", "conditions", "exclusions", "appeal", "reason"]
+    assert [p["questions_done"] for p in seen] == [1, 2, 3, 4, 5, 6, 6]
+    assert seen[0]["findings"][0]["id"] != "f1"  # the slow first question finished later, yet sits first at the end
+    assert inv["cost_usd"] == pytest.approx(0.006)
+    assert inv["latency_ms"] == pytest.approx(wall * 1000, rel=0.5)
+
+
+def test_plan_tokens_and_cost_count_when_the_plan_falls_back_after_a_reply():
+    c = card()
+    r = route_case(c)
+    stats: dict = {}
+    qs = plan_questions(c, r, FakePlanProvider("this is not json"), stats=stats)
+    assert [q.question for q in qs] == [q.question for q in template_questions(c, r)]
+    assert stats["source"] == "template" and "JSONDecodeError" in stats["error"]
+    assert stats["input_tokens"] == 100 and stats["output_tokens"] == 50 and stats["reasoning_tokens"] == 30 and stats["cost_usd"] == 0.001
+    # too few usable questions after a reply: same
+    few = {"questions": [{"topic": "appeal", "question": "How do I appeal a denial under Florida Medicaid?"}]}
+    stats = {}
+    plan_questions(c, r, FakePlanProvider(json.dumps(few)), stats=stats)
+    assert stats["source"] == "template" and "usable" in stats["error"] and stats["cost_usd"] == 0.001
+    # no reply at all: nothing to count
+    stats = {}
+    plan_questions(c, r, FakePlanProvider("{}", raise_exc=RuntimeError("boom")), stats=stats)
+    assert stats["source"] == "template" and stats["input_tokens"] == 0 and stats["cost_usd"] == 0.0
+
+
+def test_investigation_cost_includes_a_failed_plan_reply():
+    class PlanThenAnswer(RecordingProvider):
+        last_response = {"usage": {"completion_tokens_details": {"reasoning_tokens": 7}}}
+
+        def complete_parts(self, system, parts, schema=None, max_tokens=1500):
+            return "not json at all", 300, 200
+
+        def cost(self, n_in, n_out):
+            return 0.01 if n_in == 300 else 0.001
+
+    inv = investigate_case({"case_id": "c_pc", "card": card()}, PoolRetriever(), PlanThenAnswer())
+    assert inv["plan"]["source"] == "template" and inv["plan"]["error"] and inv["plan"]["cost_usd"] == 0.01
+    assert inv["plan"]["input_tokens"] == 300 and inv["plan"]["output_tokens"] == 200
+    assert inv["cost_usd"] == pytest.approx(0.01 + 6 * 0.001)
+
+
+def test_planner_medical_filter_and_rule_words():
+    from policyqa.investigate import planned_question_allowed
+
+    assert not planned_question_allowed("Which medication should the member switch to instead of nursing care?")
+    assert not planned_question_allowed("Was nursing medically necessary for the child's diagnosis of cerebral palsy?")
+    for bad in (
+        "What medication does Florida Medicaid cover instead of nursing?",
+        "Is it safe to reduce private duty nursing hours under the policy?",
+        "Should the patient take a different therapy if the appeal fails?",
+        "Is private duty nursing appropriate for the patient under the coverage rules?",
+        "What treatment for cerebral palsy does the policy cover?",
+        "Does the member need more help at home?",  # no rule word
+    ):
+        assert not planned_question_allowed(bad), bad
+    for c in (card(), card(denial_reason=None, service=None, program="unknown"), card(program="medicare_b", member_age_group="65_plus")):
+        for q in template_questions(c, route_case(c)):
+            assert planned_question_allowed(q.question), q.question
+    for q in GOOD_PLAN["questions"]:
+        assert planned_question_allowed(q["question"]), q
+    # the planner drops them
+    plan = {"questions": GOOD_PLAN["questions"] + [
+        {"topic": "other", "question": "Which medication should the member switch to instead of nursing care?"},
+        {"topic": "other", "question": "Was nursing medically necessary for the child's diagnosis of cerebral palsy?"},
+    ]}
+    qs = plan_questions(card(), route_case(card()), FakePlanProvider(json.dumps(plan)))
+    assert [q.question for q in qs] == [q["question"] for q in GOOD_PLAN["questions"]]
+
+
+def test_struck_reasons_are_unchanged():
+    from policyqa.generate import STRUCK_NOT_FOUND, STRUCK_NOT_SHOWN, STRUCK_TOO_SHORT
+
+    assert (STRUCK_NOT_FOUND, STRUCK_NOT_SHOWN, STRUCK_TOO_SHORT) == ("quote not found on the cited page", "cited a passage that was not shown", "quote too short to verify")
+
+
+def test_fixture_honors_a_dual_route():
+    fx = FixtureInvestigator(delay=0)
+    inv = fx.investigate({"case_id": "c_fx65", "card": card(member_age_group="65_plus")})
+    assert inv["status"] == "done"
+    js = [f["jurisdiction"] for f in inv["findings"]]
+    assert set(js) == {"Florida", "Federal"} and inv["questions_planned"] == len(inv["findings"]) == inv["questions_done"]
+    assert [f["id"] for f in inv["findings"]] == [f"f{i}" for i in range(1, len(js) + 1)]
+    fed = [f for f in inv["findings"] if f["jurisdiction"] == "Federal"]
+    assert any(f["status"] == "supported" for f in fed)
+    for f in fed:
+        assert "Florida Medicaid" not in f["question"]
+        for c in f["citations"] + f["struck"]:
+            assert c["doc_id"].startswith("fed-") and MANIFEST_ROWS[c["doc_id"]]["jurisdiction"] == "Federal" and c["title"] == MANIFEST_ROWS[c["doc_id"]]["title"]
+            assert c["quote"].startswith("[synthetic fixture quote, not from the document]")
+        for p in f["passages"]:
+            assert p["doc_id"].startswith("fed-")
+    assert inv["coverage"]["errors"] == 0
+    # a Medicare-only card gives Federal findings only; the default card stays Florida only
+    inv = fx.investigate({"case_id": "c_fxmc", "card": card(program="medicare_b", member_age_group="65_plus", payer_name="Medicare")})
+    assert {f["jurisdiction"] for f in inv["findings"]} == {"Federal"}
+    inv = fx.investigate({"case_id": "c_fxfl", "card": card()})
+    assert {f["jurisdiction"] for f in inv["findings"]} == {"Florida"} and len(inv["findings"]) == 5
+    assert all(set(f) >= {"passages", "error"} for f in inv["findings"])
