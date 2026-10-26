@@ -10,7 +10,9 @@ import numpy as np
 
 from .index import Index
 
-RERANK_MODEL = "BAAI/bge-reranker-base"
+RERANK_MODEL = "BAAI/bge-reranker-base"  # batch evaluation: best recall, about 9 s a query on CPU
+ANSWER_RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"  # live answering: under a second on CPU
+ANSWER_CANDIDATES = 20
 
 
 @dataclass

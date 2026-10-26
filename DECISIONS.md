@@ -46,14 +46,16 @@ What this says:
 
 **Reranker with 20 candidates instead of 40** (same rows, same CPU): all@5 0.633, all@10 0.705, MRR 0.475, p50 4,693 ms. Halving the candidates halves the latency and gives back most of the reranker's gain at 10 (0.755 to 0.705) while keeping most of it at 5 (0.655 to 0.633). Still too slow for a live demo on CPU. Decision pending: a smaller cross-encoder, a GPU at serve time, or hybrid without reranking for the demo and reranking in the batch eval only.
 
-**Smaller cross-encoder measured** (cross-encoder/ms-marco-MiniLM-L-6-v2, 22M parameters, against bge-reranker-base at 278M). Same rows, same chunks, CPU only. Latency is per query at p50 on an otherwise idle 4-core box; the MiniLM 40-candidate run shared the CPU with another job, so its latency is being re-measured.
+**Smaller cross-encoder measured** (cross-encoder/ms-marco-MiniLM-L-6-v2, 22M parameters, against bge-reranker-base at 278M). Same rows, same chunks, CPU only. Latency is per query at p50 on an otherwise idle 4-core box.
 
 | Run | all@5 | all@10 | doc@10 | MRR | p50 latency |
 |---|---|---|---|---|---|
 | Hybrid, no reranker | 0.590 | 0.684 | 0.878 | 0.445 | 136 ms |
 | Hybrid + MiniLM, 20 candidates | 0.612 | 0.712 | 0.899 | 0.484 | 909 ms |
-| Hybrid + MiniLM, 40 candidates | 0.626 | 0.741 | 0.907 | 0.490 | re-measuring |
+| Hybrid + MiniLM, 40 candidates | 0.626 | 0.741 | 0.907 | 0.490 | 1,550 ms |
 | Hybrid + bge-reranker-base, 20 | 0.633 | 0.705 | 0.878 | 0.475 | 4,693 ms |
 | Hybrid + bge-reranker-base, 40 | 0.655 | 0.755 | 0.907 | 0.494 | 9,138 ms |
 
 Reading: MiniLM gives up 1 to 3 points against the big reranker and runs about five times faster. At 20 candidates it stays under a second on CPU and still beats plain hybrid by 2 to 3 points at both cutoffs. The live path and the batch eval can use different settings as long as the report says which; the write-up should show both.
+
+**Decision (Alvaro, Oct 25): the answering path reranks with MiniLM-L-6 over 20 candidates.** Under a second on CPU, 2 to 3 points over plain hybrid. The retrieval eval keeps bge-reranker-base over 40 as its reference setting so the ceiling is known, and the write-up shows both. `python -m policyqa.cli answer` and `eval-answers` default to the MiniLM setting; `--no-rerank` and `--rerank-model` override it.

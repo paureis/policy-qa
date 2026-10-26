@@ -62,9 +62,9 @@ def main(argv=None):
         p.add_argument("--chunks", type=Path, default=ROOT / "data/chunks.jsonl")
         p.add_argument("--dense", type=Path, default=ROOT / "data/dense.npy")
         p.add_argument("--mode", choices=["bm25", "dense", "hybrid"], default="hybrid")
-        p.add_argument("--rerank", action="store_true")
-        p.add_argument("--rerank-model", default=None)
-        p.add_argument("--candidates", type=int, default=40)
+        p.add_argument("--no-rerank", action="store_true", help="skip the reranker (default: MiniLM-L-6 over 20 candidates)")
+        p.add_argument("--rerank-model", default=None, help="cross-encoder name; default cross-encoder/ms-marco-MiniLM-L-6-v2")
+        p.add_argument("--candidates", type=int, default=20)
         p.add_argument("--provider", choices=["openai-compatible", "mock"], default="openai-compatible")
         p.add_argument("-k", type=int, default=5, help="passages shown to the model")
 
@@ -130,10 +130,12 @@ def main(argv=None):
         print(f"wrote results/{name}.json")
     elif args.cmd in ("answer", "eval-answers"):
         from .index import Index
-        from .retrieve import Retriever, RERANK_MODEL
+        from .retrieve import Retriever, ANSWER_RERANK_MODEL
         from .generate import Provider, MockProvider, answer_question
 
-        r = Retriever(Index(args.chunks, args.dense), mode=args.mode, rerank=args.rerank, rerank_model=args.rerank_model or RERANK_MODEL)
+        rerank = not args.no_rerank
+        rerank_model = args.rerank_model or ANSWER_RERANK_MODEL
+        r = Retriever(Index(args.chunks, args.dense), mode=args.mode, rerank=rerank, rerank_model=rerank_model)
         r_search = r.search
         r.search = lambda q, k=5, trace=None: r_search(q, k=k, candidates=args.candidates, trace=trace)
         provider = MockProvider() if args.provider == "mock" else Provider()
@@ -163,7 +165,7 @@ def main(argv=None):
             res = run(golden, r, provider, judge, k=args.k, present_docs=present, limit=args.limit, judge_subset_only=args.judge_subset, on_row=progress, trace_path=(args.traces or None))
             summary = summarize(res)
             name = args.name or f"{args.provider}-{args.judge}"
-            config = {"mode": args.mode, "rerank": args.rerank, "rerank_model": (args.rerank_model or RERANK_MODEL) if args.rerank else None, "candidates": args.candidates, "k": args.k, "provider": args.provider, "model": getattr(provider, "model", None), "judge": args.judge, "judge_model": getattr(judge, "model", None), "judge_subset_only": args.judge_subset, "limit": args.limit}
+            config = {"mode": args.mode, "rerank": rerank, "rerank_model": rerank_model if rerank else None, "candidates": args.candidates, "k": args.k, "provider": args.provider, "model": getattr(provider, "model", None), "judge": args.judge, "judge_model": getattr(judge, "model", None), "judge_subset_only": args.judge_subset, "limit": args.limit}
             write_results(res, summary, ROOT / "results" / f"answers-{name}.json", config)
             print(json.dumps(summary, indent=2))
             print(f"wrote results/answers-{name}.json")
