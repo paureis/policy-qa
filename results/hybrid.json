@@ -9,28 +9,28 @@
     "golden": "C:\\Users\\pau\\recourse\\golden\\golden.csv"
   },
   "summary": {
-    "rows_scored": 139,
-    "rows_skipped": 11,
+    "rows_scored": 150,
+    "rows_skipped": 0,
     "k": 10,
-    "all@5": 0.5899,
-    "all@10": 0.6835,
-    "any@5": 0.6259,
-    "any@10": 0.7122,
-    "doc@5": 0.8129,
-    "doc@10": 0.8777,
-    "page@5": 0.6475,
-    "page@10": 0.7482,
-    "mrr": 0.445,
+    "all@5": 0.56,
+    "all@10": 0.68,
+    "any@5": 0.5933,
+    "any@10": 0.7067,
+    "doc@5": 0.8,
+    "doc@10": 0.8667,
+    "page@5": 0.6267,
+    "page@10": 0.7333,
+    "mrr": 0.4329,
     "by_type": {
       "adv": {
-        "n": 9,
-        "all@5": 0.778,
-        "all@10": 0.889
+        "n": 10,
+        "all@5": 0.7,
+        "all@10": 0.9
       },
       "fact": {
-        "n": 64,
-        "all@5": 0.641,
-        "all@10": 0.719
+        "n": 70,
+        "all@5": 0.586,
+        "all@10": 0.7
       },
       "multi": {
         "n": 10,
@@ -38,38 +38,38 @@
         "all@10": 0.3
       },
       "num": {
-        "n": 33,
-        "all@5": 0.636,
-        "all@10": 0.727
+        "n": 35,
+        "all@5": 0.629,
+        "all@10": 0.714
       },
       "proc": {
-        "n": 23,
-        "all@5": 0.522,
-        "all@10": 0.609
+        "n": 25,
+        "all@5": 0.52,
+        "all@10": 0.64
       }
     },
     "by_difficulty": {
       "easy": {
-        "n": 27,
-        "all@5": 0.63,
-        "all@10": 0.741
+        "n": 32,
+        "all@5": 0.594,
+        "all@10": 0.688
       },
       "hard": {
-        "n": 33,
-        "all@5": 0.545,
-        "all@10": 0.697
+        "n": 34,
+        "all@5": 0.529,
+        "all@10": 0.706
       },
       "medium": {
-        "n": 79,
-        "all@5": 0.595,
-        "all@10": 0.658
+        "n": 84,
+        "all@5": 0.56,
+        "all@10": 0.667
       }
     },
     "latency_ms": {
-      "p50": 15.3,
-      "p95": 20.1
+      "p50": 14.4,
+      "p95": 18.6
     },
-    "wall_s": 2.3
+    "wall_s": 2.4
   },
   "rows": [
     {
@@ -549,6 +549,108 @@
       "top1": "fl-30:p032:0"
     },
     {
+      "id": "gs-029",
+      "type": "fact",
+      "difficulty": "easy",
+      "n_quotes": 1,
+      "all@5": 0,
+      "any@5": 0,
+      "doc@5": 0,
+      "page@5": 0,
+      "all@10": 0,
+      "any@10": 0,
+      "doc@10": 0,
+      "page@10": 0,
+      "rr": 0.0,
+      "first_rank": null,
+      "top1": "fed-18:p017:0"
+    },
+    {
+      "id": "gs-030",
+      "type": "fact",
+      "difficulty": "medium",
+      "n_quotes": 1,
+      "all@5": 0,
+      "any@5": 0,
+      "doc@5": 0,
+      "page@5": 0,
+      "all@10": 0,
+      "any@10": 0,
+      "doc@10": 0,
+      "page@10": 0,
+      "rr": 0.0,
+      "first_rank": null,
+      "top1": "fed-25:p021:0"
+    },
+    {
+      "id": "gs-031",
+      "type": "fact",
+      "difficulty": "medium",
+      "n_quotes": 1,
+      "all@5": 0,
+      "any@5": 0,
+      "doc@5": 1,
+      "page@5": 0,
+      "all@10": 1,
+      "any@10": 1,
+      "doc@10": 1,
+      "page@10": 0,
+      "rr": 0.16666666666666666,
+      "first_rank": 6,
+      "top1": "hipaa-02:p027:1"
+    },
+    {
+      "id": "gs-032",
+      "type": "fact",
+      "difficulty": "easy",
+      "n_quotes": 1,
+      "all@5": 1,
+      "any@5": 1,
+      "doc@5": 1,
+      "page@5": 1,
+      "all@10": 1,
+      "any@10": 1,
+      "doc@10": 1,
+      "page@10": 1,
+      "rr": 1.0,
+      "first_rank": 1,
+      "top1": "hipaa-03:p003:0"
+    },
+    {
+      "id": "gs-033",
+      "type": "fact",
+      "difficulty": "easy",
+      "n_quotes": 1,
+      "all@5": 0,
+      "any@5": 0,
+      "doc@5": 1,
+      "page@5": 1,
+      "all@10": 0,
+      "any@10": 0,
+      "doc@10": 1,
+      "page@10": 1,
+      "rr": 0.0,
+      "first_rank": null,
+      "top1": "hipaa-03:p002:0"
+    },
+    {
+      "id": "gs-034",
+      "type": "fact",
+      "difficulty": "medium",
+      "n_quotes": 1,
+      "all@5": 0,
+      "any@5": 0,
+      "doc@5": 1,
+      "page@5": 1,
+      "all@10": 1,
+      "any@10": 1,
+      "doc@10": 1,
+      "page@10": 1,
+      "rr": 0.16666666666666666,
+      "first_rank": 6,
+      "top1": "hipaa-04:p005:1"
+    },
+    {
       "id": "gs-035",
       "type": "fact",
       "difficulty": "hard",
@@ -901,9 +1003,9 @@
       "any@10": 1,
       "doc@10": 1,
       "page@10": 1,
-      "rr": 1.0,
-      "first_rank": 1,
-      "top1": "fed-17:p011:0"
+      "rr": 0.3333333333333333,
+      "first_rank": 3,
+      "top1": "fl-24:p015:2"
     },
     {
       "id": "gs-056",
@@ -927,16 +1029,16 @@
       "type": "fact",
       "difficulty": "medium",
       "n_quotes": 1,
-      "all@5": 1,
-      "any@5": 1,
-      "doc@5": 1,
-      "page@5": 1,
+      "all@5": 0,
+      "any@5": 0,
+      "doc@5": 0,
+      "page@5": 0,
       "all@10": 1,
       "any@10": 1,
       "doc@10": 1,
       "page@10": 1,
-      "rr": 0.2,
-      "first_rank": 5,
+      "rr": 0.16666666666666666,
+      "first_rank": 6,
       "top1": "fed-21:p082:0"
     },
     {
@@ -1073,7 +1175,7 @@
       "page@10": 1,
       "rr": 0.125,
       "first_rank": 8,
-      "top1": "fed-26:p004:1"
+      "top1": "fed-26:p003:0"
     },
     {
       "id": "gs-066",
@@ -1382,6 +1484,23 @@
       "top1": "fed-11:p079:0"
     },
     {
+      "id": "gs-084",
+      "type": "num",
+      "difficulty": "easy",
+      "n_quotes": 1,
+      "all@5": 1,
+      "any@5": 1,
+      "doc@5": 1,
+      "page@5": 1,
+      "all@10": 1,
+      "any@10": 1,
+      "doc@10": 1,
+      "page@10": 1,
+      "rr": 1.0,
+      "first_rank": 1,
+      "top1": "fl-24:p001:0"
+    },
+    {
       "id": "gs-085",
       "type": "num",
       "difficulty": "hard",
@@ -1445,8 +1564,8 @@
       "any@10": 1,
       "doc@10": 1,
       "page@10": 1,
-      "rr": 0.5,
-      "first_rank": 2,
+      "rr": 0.3333333333333333,
+      "first_rank": 3,
       "top1": "fl-28:p013:1"
     },
     {
@@ -1465,6 +1584,23 @@
       "rr": 1.0,
       "first_rank": 1,
       "top1": "fl-29:p027:0"
+    },
+    {
+      "id": "gs-090",
+      "type": "num",
+      "difficulty": "easy",
+      "n_quotes": 1,
+      "all@5": 0,
+      "any@5": 0,
+      "doc@5": 0,
+      "page@5": 0,
+      "all@10": 0,
+      "any@10": 0,
+      "doc@10": 0,
+      "page@10": 0,
+      "rr": 0.0,
+      "first_rank": null,
+      "top1": "fl-27:p073:0"
     },
     {
       "id": "gs-091",
@@ -1892,6 +2028,40 @@
       "top1": "fed-21:p069:1"
     },
     {
+      "id": "gs-116",
+      "type": "proc",
+      "difficulty": "hard",
+      "n_quotes": 1,
+      "all@5": 1,
+      "any@5": 1,
+      "doc@5": 1,
+      "page@5": 1,
+      "all@10": 1,
+      "any@10": 1,
+      "doc@10": 1,
+      "page@10": 1,
+      "rr": 0.5,
+      "first_rank": 2,
+      "top1": "hipaa-02:p024:0"
+    },
+    {
+      "id": "gs-117",
+      "type": "proc",
+      "difficulty": "medium",
+      "n_quotes": 1,
+      "all@5": 1,
+      "any@5": 1,
+      "doc@5": 1,
+      "page@5": 1,
+      "all@10": 1,
+      "any@10": 1,
+      "doc@10": 1,
+      "page@10": 1,
+      "rr": 1.0,
+      "first_rank": 1,
+      "top1": "hipaa-04:p006:0"
+    },
+    {
       "id": "gs-118",
       "type": "proc",
       "difficulty": "medium",
@@ -1954,7 +2124,7 @@
       "all@10": 0,
       "any@10": 0,
       "doc@10": 1,
-      "page@10": 1,
+      "page@10": 0,
       "rr": 0.0,
       "first_rank": null,
       "top1": "fed-24:p007:1"
@@ -2100,16 +2270,16 @@
       "type": "proc",
       "difficulty": "hard",
       "n_quotes": 1,
-      "all@5": 1,
-      "any@5": 1,
+      "all@5": 0,
+      "any@5": 0,
       "doc@5": 1,
-      "page@5": 1,
+      "page@5": 0,
       "all@10": 1,
       "any@10": 1,
       "doc@10": 1,
       "page@10": 1,
-      "rr": 0.2,
-      "first_rank": 5,
+      "rr": 0.16666666666666666,
+      "first_rank": 6,
       "top1": "fed-30:p006:0"
     },
     {
@@ -2402,6 +2572,23 @@
       "top1": "fed-24:p010:0"
     },
     {
+      "id": "gs-148",
+      "type": "adv",
+      "difficulty": "medium",
+      "n_quotes": 1,
+      "all@5": 0,
+      "any@5": 0,
+      "doc@5": 1,
+      "page@5": 0,
+      "all@10": 1,
+      "any@10": 1,
+      "doc@10": 1,
+      "page@10": 1,
+      "rr": 0.14285714285714285,
+      "first_rank": 7,
+      "top1": "hipaa-02:p005:0"
+    },
+    {
       "id": "gs-149",
       "type": "adv",
       "difficulty": "medium",
@@ -2436,83 +2623,5 @@
       "top1": "fed-17:p006:0"
     }
   ],
-  "skipped": [
-    {
-      "id": "gs-029",
-      "reason": "document missing here",
-      "docs": [
-        "hipaa-01"
-      ]
-    },
-    {
-      "id": "gs-030",
-      "reason": "document missing here",
-      "docs": [
-        "hipaa-01"
-      ]
-    },
-    {
-      "id": "gs-031",
-      "reason": "document missing here",
-      "docs": [
-        "hipaa-02"
-      ]
-    },
-    {
-      "id": "gs-032",
-      "reason": "document missing here",
-      "docs": [
-        "hipaa-03"
-      ]
-    },
-    {
-      "id": "gs-033",
-      "reason": "document missing here",
-      "docs": [
-        "hipaa-03"
-      ]
-    },
-    {
-      "id": "gs-034",
-      "reason": "document missing here",
-      "docs": [
-        "hipaa-04"
-      ]
-    },
-    {
-      "id": "gs-084",
-      "reason": "document missing here",
-      "docs": [
-        "fl-24"
-      ]
-    },
-    {
-      "id": "gs-090",
-      "reason": "document missing here",
-      "docs": [
-        "hipaa-01"
-      ]
-    },
-    {
-      "id": "gs-116",
-      "reason": "document missing here",
-      "docs": [
-        "hipaa-02"
-      ]
-    },
-    {
-      "id": "gs-117",
-      "reason": "document missing here",
-      "docs": [
-        "hipaa-04"
-      ]
-    },
-    {
-      "id": "gs-148",
-      "reason": "document missing here",
-      "docs": [
-        "hipaa-01"
-      ]
-    }
-  ]
+  "skipped": []
 }
