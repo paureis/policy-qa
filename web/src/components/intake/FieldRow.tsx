@@ -18,7 +18,7 @@ import {
 } from "@/lib/case";
 
 const INPUT =
-  "block w-full min-h-11 rounded-sm border border-edge bg-bond px-3 py-2 text-[18px] leading-snug text-ink placeholder:text-muted lg:text-[17px]";
+  "block w-full min-h-11 border border-edge bg-bond px-3 py-2 text-[18px] leading-snug text-ink placeholder:text-muted lg:text-[17px]";
 const LABEL = "block text-[14px] font-semibold uppercase tracking-wide text-muted";
 
 export interface FieldRowProps {
@@ -51,7 +51,7 @@ export function FieldRow({ fieldKey, value, flagged, locked, onChange, onLooksRi
           {label}
         </label>
         {flagged ? (
-          <span className="rounded-sm bg-gold px-2 py-0.5 text-[13px] font-bold tracking-wide text-ink uppercase">
+          <span className="bg-gold px-2 py-0.5 text-[13px] font-bold tracking-wide text-ink uppercase">
             Check
           </span>
         ) : null}
@@ -72,7 +72,7 @@ export function FieldRow({ fieldKey, value, flagged, locked, onChange, onLooksRi
         <button
           type="button"
           onClick={() => onLooksRight(fieldKey)}
-          className="mt-3 inline-flex min-h-11 items-center rounded-sm border border-ink bg-bond px-4 text-[16px] font-semibold text-ink"
+          className="mt-3 inline-flex min-h-11 items-center border border-ink bg-bond px-4 text-[16px] font-semibold text-ink"
         >
           Looks right
         </button>

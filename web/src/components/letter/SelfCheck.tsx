@@ -18,7 +18,7 @@ import {
 } from "@/lib/case";
 import { QuoteFigure } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
-import { APPENDIX, APPENDIX_H2, SHEET_HEAD, SectionTitle } from "@/components/investigation/SectionTitle";
+import { APPENDIX, APPENDIX_H2, PHONE_SHEET, SHEET_HEAD, SectionTitle } from "@/components/investigation/SectionTitle";
 import { InlineChip, LetterFrame } from "./AppealLetter";
 
 /*
@@ -136,10 +136,9 @@ function Shell({
   return (
     <section
       aria-labelledby="selfcheck-heading"
-      className={`land mt-10 border-t-4 border-ink pt-4 ${annotated ? `${APPENDIX} lg:*:max-w-[620px] tabs:mt-14` : ""}`}
+      className={`land mt-10 ${annotated ? `${APPENDIX} lg:*:max-w-[620px] tabs:mt-14` : PHONE_SHEET}`}
       data-selfcheck={state}
     >
-      <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Self-check</p>
       <h2 id="selfcheck-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? `${APPENDIX_H2} ${SHEET_HEAD}` : ""}`}>
         <SectionTitle title="How the letter checked itself" short="Self-check" n={annotated ? n : null} />
       </h2>
@@ -223,7 +222,7 @@ function FirstDraft({ letter }: { letter: Letter }) {
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex min-h-11 w-full items-center justify-center rounded-sm border border-ink bg-bond px-4 text-[16px] font-semibold text-ink sm:w-auto"
+        className="inline-flex min-h-11 w-full items-center justify-center border border-ink bg-bond px-4 text-[16px] font-semibold text-ink sm:w-auto"
         data-draft-toggle="true"
       >
         {open ? "Hide the first draft" : "Show the first draft"}

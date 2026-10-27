@@ -2,6 +2,7 @@
 
 import { dayCountLabel, daysUntil, formatLongDate, type CitationRef, type Letter } from "@/lib/case";
 import { CitationChips } from "@/components/investigation/CitationChip";
+import { PHONE_SHEET } from "@/components/investigation/SectionTitle";
 
 const SOURCE_LINE: Record<Letter["deadline"]["source"], string> = {
   letter: "From the denial letter.",
@@ -29,11 +30,10 @@ export function DeadlineFiling({ letter, today, register = false }: { letter: Le
   return (
     <section
       aria-labelledby="deadline-heading"
-      className={register ? "" : "land mt-10 border-t-4 border-ink pt-4"}
+      className={register ? "" : `land mt-10 ${PHONE_SHEET}`}
       data-deadline={deadline.source}
       data-register={register ? "true" : undefined}
     >
-      {register ? null : <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Deadline and filing path</p>}
       <Heading id="deadline-heading" className={register ? "text-[20px] leading-tight font-semibold" : "mt-1 text-[22px] leading-tight font-bold"}>
         {letter.applicable ? "When and where to file" : "If you still want to appeal"}
       </Heading>

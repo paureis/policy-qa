@@ -1,6 +1,7 @@
 "use client";
 
 import { ERROR_COPY, type IntakeError } from "@/lib/case";
+import { PHONE_SHEET } from "@/components/investigation/SectionTitle";
 
 export interface ErrorActions {
   onRetake: () => void;
@@ -11,9 +12,9 @@ export interface ErrorActions {
 }
 
 const PRIMARY =
-  "inline-flex min-h-12 w-full items-center justify-center rounded-sm bg-ink px-5 text-[18px] font-semibold text-bond sm:w-auto";
+  "inline-flex min-h-12 w-full items-center justify-center bg-ink px-5 text-[18px] font-semibold text-bond sm:w-auto";
 const SECONDARY =
-  "inline-flex min-h-12 w-full items-center justify-center rounded-sm border border-ink bg-bond px-5 text-[18px] font-semibold text-ink sm:w-auto";
+  "inline-flex min-h-12 w-full items-center justify-center border border-ink bg-bond px-5 text-[18px] font-semibold text-ink sm:w-auto";
 
 /* Each error in plain words, with the one action that fixes it first. */
 export function ErrorNotice({ error, actions }: { error: IntakeError; actions: ErrorActions }) {
@@ -21,17 +22,8 @@ export function ErrorNotice({ error, actions }: { error: IntakeError; actions: E
   const body = error.message || copy.body;
 
   return (
-    <section role="alert" aria-labelledby="error-heading" className="border-t-4 border-ink pt-4" data-error={error.code}>
-      <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">
-        {error.code === "timeout"
-          ? "Still waiting"
-          : error.code === "out_of_scope"
-            ? "Outside what Recourse does"
-            : error.code === "not_a_denial_letter"
-              ? "Not a denial letter"
-              : "Could not read the letter"}
-      </p>
-      <h1 id="error-heading" className="mt-1 text-[26px] leading-tight font-bold">
+    <section role="alert" aria-labelledby="error-heading" className={PHONE_SHEET} data-error={error.code}>
+      <h1 id="error-heading" className="text-[26px] leading-tight font-bold">
         {copy.title}
       </h1>
       <p className="mt-4 text-[18px] leading-relaxed lg:text-[17px]">{body}</p>

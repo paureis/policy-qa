@@ -15,7 +15,8 @@ import {
 } from "@/lib/case";
 import { pageFolio, shortDocName } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
-import { Mark, PaperClip, type MarkKind } from "@/components/investigation/Marks";
+import { CornerMarks, Mark, PaperClip, type MarkKind } from "@/components/investigation/Marks";
+import { usePageViewer, viewerPanelId } from "@/components/investigation/PageViewer";
 import { cleanError, visionLine, type Vision } from "@/components/investigation/PageViewer";
 
 /*
@@ -59,7 +60,8 @@ export function ExhibitPair({ card, citation, unsupported }: { card: CaseCard; c
     <div className="mt-2 hidden lg:clear-both lg:grid lg:grid-cols-2 lg:gap-x-10 lg:pt-6" data-exhibits="true">
       <figure className={EXHIBIT} data-exhibit="letter">
         <PaperClip className="-top-[22px] left-8" />
-        <p className={TITLE}>The letter says</p>
+        <CornerMarks />
+        <ExhibitHead title="The letter says" n={1} />
         <blockquote className="mt-3 text-[19px] leading-[1.45] text-ink">“{displayValue("denial_reason", card.denial_reason.value)}”</blockquote>
         {source ? <figcaption className="mt-auto pt-4 text-[14px] leading-snug text-muted">{source}</figcaption> : null}
       </figure>
@@ -74,6 +76,10 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
   const [vision, setVision] = useState<Vision>({ kind: "idle" });
   const [drawn, setDrawn] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const viewer = usePageViewer();
+  const viewKey = `exhibit-${citation.doc_id}-${citation.page}`;
+  const pageOpen = viewer?.state.open?.key === viewKey;
+  const onCropLoad = () => requestAnimationFrame(() => requestAnimationFrame(() => setDrawn(true)));
 
   useEffect(() => {
     if (unsupported) return;
@@ -119,17 +125,42 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
     body = <QuoteText quote={citation.quote} struck />;
     caption = "";
   } else if (located && !imageFailed) {
-    /* The highlighted sentence as live text, the way the sketch sets it, and the page crop under it as the proof, at the width the column allows. */
+    /*
+      The quoted sentence once, as the exhibit's text (and its accessible text), then the
+      page crop under it as the proof: the exhibit's full inner width, edge to edge inside
+      the 1 px frame, the 220 dpi raster so it stays sharp when zoomed; clicking it opens
+      the page viewer.
+    */
     body = (
       <>
-        <QuoteText quote={citation.quote} lead />
-        <div className="mt-3">
-          <Crop highlight={h} title={title} drawn={drawn} onLoad={() => requestAnimationFrame(() => requestAnimationFrame(() => setDrawn(true)))} onError={() => setImageFailed(true)} />
+        <QuoteText quote={citation.quote} />
+        <div className="-mx-7 mt-4">
+          {viewer ? (
+            <button
+              type="button"
+              onClick={(e) => viewer.actions.toggle(viewKey, citation, { returnTo: e.currentTarget })}
+              aria-expanded={pageOpen}
+              aria-controls={pageOpen ? viewerPanelId(viewKey) : undefined}
+              aria-label={`See page ${citation.page} of ${title}`}
+              className="block w-full cursor-zoom-in"
+              data-exhibit-open="true"
+            >
+              <Crop highlight={h} title={title} drawn={drawn} onLoad={onCropLoad} onError={() => setImageFailed(true)} />
+            </button>
+          ) : (
+            <Crop highlight={h} title={title} drawn={drawn} onLoad={onCropLoad} onError={() => setImageFailed(true)} />
+          )}
         </div>
       </>
     );
-    caption = visionLine(true, vision, true);
-    if (vision.kind === "done" && vision.vision.model !== "fixture") mark = vision.vision.agrees ? "tick" : "strike";
+    /* One line: the check's name and its result; the long forms (not run, unavailable) keep the viewer's own words. */
+    if (vision.kind === "done" && vision.vision.model !== "fixture") {
+      const name = /^muse-spark/i.test(vision.vision.model) ? "Muse Spark vision check" : "Vision check";
+      caption = vision.vision.agrees ? `${name}: matches the quote.` : `${name}: does not match the quote.`;
+      mark = vision.vision.agrees ? "tick" : "strike";
+    } else {
+      caption = visionLine(true, vision, true);
+    }
   } else {
     body = <QuoteText quote={citation.quote} />;
     caption =
@@ -147,7 +178,8 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
   return (
     <figure className={EXHIBIT} data-exhibit="policy" data-exhibit-state={unsupported ? "unsupported" : located && !imageFailed ? "crop" : load.kind === "ready" ? "text" : load.kind}>
       <PaperClip className="-top-[22px] left-8" />
-      <p className={TITLE}>The policy says</p>
+      <CornerMarks />
+      <ExhibitHead title="The policy says" n={2} />
       {/* The crop is cut at the lines' own left and right edges and sits in the exhibit's 24 px inset, so the page text starts where the overline does. */}
       <div className="mt-3">{body}</div>
       {folio}
@@ -178,9 +210,21 @@ function sharpSrc(src: string): string {
   return src.replace(/([?&]dpi=)\d+/, (_m, key: string) => key + "220");
 }
 
-function QuoteText({ quote, struck = false, lead = false }: { quote: string; struck?: boolean; lead?: boolean }) {
+/* The exhibit's head: its title, and its plate number at the right, small, in mono. */
+function ExhibitHead({ title, n }: { title: string; n: number }) {
   return (
-    <blockquote className={`${lead ? "text-[16px] leading-[1.55]" : "text-[17px] leading-relaxed"} text-ink`} data-exhibit-quote={lead ? "lead" : "text"}>
+    <div className="flex items-baseline justify-between gap-4">
+      <p className={TITLE}>{title}</p>
+      <p className="shrink-0 font-mono text-[14px] text-muted" data-exhibit-number={n}>
+        Exhibit {n}
+      </p>
+    </div>
+  );
+}
+
+function QuoteText({ quote, struck = false }: { quote: string; struck?: boolean }) {
+  return (
+    <blockquote className="text-[17px] leading-[1.6] text-ink" data-exhibit-quote="text">
       {struck ? (
         <s className="decoration-ink decoration-2">“{quote}”</s>
       ) : (

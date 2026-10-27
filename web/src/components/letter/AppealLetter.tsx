@@ -19,7 +19,7 @@ import { Mark } from "@/components/investigation/Marks";
 import { MarginPageViewer, usePageViewer, viewerPanelId } from "@/components/investigation/PageViewer";
 
 const ACTION =
-  "inline-flex min-h-12 w-full items-center justify-center rounded-sm px-5 text-[18px] font-semibold sm:w-auto";
+  "inline-flex min-h-12 w-full items-center justify-center px-5 text-[18px] font-semibold sm:w-auto";
 
 /* "Copied." stays for two seconds, then the status line clears. */
 const COPIED_MS = 2000;
@@ -607,7 +607,7 @@ function FootnoteRef({
       aria-expanded={open}
       aria-controls={open ? controls : undefined}
       onClick={onToggle}
-      className={`relative -top-[0.45em] ml-0.5 inline-block rounded-sm px-[3px] align-baseline text-[14px] leading-4 font-semibold text-ink tabular-nums underline underline-offset-2 print:hidden ${
+      className={`relative -top-[0.45em] ml-0.5 inline-block px-[3px] align-baseline text-[14px] leading-4 font-semibold text-ink tabular-nums underline underline-offset-2 print:hidden ${
         open ? "bg-hairline decoration-2" : "decoration-1 hover:decoration-2"
       }`}
       data-footnote={n}
@@ -619,7 +619,7 @@ function FootnoteRef({
 
 /* Reference-style links in a note: underlined, a 44 px tall target. */
 const NOTE_LINK =
-  "-my-2.5 inline-flex min-h-11 items-center rounded-sm px-1 text-[15px] font-semibold text-ink underline decoration-1 underline-offset-4 tabular-nums";
+  "-my-2.5 inline-flex min-h-11 items-center px-1 text-[15px] font-semibold text-ink underline decoration-1 underline-offset-4 tabular-nums";
 
 /*
   A margin note, set as a sidenote: its number, the short document name and
@@ -714,7 +714,7 @@ function MarginNote({
           <p className="mt-3 text-[15px] leading-snug text-muted" data-note-title="true">
             {title}, {pageFolio(first)}.{struck ? "" : " This quote was found on the cited page."}
           </p>
-          <button type="button" onClick={onClose} className="mt-2 inline-flex min-h-11 items-center rounded-sm border border-ink bg-bond px-3 text-[16px] font-semibold text-ink">
+          <button type="button" onClick={onClose} className="mt-2 inline-flex min-h-11 items-center border border-ink bg-bond px-3 text-[16px] font-semibold text-ink">
             Close
           </button>
         </div>

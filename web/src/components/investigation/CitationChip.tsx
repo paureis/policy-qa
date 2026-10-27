@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { printedPage } from "@/lib/printed-folios";
+import { Disclosure } from "./Marks";
 import { InlinePageViewer, usePageViewer, viewerPanelId } from "./PageViewer";
 
 /*
@@ -65,8 +66,8 @@ export function groupCitations(citations: ChipCitation[]): ChipCitation[][] {
 function ChipFace({ citation, open, quotes = 1 }: { citation: ChipCitation; open: boolean; quotes?: number }) {
   return (
     <>
-      <span aria-hidden="true" className="mr-1.5 shrink-0 text-muted">
-        {open ? "–" : "+"}
+      <span aria-hidden="true" className="mr-1.5 inline-flex shrink-0 self-center text-muted">
+        <Disclosure open={open} className="h-3 w-3" />
       </span>
       {/* Under 360 px the name wraps instead of pushing the page sideways (320 px reflow). */}
       <span className="min-w-0 truncate font-semibold max-[359px]:whitespace-normal lg:underline lg:decoration-edge lg:decoration-1 lg:underline-offset-4">
@@ -184,7 +185,7 @@ export function QuoteFigure({ id, citation }: { id: string; citation: ChipCitati
               aria-expanded={pageOpen}
               aria-controls={pageOpen ? viewerPanelId(id) : undefined}
               onClick={() => viewer.actions.toggle(id, citation)}
-              className={`inline-flex min-h-11 items-center rounded-sm border border-ink px-3 text-[16px] font-semibold text-ink ${
+              className={`inline-flex min-h-11 items-center border border-ink px-3 text-[16px] font-semibold text-ink ${
                 pageOpen ? "bg-paper" : "bg-bond"
               }`}
               data-see-page="true"

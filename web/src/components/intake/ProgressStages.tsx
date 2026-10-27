@@ -7,10 +7,12 @@ export const STAGES = ["Reading the letter", "Finding the program", "Filling the
   until the response arrives. No stepper chrome: a plain list, the current
   line in ink, finished lines ticked, the rest waiting.
 */
+import { PHONE_SHEET } from "@/components/investigation/SectionTitle";
+
 export function ProgressStages({ stage, onCancel }: { stage: number; onCancel: () => void }) {
   const current = STAGES[Math.min(stage, STAGES.length - 1)];
   return (
-    <section aria-labelledby="progress-heading" className="border-t-4 border-ink pt-4">
+    <section aria-labelledby="progress-heading" className={PHONE_SHEET}>
       <h1 id="progress-heading" className="text-[26px] leading-tight font-bold">
         Reading your letter
       </h1>
@@ -47,7 +49,7 @@ export function ProgressStages({ stage, onCancel }: { stage: number; onCancel: (
       <button
         type="button"
         onClick={onCancel}
-        className="mt-8 inline-flex min-h-11 items-center rounded-sm border border-ink bg-bond px-5 text-[16px] font-semibold text-ink"
+        className="mt-8 inline-flex min-h-11 items-center border border-ink bg-bond px-5 text-[16px] font-semibold text-ink"
       >
         Cancel
       </button>

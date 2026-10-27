@@ -61,6 +61,9 @@ export const APPENDIX_H2 = "lg:mt-0 lg:flex lg:items-baseline lg:gap-3 lg:text-[
   hairline under it, the number on the folder's tab instead. Under 1024 px
   none of this applies.
 */
+export const PHONE_SHEET = "border border-ink bg-bond px-4 pt-4 pb-5 sm:px-6";
+/* The same sheet under 1024 px only, for the finished case, whose desktop sections take the folder layout above. */
+export const PHONE_SHEET_ONLY = "max-lg:border max-lg:border-ink max-lg:bg-bond max-lg:px-4 max-lg:pt-4 max-lg:pb-5 sm:max-lg:px-6";
 export const SHEET = "lg:mt-24 lg:border lg:border-ink lg:bg-bond lg:px-10 lg:pt-8 lg:pb-10";
 export const IN_SHEET = "lg:mt-0 tabs:border-t-0 tabs:pt-0";
 export const SHEET_HEAD = "tabs:block tabs:border-b tabs:border-hairline tabs:pb-3 tabs:text-[20px] tabs:font-semibold";

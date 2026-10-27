@@ -3,6 +3,7 @@
 import { useId } from "react";
 import type { EvidenceItem } from "@/lib/case";
 import { CitationChips } from "@/components/investigation/CitationChip";
+import { PHONE_SHEET } from "@/components/investigation/SectionTitle";
 
 /*
   What to include with the appeal. Each row is a real checkbox the person can
@@ -17,11 +18,10 @@ export function EvidenceChecklist({ items, register = false }: { items: Evidence
   return (
     <section
       aria-labelledby="evidence-heading"
-      className={register ? "" : "land mt-10 border-t-4 border-ink pt-4"}
+      className={register ? "" : `land mt-10 ${PHONE_SHEET}`}
       data-checklist={items.length}
       data-register={register ? "true" : undefined}
     >
-      {register ? null : <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Evidence checklist</p>}
       <Heading id="evidence-heading" className={register ? "text-[20px] leading-tight font-semibold" : "mt-1 text-[22px] leading-tight font-bold"}>
         What to include with your appeal
       </Heading>
@@ -45,10 +45,10 @@ function ChecklistRow({ item }: { item: EvidenceItem }) {
             id={id}
             type="checkbox"
             aria-describedby={`${id}-why`}
-            className="peer absolute inset-0 h-7 w-7 cursor-pointer appearance-none rounded-sm border-2 border-ink bg-bond checked:bg-ink lg:-inset-2 lg:h-11 lg:w-11 lg:border-0 lg:bg-transparent lg:checked:bg-transparent"
+            className="peer absolute inset-0 h-7 w-7 cursor-pointer appearance-none border-2 border-ink bg-bond checked:bg-ink lg:-inset-2 lg:h-11 lg:w-11 lg:border-0 lg:bg-transparent lg:checked:bg-transparent"
           />
           {/* At desktop the input is a 44 px target and this draws the 28 px box inside it. */}
-          <span aria-hidden="true" className="pointer-events-none absolute inset-0 hidden rounded-sm border-2 border-ink bg-bond peer-checked:bg-ink lg:block" />
+          <span aria-hidden="true" className="pointer-events-none absolute inset-0 hidden border-2 border-ink bg-bond peer-checked:bg-ink lg:block" />
           <svg
             viewBox="0 0 20 20"
             aria-hidden="true"

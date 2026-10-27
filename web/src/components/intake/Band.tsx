@@ -38,16 +38,18 @@ export function Band({
             data-folder-tab="true"
           >
             {tab}
+            {sample ? <span title="Fixture mode: every submit returns the Sunshine Health sample case"> · sample case</span> : null}
           </p>
         ) : null}
         <div className="ml-auto flex min-w-0 items-center gap-3 self-center text-[15px]">
           {children}
+          {/* Without a tab (and under 640 px, where the tab is hidden) the sample mark is plain mono text. */}
           {sample ? (
             <span
-              className="border border-ink px-2 py-0.5 text-[13px] font-semibold tracking-wide uppercase sm:whitespace-nowrap"
+              className={`font-mono text-[14px] whitespace-nowrap ${tab ? "sm:hidden" : ""}`}
               title="Fixture mode: every submit returns the Sunshine Health sample case"
             >
-              Sample case
+              sample case
             </span>
           ) : null}
         </div>

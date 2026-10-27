@@ -4,8 +4,8 @@ import { useId, useState } from "react";
 import { verdictHeadline, type CaseCard, type CitationRef, type Verdict } from "@/lib/case";
 import { CitationChips } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
-import { Mark } from "@/components/investigation/Marks";
-import { OPENING_H2, SectionTitle } from "@/components/investigation/SectionTitle";
+import { Disclosure, Mark } from "@/components/investigation/Marks";
+import { OPENING_H2, PHONE_SHEET, PHONE_SHEET_ONLY, SectionTitle } from "@/components/investigation/SectionTitle";
 import { ExhibitPair } from "./ExhibitPair";
 
 /*
@@ -68,17 +68,16 @@ export function VerdictSection({
   const steelId = useId();
   const outcome = verdict.outcome;
   const marks = proofMarks(proof);
-  /* The brief's desktop scale: h3 at 20 px, weight 600 (700 is kept for the verdict and the h2s). */
+  /* The desktop scale: h3 at 20 px, weight 600 (the page sets 400 and 600; the stamp alone is 850). */
   const h3 = `text-[18px] font-bold ${annotated ? "lg:text-[20px] lg:font-semibold" : ""}`;
   const ruleCitation = verdict.rule?.citations?.[0] ?? null;
 
   return (
     <section
       aria-labelledby="verdict-heading"
-      className={`land ${first ? "mt-8" : "mt-10"} border-t-4 border-ink pt-4 ${annotated ? "lg:mt-0 lg:border-t-0 lg:pt-0" : ""}`}
+      className={`land ${first ? "mt-8" : "mt-10"} ${annotated ? `${PHONE_SHEET_ONLY} lg:mt-0` : PHONE_SHEET}`}
       data-verdict={outcome}
     >
-      <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Verdict</p>
       <h2
         id="verdict-heading"
         className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? `${OPENING_H2} lg:mt-0 lg:text-[20px] tabs:sr-only` : ""}`}
@@ -94,7 +93,7 @@ export function VerdictSection({
       </h1>
       {marks.length > 0 ? (
         <p
-          className={`mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[17px] leading-snug text-ink tabular-nums ${annotated ? "lg:mt-6 lg:text-[16px]" : ""}`}
+          className={`mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[17px] leading-snug text-ink tabular-nums ${annotated ? "lg:mt-6 lg:gap-x-4 lg:text-[15px] xl:flex-nowrap" : ""}`}
           data-verdict-proof="true"
         >
           {marks.map((m, i) => (
@@ -142,10 +141,10 @@ export function VerdictSection({
               aria-expanded={steelOpen}
               aria-controls={steelOpen ? steelId : undefined}
               onClick={() => setSteelOpen((o) => !o)}
-              className="inline-flex min-h-11 w-full items-center gap-3 rounded-sm text-left"
+              className="inline-flex min-h-11 w-full items-center gap-3 text-left"
             >
-              <span aria-hidden="true" className={`w-4 shrink-0 font-bold ${annotated ? "lg:font-semibold" : ""}`}>
-                {steelOpen ? "–" : "+"}
+              <span aria-hidden="true" className="flex w-4 shrink-0 justify-center">
+                <Disclosure open={steelOpen} />
               </span>
               <span>The payer&apos;s best argument</span>
             </button>

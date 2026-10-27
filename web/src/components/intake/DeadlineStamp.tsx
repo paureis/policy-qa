@@ -1,4 +1,5 @@
 import { dayCountLabel, daysUntil, formatShortDate } from "@/lib/case";
+import { Mark } from "@/components/investigation/Marks";
 
 /*
   The appeal deadline as a rubber stamp, where it is the only stamp on the
@@ -49,16 +50,13 @@ export function DeadlineStamp({
     <div
       role="img"
       aria-label={label}
-      className={`relative w-[156px] shrink-0 select-none text-red ${landed ? "rotate-[-2.6deg]" : "rotate-[-1.4deg]"} ${className}`}
+      className={`relative w-[156px] shrink-0 select-none text-red [transform:rotate(-2.6deg)] ${className}`}
       data-landed={landed ? "true" : "false"}
       data-stamp="deadline"
     >
-      <span aria-hidden="true" className={`absolute inset-0 border-[3px] border-current ${INKED}`} />
-      <span
-        aria-hidden="true"
-        className={`absolute inset-[6px] border border-current ${landed ? "border-solid" : "border-dashed"} ${INKED}`}
-      />
-      <div className="relative flex flex-col items-center px-3 pt-3 pb-2.5 text-center uppercase [font-stretch:62%]">
+      {/* The frame is the .stamp class itself (the verdict stamp's frame, ink and filter), unturned because the whole stamp turns; before it lands the inner frame is dashed. */}
+      <span aria-hidden="true" className={`stamp absolute inset-0 transform-none ${landed ? "" : "[outline-style:dashed]"}`} />
+      <div className="relative flex flex-col items-center px-3.5 pt-4 pb-3.5 text-center uppercase [font-stretch:62%]">
         <span className={`${SMALL} tracking-[0.12em]`}>Appeal by</span>
         {missing ? (
           <span className={`mt-1.5 mb-1 text-[20px] leading-[0.95] font-[850] ${INKED}`}>
@@ -106,7 +104,7 @@ export function DeadlineLine({
       className={`flex items-start gap-3 tabular-nums ${lead ? "text-[30px] leading-[1.12] font-semibold tracking-[-0.015em]" : "text-[20px] leading-tight font-semibold"} ${className}`}
       data-deadline-line={missing ? "missing" : "date"}
     >
-      <DateMark className={lead ? "mt-[7px] h-6 w-6" : "mt-[3px] h-[18px] w-[18px]"} />
+      <Mark kind="ring" className={lead ? "mt-[9px] h-5 w-5" : "mt-[4px] h-4 w-4"} />
       <span>
         {missing ? (
           "Deadline not stated"
@@ -121,12 +119,3 @@ export function DeadlineLine({
   );
 }
 
-/* The deadline's mark: a drawn calendar leaf in ink, the marks' stroke. */
-function DateMark({ className }: { className: string }) {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" className={`shrink-0 text-ink ${className}`} data-mark="date">
-      <rect x="2" y="3.5" width="12" height="10.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M2 7h12M5.5 1.5v3.5M10.5 1.5v3.5" stroke="currentColor" strokeWidth="1.6" />
-    </svg>
-  );
-}

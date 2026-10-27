@@ -13,7 +13,7 @@ export function SourcePanel({ input, rawText }: { input: IntakeInput; rawText: s
   const rawId = useId();
 
   return (
-    <aside aria-label="Your letter" className="rounded-sm border border-hairline bg-paper p-4">
+    <aside aria-label="Your letter" className="border border-hairline bg-paper p-4">
       <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Your letter</p>
       <div className="mt-3">
         {input.kind === "text" ? <TextExcerpt text={input.text} /> : <FilePreview file={input.file} />}
@@ -25,14 +25,14 @@ export function SourcePanel({ input, rawText }: { input: IntakeInput; rawText: s
             aria-expanded={open}
             aria-controls={rawId}
             onClick={() => setOpen((o) => !o)}
-            className="inline-flex min-h-11 items-center rounded-sm border border-ink bg-bond px-4 text-[16px] font-semibold text-ink"
+            className="inline-flex min-h-11 items-center border border-ink bg-bond px-4 text-[16px] font-semibold text-ink"
           >
             {open ? "Hide the letter" : "Show the letter as read"}
           </button>
           {open ? (
             <pre
               id={rawId}
-              className="mt-3 max-h-[60vh] overflow-auto rounded-sm border border-hairline bg-bond p-3 font-sans text-[15px] leading-relaxed whitespace-pre-wrap text-ink"
+              className="mt-3 max-h-[60vh] overflow-auto border border-hairline bg-bond p-3 font-sans text-[15px] leading-relaxed whitespace-pre-wrap text-ink"
             >
               {rawText}
             </pre>
@@ -75,7 +75,7 @@ function FilePreview({ file }: { file: File }) {
       <div className="flex items-center gap-3">
         <span
           aria-hidden="true"
-          className="flex h-14 w-11 shrink-0 items-center justify-center rounded-sm border border-ink bg-bond text-[12px] font-bold tracking-wide"
+          className="flex h-14 w-11 shrink-0 items-center justify-center border border-ink bg-bond text-[12px] font-bold tracking-wide"
         >
           PDF
         </span>
@@ -94,7 +94,7 @@ function FilePreview({ file }: { file: File }) {
       <img
         ref={imgRef}
         alt={`Your photo of the letter, ${file.name}`}
-        className="max-h-[320px] w-auto max-w-full rounded-sm border border-hairline bg-bond object-contain"
+        className="max-h-[320px] w-auto max-w-full border border-hairline bg-bond object-contain"
       />
       <p className="mt-2 truncate text-[14px] text-muted">
         {file.name}, {formatBytes(file.size)}

@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { JURISDICTION_HEADINGS, groupFindings, type Finding, type Route } from "@/lib/case";
 import { FindingCard } from "./FindingCard";
-import { APPENDIX, APPENDIX_H2, IN_SHEET, SHEET_HEAD, SectionTitle } from "./SectionTitle";
+import { APPENDIX_H2, IN_SHEET, PHONE_SHEET, PHONE_SHEET_ONLY, SHEET_HEAD, SectionTitle } from "./SectionTitle";
 
 /*
   Findings in arrival order, newest at the bottom. A dual case groups them
@@ -46,7 +46,7 @@ export function FindingsList({
   return (
     <section
       aria-labelledby="findings-heading"
-      className={appendix ? `land mt-10 border-t-4 border-ink pt-4 ${record ? `lg:border-t lg:pt-3 ${IN_SHEET}` : annotated ? APPENDIX : ""}` : "mt-6"}
+      className={appendix ? `land mt-10 ${record ? `${PHONE_SHEET_ONLY} lg:border-t lg:border-ink lg:pt-3 ${IN_SHEET}` : PHONE_SHEET}` : `mt-6 ${PHONE_SHEET}`}
       data-findings={appendix ? "appendix" : "live"}
     >
       {appendix ? <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Investigation</p> : null}

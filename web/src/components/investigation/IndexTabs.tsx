@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { usePageViewer } from "./PageViewer";
+
+/* The case card overlay marks the document while it is open (CaseHeader); the tabs read it. */
+function subscribeOverlay(onChange: () => void): () => void {
+  const mo = new MutationObserver(onChange);
+  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-overlay"] });
+  return () => mo.disconnect();
+}
 
 export interface IndexTab {
   n: number;
@@ -25,6 +33,14 @@ export interface IndexTab {
 */
 export function IndexTabs({ tabs }: { tabs: IndexTab[] }) {
   const [current, setCurrent] = useState<string | null>(tabs[0]?.target ?? null);
+  /* While a page viewer or the case card overlay is open, the tabs step aside: nothing paints over an open overlay. */
+  const viewerOpen = usePageViewer()?.state.open != null;
+  const cardOpen = useSyncExternalStore(
+    subscribeOverlay,
+    () => document.documentElement.hasAttribute("data-overlay"),
+    () => false,
+  );
+  const away = viewerOpen || cardOpen;
 
   useEffect(() => {
     const heads = tabs.map((t) => document.getElementById(t.target)).filter((el): el is HTMLElement => el !== null);
@@ -54,9 +70,9 @@ export function IndexTabs({ tabs }: { tabs: IndexTab[] }) {
   return (
     <nav
       aria-label="Sections of the case"
-      className="pointer-events-none fixed top-[88px] left-[calc(50%+544px)] z-40 hidden print:hidden tabs:block"
+      className={`pointer-events-none fixed top-[88px] left-[calc(50%+544px)] z-40 print:hidden ${away ? "hidden" : "hidden tabs:block"}`}
       data-index-tabs="true"
-    >
+      data-away={away ? "true" : undefined}    >
       <ol className="flex flex-col gap-1">
         {tabs.map((t) => {
           const on = t.target === current;

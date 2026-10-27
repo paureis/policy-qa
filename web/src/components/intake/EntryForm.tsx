@@ -15,7 +15,7 @@ export interface EntryFormProps {
 }
 
 const WAY =
-  "flex min-h-[72px] w-full flex-col items-start justify-center rounded-sm border border-edge bg-bond px-4 py-3 text-left text-ink hover:border-ink";
+  "flex min-h-[72px] w-full flex-col items-start justify-center border border-edge bg-bond px-4 py-3 text-left text-ink hover:border-ink";
 
 /* Three equal ways in: a photo, a file, or pasted text. */
 export function EntryForm({
@@ -94,7 +94,7 @@ export function EntryForm({
             onChange={(e) => onTextChange(e.target.value)}
             aria-describedby={countId}
             placeholder="Paste the whole letter, including the date and any deadline it gives."
-            className="mt-2 block w-full rounded-sm border border-edge bg-bond px-3 py-2 text-[18px] leading-relaxed text-ink placeholder:text-muted lg:text-[17px]"
+            className="mt-2 block w-full border border-edge bg-bond px-3 py-2 text-[18px] leading-relaxed text-ink placeholder:text-muted lg:text-[17px]"
           />
           <p id={countId} aria-live="polite" className="mt-2 text-[15px] text-muted">
             {length.toLocaleString("en-US")} of {TEXT_MAX.toLocaleString("en-US")} characters.{" "}
@@ -104,7 +104,7 @@ export function EntryForm({
             <button
               type="submit"
               disabled={!inRange}
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-sm bg-ink px-5 text-[18px] font-semibold text-bond disabled:cursor-not-allowed disabled:bg-hairline disabled:text-muted"
+              className="inline-flex min-h-12 w-full items-center justify-center bg-ink px-5 text-[18px] font-semibold text-bond disabled:cursor-not-allowed disabled:bg-hairline disabled:text-muted"
             >
               Read this letter
             </button>

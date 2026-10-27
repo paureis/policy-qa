@@ -14,7 +14,7 @@ import {
   type Letter,
   type Verdict,
 } from "@/lib/case";
-import { APPENDIX, APPENDIX_H2, SectionTitle } from "./SectionTitle";
+import { APPENDIX, APPENDIX_H2, PHONE_SHEET, PHONE_SHEET_ONLY, SectionTitle } from "./SectionTitle";
 
 /* The two verification counts as lines, for the receipt and for the verdict. Counts, never a percentage. */
 export function verificationLines(investigation: Investigation, letter: Letter | null): string[] {
@@ -84,10 +84,9 @@ export function TrustPanel({
   return (
     <section
       aria-labelledby="trust-heading"
-      className={`land mt-10 border-t-4 border-ink bg-bond px-4 pt-4 pb-5 sm:px-6 ${annotated ? `${APPENDIX} lg:bg-transparent lg:px-0 lg:pb-0` : ""}`}
+      className={`land mt-10 ${annotated ? `${PHONE_SHEET_ONLY} ${APPENDIX}` : PHONE_SHEET}`}
       data-trust="true"
     >
-      <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Trust</p>
       <h2 id="trust-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? APPENDIX_H2 : ""}`}>
         <SectionTitle title={split ? "How this case was checked" : "How this investigation was checked"} short="Receipt" n={annotated ? n : null} />
       </h2>
@@ -181,7 +180,7 @@ export function TrustPanel({
             aria-expanded={traceOpen}
             aria-controls={traceOpen ? traceId : undefined}
             onClick={() => setTraceOpen((o) => !o)}
-            className="inline-flex min-h-11 items-center rounded-sm border border-ink bg-bond px-4 text-[16px] font-semibold text-ink"
+            className="inline-flex min-h-11 items-center border border-ink bg-bond px-4 text-[16px] font-semibold text-ink"
           >
             {traceOpen ? "Hide the trace" : "Show the trace"}
           </button>

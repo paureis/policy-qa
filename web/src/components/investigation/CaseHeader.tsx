@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { FIELD_LABELS, PROGRAM_LABELS, displayValue, type CaseRecord, type Program } from "@/lib/case";
 import { CaseCard } from "@/components/intake/CaseCard";
+import { PHONE_SHEET, PHONE_SHEET_ONLY } from "./SectionTitle";
 import { DeadlineLine, DeadlineStamp } from "@/components/intake/DeadlineStamp";
 
 const NO_FLAGS = new Set<never>();
@@ -50,6 +51,13 @@ export function CaseHeader({
   const Title = titled ? "h1" : "p";
   const toggleRef = useRef<HTMLButtonElement>(null);
 
+  /* While the full card is open as an overlay at desktop, the document says so, and the index tabs step aside. */
+  useEffect(() => {
+    if (!open || !register) return;
+    document.documentElement.setAttribute("data-overlay", "case-card");
+    return () => document.documentElement.removeAttribute("data-overlay");
+  }, [open, register]);
+
   /* In the register at desktop the full card opens as an overlay over the margin; Escape closes it and returns focus. */
   useEffect(() => {
     if (!open || !register) return;
@@ -67,17 +75,16 @@ export function CaseHeader({
       aria-labelledby="case-heading"
       className={`${
         /* Before the verdict the deadline is this sheet's one stamp, so the header is a bond sheet and the stamp sits on bond. */
-        titled ? "border border-ink bg-bond px-4 pt-4 pb-2 sm:px-6" : "border-t-4 border-ink pt-4"
+        register ? PHONE_SHEET_ONLY : PHONE_SHEET
       } ${
-        register ? "lg:relative lg:z-30 lg:float-right lg:mb-0 lg:ml-10 lg:w-[340px] lg:border-t-0 lg:pt-1 xl:w-[440px]" : ""
+        register ? "lg:relative lg:z-30 lg:float-right lg:mb-0 lg:ml-10 lg:w-[340px] lg:pt-1 xl:w-[440px]" : ""
       }`}
       data-case={record.case_id}
       data-register={register ? "true" : undefined}
     >
       <div className={`flex items-start justify-between gap-4 ${register ? "lg:hidden" : ""}`}>
         <div className="min-w-0">
-          <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Case card</p>
-          <Title id="case-heading" className="mt-1 text-[26px] leading-tight font-bold">
+          <Title id="case-heading" className="text-[26px] leading-tight font-bold">
             {payer ? String(payer) : "Denial letter"}
           </Title>
           <p className="mt-2 text-[16px] text-muted">
@@ -113,7 +120,7 @@ export function CaseHeader({
         aria-expanded={open}
         aria-controls={open ? fullId : undefined}
         onClick={() => setOpen((o) => !o)}
-        className={`mt-3 inline-flex min-h-11 items-center rounded-sm px-1 text-[16px] font-semibold text-ink underline underline-offset-4 ${
+        className={`mt-3 inline-flex min-h-11 items-center px-1 text-[16px] font-semibold text-ink underline underline-offset-4 ${
           register ? "lg:mt-2 lg:-ml-1 lg:text-[15px] xl:absolute xl:right-0 xl:-bottom-3 xl:mt-0 xl:ml-0" : ""
         }`}
         data-case-card-toggle="true"
@@ -123,7 +130,7 @@ export function CaseHeader({
       {open ? (
         <div
           id={fullId}
-          className={`mt-4 ${register ? "lg:absolute lg:inset-x-0 lg:top-full lg:mt-0 lg:border lg:border-ink lg:bg-bond lg:px-5 lg:pt-1 lg:pb-5" : ""}`}
+          className={`mt-4 ${register ? "lg:absolute lg:inset-x-0 lg:top-full lg:mt-0 xl:mt-4 lg:border lg:border-ink lg:bg-bond lg:px-5 lg:pt-1 lg:pb-5" : ""}`}
           data-case-card-full="true"
         >
           <CaseCard
@@ -136,6 +143,7 @@ export function CaseHeader({
             today={today}
             caseId={record.case_id}
             headingTag="h2"
+            bare
             onChange={noop}
             onLooksRight={noop}
           />

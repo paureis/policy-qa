@@ -28,7 +28,7 @@ import type { ChipCitation } from "./CitationChip";
   "See the page": the cited PDF page as an image with the quoted lines
   highlighted in red, and a vision check line under it. One viewer is open
   at a time. On the phone it is a section under the quote; at 1024px and up
-  it is a sticky side panel beside the case column. The provider holds which
+  it is a panel fixed over the right of the window, never beside the column. The provider holds which
   quote is open; the panel holds its own requests and aborts them on close.
 */
 
@@ -140,13 +140,19 @@ export function PageViewerFrame({ children }: { children: ReactNode }) {
   const state = useContext(StateContext);
   const actions = useContext(ActionsContext);
   const side = state?.desktop && state.open && state.open.placement !== "margin" ? state.open : null;
-  if (!side || !actions) return <div className="flex flex-1 flex-col">{children}</div>;
+  /*
+    At desktop the side viewer is an overlay: fixed to the right edge of the window, over the
+    page, a bond sheet with a 1 px ink edge. The page under it never reflows or moves (an open
+    overlay never moves content); the folder's index tabs step aside while it is open.
+  */
   return (
-    <div className="flex flex-1 items-start justify-center gap-6 pl-4" data-viewer-layout="side">
+    <div className="flex flex-1 flex-col" data-viewer-layout={side ? "side" : undefined}>
       {children}
-      <div className="sticky top-0 h-dvh w-[min(540px,44vw)] shrink-0 border-l border-hairline bg-bond">
-        <PageViewerPanel key={side.key} panelId={viewerPanelId(side.key)} citation={side.citation} variant="side" onClose={actions.close} />
-      </div>
+      {side && actions ? (
+        <div className="fixed top-0 right-0 z-50 h-dvh w-[min(540px,44vw)] border-l border-ink bg-bond" data-viewer-overlay="true">
+          <PageViewerPanel key={side.key} panelId={viewerPanelId(side.key)} citation={side.citation} variant="side" onClose={actions.close} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -196,7 +202,7 @@ export type Vision =
   | { kind: "unavailable"; error: string };
 
 const BUTTON =
-  "inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm border border-ink bg-bond px-3 text-[16px] font-semibold text-ink";
+  "inline-flex min-h-11 min-w-11 items-center justify-center border border-ink bg-bond px-3 text-[16px] font-semibold text-ink";
 
 function pct(n: number): string {
   return `${(n * 100).toFixed(4)}%`;
@@ -475,7 +481,7 @@ function PageViewerPanel({
       ref={panelRef}
       id={panelId}
       tabIndex={-1}
-      className="step-in mt-3 mb-4 flex flex-col border-t-4 border-ink pt-3"
+      className="step-in mt-3 mb-4 flex flex-col border-t border-ink pt-3"
       data-page-viewer="inline"
     >
       {header}

@@ -11,7 +11,7 @@ import {
 } from "@/lib/case";
 import { CitationChips } from "./CitationChip";
 import { CouldNotVerifyTag } from "./CouldNotVerifyTag";
-import { Mark } from "./Marks";
+import { Disclosure, Mark } from "./Marks";
 import { StruckList } from "./StruckList";
 
 /* The answer's first sentence and the rest, split at the first sentence end followed by a capital. */
@@ -74,11 +74,11 @@ export function FindingCard({ finding, level = 3, record = false }: { finding: F
               aria-expanded={open}
               aria-controls={open ? restId : undefined}
               onClick={() => setOpen((o) => !o)}
-              className="-ml-1 hidden min-h-11 w-full items-baseline gap-3 rounded-sm px-1 py-1.5 text-left lg:flex"
+              className="-ml-1 hidden min-h-11 w-full items-baseline gap-3 px-1 py-1.5 text-left lg:flex"
               data-record-toggle="true"
             >
-              <span aria-hidden="true" className="w-4 shrink-0 text-[20px] font-semibold">
-                {open ? "–" : "+"}
+              <span aria-hidden="true" className="flex w-4 shrink-0 justify-center self-center">
+                <Disclosure open={open} />
               </span>
               <span>{finding.question}</span>
             </button>

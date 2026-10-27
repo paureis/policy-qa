@@ -3,6 +3,7 @@
 import { FIELD_ORDER, type CaseCard as CaseCardData, type FieldKey, type FieldValue } from "@/lib/case";
 import { DeadlineStamp } from "./DeadlineStamp";
 import { FieldRow } from "./FieldRow";
+import { PHONE_SHEET } from "@/components/investigation/SectionTitle";
 
 export interface CaseCardProps {
   card: CaseCardData;
@@ -16,6 +17,8 @@ export interface CaseCardProps {
   headingTag?: "h1" | "h2";
   /* false where the page already shows the deadline (the case page): one stamp per sheet. */
   stamp?: boolean;
+  /* true inside a page that already draws the sheet (the case header): no sheet of its own. */
+  bare?: boolean;
   onChange: (key: FieldKey, value: FieldValue) => void;
   onLooksRight: (key: FieldKey) => void;
 }
@@ -34,6 +37,7 @@ export function CaseCard({
   caseId,
   headingTag: Heading = "h1",
   stamp = true,
+  bare = false,
   onChange,
   onLooksRight,
 }: CaseCardProps) {
@@ -43,11 +47,10 @@ export function CaseCard({
   const toCheck = flagged.size;
 
   return (
-    <section aria-labelledby="case-card-heading" className="border-t-4 border-ink pt-4" data-locked={locked ? "true" : "false"}>
+    <section aria-labelledby="case-card-heading" className={bare ? "" : PHONE_SHEET} data-locked={locked ? "true" : "false"}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">{locked ? "Case card" : "Case card, draft"}</p>
-          <Heading id="case-card-heading" className="mt-1 text-[26px] leading-tight font-bold">
+          <Heading id="case-card-heading" className="text-[26px] leading-tight font-bold">
             {payer ? String(payer) : "Denial letter"}
           </Heading>
           {caseId ? (

@@ -24,6 +24,36 @@ export function Mark({ kind, className = "h-4 w-4" }: { kind: MarkKind; classNam
 }
 
 /*
+  The disclosure mark beside a control that opens and closes: a drawn plus
+  when closed, a drawn minus when open, in the marks' stroke. The control's
+  aria-expanded carries the state; the mark is decorative.
+*/
+export function Disclosure({ open, className = "h-3.5 w-3.5" }: { open: boolean; className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" className={`shrink-0 text-current ${className}`} data-mark={open ? "minus" : "plus"}>
+      <path d="M2.5 8h11" stroke="currentColor" strokeWidth="2" />
+      {open ? null : <path d="M8 2.5v11" stroke="currentColor" strokeWidth="2" />}
+    </svg>
+  );
+}
+
+/*
+  Corner marks: four small ink corners inside a clipped sheet, the way plates
+  are marked for trimming. Decorative.
+*/
+export function CornerMarks() {
+  const c = "pointer-events-none absolute h-2.5 w-2.5 border-ink/60";
+  return (
+    <>
+      <span aria-hidden="true" className={`${c} top-2 left-2 border-t border-l`} />
+      <span aria-hidden="true" className={`${c} top-2 right-2 border-t border-r`} />
+      <span aria-hidden="true" className={`${c} bottom-2 left-2 border-b border-l`} />
+      <span aria-hidden="true" className={`${c} right-2 bottom-2 border-r border-b`} />
+    </>
+  );
+}
+
+/*
   A drawn paper clip, wire in ink at a light weight, set over the top edge
   of a clipped sheet. Decorative: aria-hidden, no pointer events.
 */

@@ -6,6 +6,8 @@ import {
   ERROR_COPY,
   critiqueError,
   critiqueFailed,
+
+  stageLine,
   IntakeError,
   investigate,
   isAbort,
@@ -16,7 +18,7 @@ import {
 import { Band } from "@/components/intake/Band";
 import { CaseHeader } from "./CaseHeader";
 import { IndexTabs, type IndexTab } from "./IndexTabs";
-import { SHEET } from "./SectionTitle";
+import { PHONE_SHEET, SHEET } from "./SectionTitle";
 import { FindingsList } from "./FindingsList";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { RouteLine } from "./RouteLine";
@@ -201,6 +203,12 @@ export function InvestigationView({ caseId }: { caseId: string }) {
       ]
     : [];
   const payerName = record?.card.payer_name.value ? String(record.card.payer_name.value) : null;
+  /*
+    The band's status line at desktop on the finished case: one plain line, the letter's stage
+    ("Letter checked: 1 of 1 issue fixed."). The question count stays with the record (section 4)
+    and the receipt; with the folder tab beside it, both would not fit on one line.
+  */
+  const bandStatus = record ? (stageLine(record) ?? "") : "";
   const opened = openedDate(record?.created_at);
   /*
     The top sheet: the case header, the status line and the verdict on one
@@ -252,9 +260,9 @@ export function InvestigationView({ caseId }: { caseId: string }) {
             record ? (
               <>
                 CASE <span className="font-semibold">{record.case_id}</span>
-                {/* The payer and the opened date need the folder's full width: the finished case at 1024 px and up. */}
+                {/* The payer and the opened date need the folder's full width: the finished case at 1280 px and up. */}
                 {annotated && (payerName || opened) ? (
-                  <span className="hidden lg:inline">
+                  <span className="hidden xl:inline">
                     {payerName ? ` · ${payerName}` : ""}
                     {opened ? ` · opened ${opened}` : ""}
                   </span>
@@ -268,13 +276,15 @@ export function InvestigationView({ caseId }: { caseId: string }) {
             edge carries it; on the phone and during the live run it stays in the page.
           */}
           {desk && record ? (
-            <div
-              className="hidden min-w-0 flex-wrap items-baseline justify-end gap-x-2 text-right lg:flex [&_div]:mt-0 [&_p]:mt-0 [&_p]:text-[15px] [&_p]:leading-snug [&_p]:font-normal"
+            <p
+              aria-live="polite"
+              aria-atomic="true"
+              className="hidden min-w-0 truncate text-[14px] leading-snug lg:block"
+              title={bandStatus}
               data-band-status="true"
             >
-              <InvestigationProgress investigation={investigation} compact />
-              <StageLine record={record} letterHref={letterHref} inRow compact />
-            </div>
+              {bandStatus}
+            </p>
           ) : null}
           <Link href="/case/new" className="inline-flex min-h-11 shrink-0 items-center px-2 text-[15px] font-semibold whitespace-nowrap underline underline-offset-4">
             New case
@@ -291,7 +301,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
             ) : null}
 
             {view.kind === "not_found" ? (
-              <section data-view="not_found" aria-labelledby="not-found-heading" className="border-t-4 border-ink pt-4">
+              <section data-view="not_found" aria-labelledby="not-found-heading" className={PHONE_SHEET}>
                 <h1 id="not-found-heading" className="text-[26px] leading-tight font-bold">
                   {ERROR_COPY.not_found.title}
                 </h1>
@@ -305,9 +315,8 @@ export function InvestigationView({ caseId }: { caseId: string }) {
             ) : null}
 
             {view.kind === "error" ? (
-              <section role="alert" aria-labelledby="load-error-heading" className="border-t-4 border-ink pt-4" data-view="error">
-                <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Could not load the case</p>
-                <h1 id="load-error-heading" className="mt-1 text-[26px] leading-tight font-bold">
+              <section role="alert" aria-labelledby="load-error-heading" className={PHONE_SHEET} data-view="error">
+                <h1 id="load-error-heading" className="text-[26px] leading-tight font-bold">
                   {apiMessage && view.error.code === "unreachable" ? "The service reported an error" : ERROR_COPY[view.error.code].title}
                 </h1>
                 <p className="mt-4 text-[18px] leading-relaxed lg:text-[17px]" data-api-message={apiMessage ? "true" : "false"}>
@@ -346,7 +355,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                 />
 
                 {record.status === "intake" ? (
-                  <section className="mt-6 border-t border-hairline pt-4" aria-live="polite">
+                  <section className={`mt-6 ${PHONE_SHEET}`} aria-live="polite">
                     <p className="text-[18px] leading-relaxed lg:text-[17px]">This case has not been investigated yet.</p>
                     {starting === "failed" ? (
                       <p role="alert" className="mt-2 text-[16px] font-semibold">
@@ -414,9 +423,8 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                     </div>
 
                     {failed && failure ? (
-                      <section role="alert" aria-labelledby="failed-heading" className="mt-8 border-t-4 border-ink pt-4" data-view="failed" data-failed-step={failedStep}>
-                        <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">{failure.overline}</p>
-                        <h2 id="failed-heading" className="mt-1 text-[26px] leading-tight font-bold">
+                      <section role="alert" aria-labelledby="failed-heading" className={`mt-8 ${PHONE_SHEET}`} data-view="failed" data-failed-step={failedStep}>
+                        <h2 id="failed-heading" className="text-[26px] leading-tight font-bold">
                           {failure.heading}
                         </h2>
                         <p className="mt-4 text-[18px] leading-relaxed lg:text-[17px]">{failureReason}</p>

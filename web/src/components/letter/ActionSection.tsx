@@ -1,7 +1,7 @@
 "use client";
 
 import { dayCountLabel, daysUntil, formatShortDate, type Critique, type Letter, type Verdict } from "@/lib/case";
-import { IN_SHEET, OPENING, OPENING_H2, SHEET, SHEET_HEAD, SectionTitle } from "@/components/investigation/SectionTitle";
+import { IN_SHEET, OPENING, OPENING_H2, PHONE_SHEET, PHONE_SHEET_ONLY, SHEET, SHEET_HEAD, SectionTitle } from "@/components/investigation/SectionTitle";
 import { AppealLetter } from "./AppealLetter";
 import { DeadlineFiling } from "./DeadlineFiling";
 import { EvidenceChecklist } from "./EvidenceChecklist";
@@ -64,9 +64,8 @@ export function ActionSection({
       <section
         id={letter.applicable ? APPEAL_LETTER_ID : undefined}
         aria-labelledby="action-heading"
-        className={`land mt-10 scroll-mt-4 border-t-4 border-ink pt-4 ${annotated ? OPENING : ""}`}
+        className={`land mt-10 scroll-mt-4 ${annotated ? `${PHONE_SHEET_ONLY} ${OPENING}` : PHONE_SHEET}`}
         data-action={letter.applicable ? "letter" : "explanation"}>
-        <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Action</p>
         {letter.applicable ? (
           <>
             <h2 id="action-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? OPENING_H2 : ""}`}>
@@ -108,7 +107,7 @@ export function ActionSection({
           path in the margin column beside it.
         */
         <div className={`land mt-10 ${SHEET}`} data-sheet-section="send">
-          <section aria-labelledby="send-heading" className={`border-t-4 border-ink pt-4 lg:pt-4 ${IN_SHEET}`} data-send="true">
+          <section aria-labelledby="send-heading" className={`lg:border-t-4 lg:border-ink lg:pt-4 ${IN_SHEET}`} data-send="true">
             <h2 id="send-heading" className={`mt-1 text-[22px] leading-tight font-bold ${OPENING_H2} ${SHEET_HEAD}`}>
               <SectionTitle title="What to send and where to file" short="What to send and where to file" n={n?.send ?? null} />
             </h2>
