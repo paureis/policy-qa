@@ -6,7 +6,7 @@
 2. **Letter gallery.** The 10 rows marked `demo=yes` are the letters offered on screen as samples.
 3. **Denial-case evaluation set.** The agent's verdict on each letter is compared with `intended_outcome`. No row is used for a score until a human has verified it (see "Review protocol").
 
-Status: agent-drafted on Oct 26, 2026. **Not yet human-verified.** Every row is a draft until Alvaro keeps or edits it.
+Status, Oct 26, 2026 (evening): drafted by an agent, then reviewed the same day. Two independent Opus reviewers graded every row blind to each other (quote on its page, verdict follows from the quote against the stated reason, letter realistic and in coverage terms). They agreed keep at high confidence on 22 rows and flagged 6 (dc-006, dc-008, dc-009, dc-010, dc-014, dc-017). Alvaro decided the 6 flagged rows and confirmed the 9 other demo letters by decision prompt, on the reviewers' findings: 5 edits applied (below), no rejects. The remaining 15 non-demo rows are **agent-verified, not human-verified**; the Case Review page (https://claude.ai/artifact/CXLagCLFPYfiGVRLQATbj1, database collection `cases`) holds both reviewers' findings on every row and Alvaro's verdict on the 15 he decided. Edits of Oct 26: dc-008 letter states the member was treated for the emergency condition through discharge; dc-009 notes corrected (the PPL is in the corpus, fl-10 p7); dc-010 and dc-014 reasons now rest on the assessment, not on the plan the payer itself cites; dc-014 code S5102 to S5100; dc-017 changed from inconsistent to not settled.
 
 ## Every letter is synthetic
 
@@ -49,9 +49,9 @@ The verdict is about the stated reason against the written rule. It is never a j
 | | Count |
 |---|---|
 | Rows | 30 |
-| Inconsistent | 14 |
+| Inconsistent | 13 |
 | Consistent | 10 |
-| Not settled | 6 |
+| Not settled | 7 |
 | Traps | 4 |
 | Demo letters | 10 (5 inconsistent, 3 consistent, 2 not settled, 1 trap) |
 
@@ -93,7 +93,7 @@ Six letters have no appeal deadline on purpose (dc-008, dc-009, dc-011, dc-021, 
 - The hinge quote appears in `data/text/<hinge_doc_id>/p<NNN>.txt` after whitespace is normalized. If the document's text folder is missing on the machine (fl-24 and hipaa-01 to 04 today), the row is reported as "unverifiable here", not as a failure. No row cites those documents now.
 - Each letter exists, is 600 to 1,500 characters, starts with the sample line, and ends with the synthetic line.
 - Each letter contains its amount (as `$1,234.00`), its dates of service and letter date (as `September 1, 2026`), its denial reason verbatim, its service code when set, and its deadline when set.
-- The set has 30 unique ids, the 14 / 10 / 6 outcome mix, 4 traps, and 10 demo rows with the demo minimums.
+- The set has 30 unique ids, the 13 / 10 / 7 outcome mix (14 / 10 / 6 before the Oct 26 review), 4 traps, and 10 demo rows with the demo minimums.
 
 ## Review protocol
 
@@ -103,6 +103,6 @@ Alvaro verifies every row before the set is used for a score or shown in the dem
 - **Edit**: the verdict, the quote, or a letter field needs a change. He types the change and it is applied to the row.
 - **Reject**: the case is dropped from the set (for example a rule he reads differently, or a letter that is not realistic).
 
-Verdicts are saved server-side, in the same way as the Golden Set Review. The review page is not built yet. Until it exists, every row is an agent draft. After review, `verify.py` must pass again and the outcome mix may change; the mix rules in `verify.py` should then be updated to the verified counts.
+Verdicts are saved server-side, in the same way as the Golden Set Review. The review page is `cases/review-page.html` (seed: `python cases/review_seed.py` writes `review-seed.json`, which is loaded into the page's database). On Oct 26 the review ran as two blind agent passes plus Alvaro's decisions on the flagged and demo rows (see Status above); he can still open any row on the page. After a review, `verify.py` must pass again and its mix rule is updated to the verified counts.
 
 What a verifier should look at first is in each row's `notes`. The rows most open to a different reading are dc-008 (whether days 46 to 51 were emergency services), dc-013 (LTC home adaptation against the MMA DME ramp exclusion), dc-017 (a plain-language guide sentence against a plan's drug list), and dc-021 (a provider statement, not a payer notice).

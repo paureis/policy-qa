@@ -11,7 +11,7 @@ Per row:
   - the letter states the amount, the dates of service, the letter date, the denial reason, the service
     code when set, and the appeal deadline when set
 Whole set:
-  - 30 rows, ids unique; outcome mix 14 / 10 / 6; 4 traps; 10 demo rows with at least
+  - 30 rows, ids unique; outcome mix 13 / 10 / 7; 4 traps; 10 demo rows with at least
     5 inconsistent, 3 consistent, 2 not_settled, and 1 trap
 
 Exit code 0 when no row fails, 1 otherwise.
@@ -47,7 +47,7 @@ YES_NO = {"yes", "no"}
 
 FIRST_LINE = "SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE."
 LETTER_MIN, LETTER_MAX = 600, 1500
-TARGET_OUTCOMES = {"inconsistent": 14, "consistent": 10, "not_settled": 6}
+TARGET_OUTCOMES = {"inconsistent": 13, "consistent": 10, "not_settled": 7}
 TARGET_ROWS, TARGET_TRAPS, TARGET_DEMO = 30, 4, 10
 DEMO_MIN = {"inconsistent": 5, "consistent": 3, "not_settled": 2}
 

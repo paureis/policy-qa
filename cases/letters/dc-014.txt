@@ -9,10 +9,10 @@ Member: N. Sample, age 63
 Member ID: 00000000-SAMPLE
 Provider: Sample Adult Day Center
 
-This letter is about adult day health care, 5 days per week, service code S5102, for dates of service October 5, 2026 through October 30, 2026. The amount billed for the days we denied was $1,560.00.
+This letter is about adult day health care, 5 days per week, service code S5100, for dates of service October 5, 2026 through October 30, 2026. The amount billed for the days we denied was $1,560.00.
 
 We approved 3 days per week and denied the other 2 days per week.
-Reason: The request for 5 days per week of adult day health care is more than the 3 days per week in your authorized plan of care.
+Reason: Your care manager's assessment does not show a need for more than 3 days per week of adult day health care.
 
 You have the right to ask for a plan appeal. Your appeal must be received within 60 days of the date of this letter, by December 11, 2026. You may ask for a free copy of the rule and the records we used. After the plan appeal you may ask for a Medicaid Fair Hearing.
 

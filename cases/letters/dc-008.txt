@@ -9,7 +9,7 @@ Member: H. Sample, age 44
 Member ID: 00000000-SAMPLE
 Facility: Sample Regional Hospital
 
-This notice is about an inpatient hospital stay. The member was admitted through the emergency department for an emergency and stayed in the hospital for dates of service June 14, 2026 through June 19, 2026. These dates were days 46 through 51 of covered inpatient days for the fiscal year that ended June 30, 2026. The amount billed for these days was $18,900.00.
+This notice is about an inpatient hospital stay. The member was admitted through the emergency department for an emergency and stayed in the hospital for dates of service June 14, 2026 through June 19, 2026. The hospital records show the member was treated for the emergency medical condition through discharge on June 19, 2026. These dates were days 46 through 51 of inpatient days for the fiscal year that ended June 30, 2026. The amount billed for these days was $18,900.00.
 
 Payment for these days has been denied.
 Reason: The member has used the 45 inpatient hospital days covered per fiscal year for adults. Days 46 through 51 of this stay are denied.
