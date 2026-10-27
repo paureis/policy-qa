@@ -271,6 +271,31 @@ def template_verdict(meta: dict, no_findings: bool = False) -> dict:
     )
 
 
+def route_outside_corpus(case: dict) -> bool:
+    """True when the router said no corpus document governs the plan (an employer or commercial plan)."""
+    route = case.get("route") if isinstance(case, dict) else None
+    return bool(isinstance(route, dict) and route.get("outside_corpus"))
+
+
+OUTSIDE_CORPUS_SETTLE = "The plan's own benefit documents: the summary plan description, the certificate of coverage, or the policy the denial letter cites. Ask the plan or the employer's benefits administrator for the written rule it applied."
+
+
+def outside_corpus_verdict(meta: dict, route_reason: str = "") -> dict:
+    """The not_settled verdict for a plan outside the corpus: no model call, no rule cited, the reason stated plainly."""
+    argument = "The payer's side cannot be argued from these documents: none of them is this plan's policy."
+    statement = "No document in the corpus governs this plan. The Florida Medicaid and Medicare rules found here do not apply to it, so no rule can be cited for or against the denial."
+    gap = (route_reason + " " if route_reason else "") + "The letter's reason can only be checked against the plan's own documents, which are not in this corpus, so the documents do not settle it."
+    return _verdict(
+        {"argument": argument, "citations": [], "unsupported": True},
+        "not_settled",
+        "not_settled",
+        {"statement": statement, "citations": [], "unsupported": True},
+        " ".join(gap.split()),
+        OUTSIDE_CORPUS_SETTLE,
+        meta,
+    )
+
+
 def verdict_from_data(data, investigation, meta: dict) -> dict:
     """Validate a model-shaped reply into the verdict. Raises ValueError when the reply is malformed."""
     if not isinstance(data, dict):
@@ -314,6 +339,8 @@ def verdict_from_data(data, investigation, meta: dict) -> dict:
 def build_steelman_verdict(case: dict, investigation, provider) -> dict:
     """One model call; never raises for a model failure (see the module docstring)."""
     model = getattr(provider, "model", "?")
+    if route_outside_corpus(case):
+        return outside_corpus_verdict(_meta(model), str((case.get("route") or {}).get("reason") or ""))
     if not supported_findings(investigation):
         return template_verdict(_meta(model), no_findings=True)
     t = time.perf_counter()
@@ -392,6 +419,8 @@ class FixtureVerdict:
     def decide(self, case: dict, investigation) -> dict:
         if self.delay:
             time.sleep(self.delay)
+        if route_outside_corpus(case):
+            return outside_corpus_verdict(_meta(self.model), str((case.get("route") or {}).get("reason") or ""))
         data = self.reply(investigation)
         if data is None:
             return template_verdict(_meta(self.model), no_findings=True)

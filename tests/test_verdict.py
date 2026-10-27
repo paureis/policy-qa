@@ -279,3 +279,29 @@ def test_live_verdict_truncated_by_the_real_provider_falls_back():
     inv = small_investigation()
     v = build_steelman_verdict(case_with(inv), inv, p)
     assert v["outcome"] == "not_settled" and "TruncatedResponse" in v["error"]
+
+
+# ---- a plan outside the corpus ----------------------------------------------------
+
+
+def test_route_outside_the_corpus_means_no_model_call_and_not_settled_with_its_own_wording():
+    """dc-030: an employer plan. The route says no corpus document governs it; the verdict must say so, not cite Florida rules against it."""
+    p = FakeProvider(good_reply())
+    inv = small_investigation()
+    c = case_with(inv)
+    c["route"] = {"program": "unknown", "jurisdictions": ["Florida", "Federal"], "dual": True, "reason": "The letter is from Sample Employer Health Plan, a plan outside the public programs in the corpus.", "outside_corpus": True}
+    v = build_steelman_verdict(c, inv, p)
+    assert p.calls == []
+    assert v["outcome"] == "not_settled" and v["proposed_outcome"] == "not_settled" and v["error"] is None
+    assert "no document in the corpus" in v["rule"]["statement"].lower() and v["rule"]["citations"] == []
+    assert "plan's own" in v["what_would_change"].lower()
+    assert v["cost_usd"] == 0.0
+
+
+def test_route_inside_the_corpus_still_calls_the_model():
+    p = FakeProvider(good_reply())
+    inv = small_investigation()
+    c = case_with(inv)
+    c["route"] = {"program": "florida_medicaid_mma", "jurisdictions": ["Florida"], "dual": False, "reason": "x", "outside_corpus": False}
+    v = build_steelman_verdict(c, inv, p)
+    assert len(p.calls) == 1 and v["outcome"] == "inconsistent"
