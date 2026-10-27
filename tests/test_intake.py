@@ -339,3 +339,13 @@ def test_extractor_runs_verification_and_records_reasoning_tokens():
     ex = MuseSparkExtractor(fake).extract("text", text=LETTER)
     assert ex.card["service_code"]["confidence"] == "low"
     assert ex.reasoning_tokens == 58
+
+
+def test_the_summary_keeps_the_letter_facts_an_exception_turns_on():
+    """Oct 27: the verdict and the planner read the intake summary for the facts the card has no field for
+    (dc-018 the cataract surgery, dc-026 what the prescription is for, dc-021 the QMB coverage on file)."""
+    p = intake.SYSTEM_PROMPT
+    rule = next(line for line in p.splitlines() if line.startswith("6. summary"))
+    for phrase in ("surgery", "prescription says", "other coverage on file"):
+        assert phrase in rule, phrase
+    assert "No advice beyond that." in rule

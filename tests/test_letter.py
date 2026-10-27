@@ -323,3 +323,32 @@ def test_today_eastern_survives_a_missing_time_zone_database(monkeypatch):
 
     monkeypatch.setattr("zoneinfo.ZoneInfo", boom)
     assert isinstance(L.today_ny(), dt.date)
+
+
+# ---- Oct 27: dates spelled out, like the Re line -------------------------------------------
+
+
+def test_the_letter_spells_dates_out_like_the_re_line():
+    """The first live letters wrote '2026-09-01'. The model is shown spelled dates and told to write them so,
+    and any ISO date that still comes back in a sentence (the draft or a critic revision) is spelled out."""
+    inv = small_investigation()
+    case = case_with(inv)
+    case["summary"] = "Sunshine Health denied part of the private duty nursing hours."
+    reply = {"paragraphs": [{"sentences": [
+        s("I am writing to appeal your letter dated 2026-10-14 about services from 2026-09-01/2026-09-30."),
+        s("Florida Medicaid covers up to 24 hours of private duty nursing per day.", True, {"finding_id": "f1", "quote": LIMIT_QUOTE}),
+    ]}]}
+    p = FakeProvider(reply)
+    L = draft_letter(case, inv, inconsistent_verdict(inv), p, today=TODAY)
+    assert L["paragraphs"][0]["sentences"][0]["text"] == "I am writing to appeal your letter dated October 14, 2026 about services from September 1, 2026 through September 30, 2026."
+    assert L["paragraphs"][0]["sentences"][1]["verified"] is True
+    u = "".join(part["text"] for part in p.calls[0]["parts"])
+    assert "2026-09-01" not in u and "2026-10-14" not in u
+    assert "September 1, 2026 through September 30, 2026" in u and "October 14, 2026" in u and "December 13, 2026" in u
+    assert case["summary"] in u and "Member ID" not in u
+    assert "September 1, 2026" in LETTER_SYSTEM_PROMPT
+    # an invalid date-shaped string is left alone
+    from policyqa.letter import verify_letter
+
+    out = verify_letter({"paragraphs": [{"sentences": [s("Claim number 2026-13-45 is on file.")]}]}, inv)
+    assert out["paragraphs"][0]["sentences"][0]["text"] == "Claim number 2026-13-45 is on file."

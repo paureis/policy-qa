@@ -305,3 +305,79 @@ def test_route_inside_the_corpus_still_calls_the_model():
     c["route"] = {"program": "florida_medicaid_mma", "jurisdictions": ["Florida"], "dual": False, "reason": "x", "outside_corpus": False}
     v = build_steelman_verdict(c, inv, p)
     assert len(p.calls) == 1 and v["outcome"] == "inconsistent"
+
+
+# ---- Oct 27 tuning: the decisive fact (not-settled rows answered consistent) ---------------------
+
+POC_FACT = "The member's authorized plan of care and the care manager's assessment, which say how many days a week were authorized."
+
+
+def _live_verdict(reply, case=None):
+    """The real Provider over a fake HTTP transport, as the live verdict runs."""
+    import httpx
+
+    from policyqa.generate import Provider
+    from policyqa.verdict import LiveVerdict
+
+    sent = []
+
+    def handler(request):
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(reply)}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 2000, "completion_tokens": 900}})
+
+    p = Provider(base_url="https://api.meta.ai/v1", api_key="k", model="muse-spark-1.3", transport=httpx.MockTransport(handler))
+    inv = small_investigation()
+    return LiveVerdict(p).decide(case or case_with(inv), inv), sent
+
+
+def test_a_consistent_reply_resting_on_the_payers_own_determination_becomes_not_settled():
+    """dc-014 shape: the letter says the care manager's assessment does not show a need; the policy covers
+    what the authorized plan of care says. The model called it consistent, taking the payer's assessment as
+    given. The decisive fact is the payer's own determination, which the documents do not state."""
+    reply = good_reply(outcome="consistent", what_would_change="An assessment showing more days.", gap="The plan approved what the assessment supports.", decisive_fact={"fact": POC_FACT, "settled_by": "payer_determination"})
+    v, _ = _live_verdict(reply)
+    assert v["outcome"] == "not_settled" and v["headline"] == HEADLINES["not_settled"]
+    assert v["proposed_outcome"] == "consistent"
+    assert POC_FACT in v["what_would_change"]
+    assert "documents do not state" in v["gap"] and POC_FACT in v["gap"]
+    assert v["rule"]["unsupported"] is False  # the cited rule stands; only the outcome changes
+
+
+def test_an_inconsistent_reply_resting_on_a_list_outside_the_documents_becomes_not_settled():
+    """dc-017 shape: the enrollee guide says the plan covers the brand when the prescriber writes 'dispense as
+    written', but the plan's preferred drug list, which sets the requirement, is not in the corpus."""
+    fact = "The plan's preferred drug list and its brand-name medically necessary requirement."
+    v, _ = _live_verdict(good_reply(decisive_fact={"fact": fact, "settled_by": "outside_documents"}))
+    assert v["outcome"] == "not_settled" and v["proposed_outcome"] == "inconsistent"
+    assert fact in v["what_would_change"] and "outside" in v["gap"]
+
+
+@pytest.mark.parametrize("outcome, settled_by", [("consistent", "letter"), ("inconsistent", "documents"), ("consistent", "documents")])
+def test_a_decisive_fact_the_letter_or_the_documents_state_keeps_the_outcome(outcome, settled_by):
+    """dc-002 shape: the letter states the member turned 21; the policy covers PDN under 21. That fact is the
+    letter's own, so the denial stays consistent."""
+    reply = good_reply(outcome=outcome, what_would_change=None if outcome == "inconsistent" else "Coverage under another program.", decisive_fact={"fact": "The member's age on the dates of service, which the letter states.", "settled_by": settled_by})
+    v, _ = _live_verdict(reply)
+    assert v["outcome"] == outcome and v["proposed_outcome"] == outcome
+
+
+def test_the_schema_asks_for_the_decisive_fact_before_the_outcome_and_the_prompt_says_when_it_is_not_settled():
+    props = list(VERDICT_SCHEMA["properties"])
+    assert props.index("decisive_fact") < props.index("outcome")
+    df = VERDICT_SCHEMA["properties"]["decisive_fact"]
+    assert set(df["properties"]["settled_by"]["enum"]) == {"documents", "letter", "payer_determination", "outside_documents"}
+    assert "decisive_fact" in VERDICT_SCHEMA["required"] and df["required"] == ["fact", "settled_by"] and df["additionalProperties"] is False
+    s = VERDICT_SYSTEM_PROMPT.lower()
+    for phrase in ("plan of care", "assessment", "prior authorization", "preferred drug list", "exception"):
+        assert phrase in s, phrase
+
+
+def test_the_verdict_sees_the_intake_summary_but_never_the_raw_letter():
+    """dc-018: the exception needs the letter's fact (cataract surgery with a lens), which the card has no field for."""
+    inv = small_investigation()
+    c = case_with(inv)
+    c["summary"] = "Medicare denied eyeglass frames ordered after cataract surgery with insertion of an intraocular lens."
+    p = FakeProvider(good_reply())
+    build_steelman_verdict(c, inv, p)
+    user = "".join(part["text"] for part in p.calls[0]["parts"])
+    assert c["summary"] in user and "Member ID" not in user

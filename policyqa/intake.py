@@ -141,7 +141,7 @@ Rules:
 3. Copy service codes, amounts, and dates character for character from the letter before converting the format; a code such as T1000 has exactly the digits the letter shows. Formats: dates as YYYY-MM-DD; dates_of_service as YYYY-MM-DD or a range YYYY-MM-DD/YYYY-MM-DD; amount_billed as a number without currency symbols; service in at most 80 characters; denial_reason in at most three sentences, quoting the letter's own reason where possible.
 4. program is one of: {", ".join(PROGRAMS)}. member_age_group is one of: {", ".join(AGE_GROUPS)}.
 5. raw_text: the letter as you read it, in reading order, 200 to 6,000 characters. For text input, repeat the text you were given.
-6. summary: one paragraph in plain language for a reader with no insurance background: who denied what, why the letter says it was denied, the amount if stated, and the deadline the letter gives to appeal. No advice beyond that.
+6. summary: one paragraph in plain language for a reader with no insurance background: who denied what, why the letter says it was denied, the amount if stated, and the deadline the letter gives to appeal. Keep any fact the letter states that the denial could turn on: a related surgery or procedure, what the prescription says the drug is for, other coverage on file (for example Medicaid or the QMB program). No advice beyond that.
 7. Never give medical advice. Do not comment on treatment, diagnosis, medication, or whether the care was needed. If the input asks a treatment or diagnosis question, set is_out_of_scope to true. If the input is not a denial letter, notice, or EOB, set is_denial_letter to false.
 8. Return JSON only, matching the schema. No prose before or after it."""
 

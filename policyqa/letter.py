@@ -105,6 +105,7 @@ Rules:
 4. Never give medical advice. Do not say whether the care was needed, that it was medically necessary for this member, or anything about treatment, diagnosis, or the member's health. Argue only from the written rules and the denial letter's own facts. You may repeat what a rule says about medical necessity, as a rule, with its citation.
 5. Do not invent facts: no names, member numbers, phone numbers, or addresses. Use placeholders in square brackets, such as [Your name], where the person must fill something in.
 6. When the verdict is "The documents do not settle it.", do not claim the denial is wrong: ask the plan to review the denial, to name the rule it applied, and to send the documents it relied on.
+7. Write every date spelled out, as "September 1, 2026", never as 2026-09-01.
 
 Return JSON only, matching the schema: {"paragraphs": [{"sentences": [{"text": "...", "claim": false, "citation": null}, {"text": "...", "claim": true, "citation": {"finding_id": "f2", "quote": "..."}}]}]}"""
 
@@ -151,6 +152,34 @@ def format_dates(v) -> str:
     if ds and all(ds):
         return " through ".join(_long(d) for d in ds) if len(ds) == 2 and ds[0] != ds[1] else _long(ds[0])
     return str(v)
+
+
+_ISO_RANGE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\s*/\s*(\d{4}-\d{2}-\d{2})\b")
+_ISO_DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
+
+
+def spell_iso_dates(text: str) -> str:
+    """'2026-09-01' -> 'September 1, 2026' and '2026-09-01/2026-09-30' -> '... through ...' inside a sentence.
+    A date-shaped string that is not a real date (a claim number) is left alone."""
+
+    def one(m):
+        d = _parse_date(m.group(0))
+        return _long(d) if d else m.group(0)
+
+    def rng(m):
+        return format_dates(f"{m.group(1)}/{m.group(2)}") if _parse_date(m.group(1)) and _parse_date(m.group(2)) else m.group(0)
+
+    return _ISO_DATE.sub(one, _ISO_RANGE.sub(rng, text))
+
+
+def _spelled_card(card) -> dict:
+    """The card as the letter and its prompt see it: dates spelled out, like the Re line."""
+    out = dict(card) if isinstance(card, dict) else {}
+    for f in ("dates_of_service", "letter_date", "appeal_deadline_claimed"):
+        v = card_value(out, f)
+        if v:
+            out[f] = {"value": format_dates(v)}
+    return out
 
 
 _MEMBER_REF = re.compile(r"\bmember\s*(?:id|identification number|number|no\.?|#)\s*[:#]?\s*([A-Z0-9][A-Z0-9-]{3,})", re.I)
@@ -311,7 +340,7 @@ def verify_letter(letter: dict, investigation) -> dict:
         for s in sentences or []:
             if not isinstance(s, dict):
                 continue
-            text = " ".join(str(s.get("text") or "").split())
+            text = spell_iso_dates(" ".join(str(s.get("text") or "").split()))
             if not text:
                 continue
             claim = bool(s.get("claim"))
@@ -369,7 +398,9 @@ def _verdict_block(verdict: dict) -> str:
 
 
 def letter_user_message(case: dict, investigation, verdict: dict) -> str:
-    return case_facts(case.get("card") or {}) + "\n\n" + _verdict_block(verdict) + "\n\n" + findings_block(investigation) + "\n\nDraft the appeal letter. Return JSON only."
+    from .investigate import letter_summary_block
+
+    return case_facts(_spelled_card(case.get("card") or {})) + letter_summary_block(case.get("summary")) + "\n\n" + _verdict_block(verdict) + "\n\n" + findings_block(investigation) + "\n\nDraft the appeal letter. Return JSON only."
 
 
 def consistent_explanation(verdict: dict) -> str:

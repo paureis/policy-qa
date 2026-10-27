@@ -73,18 +73,20 @@ def test_template_questions_cover_the_six_topics_in_plain_words():
     c = card()
     qs = template_questions(c, route_case(c))
     topics = [q.topic for q in qs]
-    assert topics == ["coverage", "limits", "conditions", "exclusions", "appeal", "reason"]
+    assert topics == ["coverage", "limits", "conditions", "exclusions", "appeal", "reason", "exclusions"]
     assert all(isinstance(q, PlannedQuestion) and q.question.endswith("?") for q in qs)
     assert qs[0].question == "Is private duty nursing, 8 hours/day covered under Florida Medicaid (MMA) for a member under 21?"
     assert "prior authorization" in qs[2].question
     assert "deadline" in qs[4].question
     assert qs[5].question == "What do the rules say when services exceed the authorized amount?"
+    assert qs[6].question == "Is there an exception under Florida Medicaid (MMA) that covers private duty nursing, 8 hours/day even though services exceed the authorized amount?"
 
 
 def test_template_questions_without_a_reason_or_service():
     c = card(denial_reason=None, service=None, program="unknown")
     qs = template_questions(c, route_case(c))
-    assert [q.topic for q in qs][-1] == "reason"
+    assert [q.topic for q in qs][-2] == "reason"
+    assert qs[-1].question == "Is there an exception under Florida Medicaid or Medicare that covers the service?"
     assert "the service" in qs[0].question and "Florida Medicaid or Medicare" in qs[0].question
     assert "None" not in " ".join(q.question for q in qs)
 
@@ -127,8 +129,8 @@ def test_plan_uses_the_model_questions_when_the_json_is_good():
     r = route_case(c)
     p = FakePlanProvider(json.dumps(GOOD_PLAN))
     qs = plan_questions(c, r, p)
-    assert [q.question for q in qs] == [q["question"] for q in GOOD_PLAN["questions"]]
-    assert [q.topic for q in qs] == ["coverage", "limits", "conditions", "appeal", "reason"]
+    assert [q.question for q in qs][:5] == [q["question"] for q in GOOD_PLAN["questions"]]
+    assert [q.topic for q in qs] == ["coverage", "limits", "conditions", "appeal", "reason", "exclusions"]  # + the exception question (Oct 27)
     call = p.calls[0]
     assert call["schema"]["type"] == "object" and "questions" in call["schema"]["properties"]
     assert call["max_tokens"] >= 2000
@@ -174,7 +176,7 @@ def test_plan_drops_out_of_scope_and_malformed_questions_and_adds_missing_appeal
     assert [q.topic for q in qs][:4] == ["coverage", "conditions", "other", "exclusions"]
     # one appeal and one reason question are always present
     assert "appeal" in [q.topic for q in qs] and "reason" in [q.topic for q in qs]
-    assert len(qs) == 6
+    assert len(qs) == 7 and "exception" in qs[-1].question  # the exception question is always present too (Oct 27)
 
 
 def test_plan_caps_at_seven_questions():
@@ -317,10 +319,10 @@ def test_investigate_case_end_to_end_with_fakes():
 
     assert inv["status"] == "done" and inv["error"] is None and inv["finished_at"] and inv["started_at"] <= inv["finished_at"]
     assert inv["model"] == "fake-muse"
-    assert inv["questions_planned"] == 6 and inv["questions_done"] == 6 and len(inv["findings"]) == 6
-    assert [f["id"] for f in inv["findings"]] == ["f1", "f2", "f3", "f4", "f5", "f6"]
+    assert inv["questions_planned"] == 7 and inv["questions_done"] == 7 and len(inv["findings"]) == 7
+    assert [f["id"] for f in inv["findings"]] == ["f1", "f2", "f3", "f4", "f5", "f6", "f7"]
     assert all(f["jurisdiction"] == "Florida" for f in inv["findings"])
-    by_topic = {f["topic"]: f for f in inv["findings"]}
+    by_topic = {f["topic"]: f for f in inv["findings"][:6]}  # f7 is the exception question (topic exclusions)
 
     cov = by_topic["coverage"]
     assert cov["status"] == "supported" and cov["answer"].startswith("Yes")
@@ -345,6 +347,7 @@ def test_investigate_case_end_to_end_with_fakes():
     assert all(f["error"] is None for f in inv["findings"] if f["status"] != "error")
 
     assert by_topic["reason"]["status"] == "supported"
+    assert inv["findings"][6]["status"] == "supported" and "exception" in inv["findings"][6]["question"]
 
     for f in inv["findings"]:
         assert set(f) >= {"id", "question", "topic", "jurisdiction", "status", "answer", "citations", "struck", "passages", "error", "model", "input_tokens", "output_tokens", "reasoning_tokens", "latency_ms", "cost_usd"}
@@ -352,15 +355,15 @@ def test_investigate_case_end_to_end_with_fakes():
     assert cov["input_tokens"] == 400 and cov["output_tokens"] == 120 and cov["reasoning_tokens"] == 90 and cov["cost_usd"] == 0.0005
 
     # coverage math: claims = supported + unsupported; errors are counted apart
-    assert inv["coverage"] == {"claims": 3, "supported": 2, "errors": 2}
-    assert inv["cost_usd"] == pytest.approx(0.0005 * 4, abs=1e-9)  # four model answers (two questions failed before cost)
+    assert inv["coverage"] == {"claims": 4, "supported": 3, "errors": 2}
+    assert inv["cost_usd"] == pytest.approx(0.0005 * 5, abs=1e-9)  # five model answers (two questions failed before cost)
     assert inv["latency_ms"] >= 0
     assert provider.max_tokens >= 2000
     assert all(k == 8 * 4 and len(j) == 1 for _, k, j in retriever.calls)  # 8 passages from a pool of 32 candidates
 
     # progress: one call per finding, growing, plus the final one
-    assert len(seen) == 7
-    assert [p["questions_done"] for p in seen] == [1, 2, 3, 4, 5, 6, 6]
+    assert len(seen) == 8
+    assert [p["questions_done"] for p in seen] == [1, 2, 3, 4, 5, 6, 7, 7]
     assert seen[0]["status"] == "running" and seen[-1]["status"] == "done"
     assert len(seen[0]["findings"]) == 1 and len(seen[2]["findings"]) == 3
     # every snapshot lists its findings in planned order, whatever order they finished in
@@ -372,15 +375,15 @@ def test_investigate_case_end_to_end_with_fakes():
     tr = inv["trace"]
     assert set(tr) >= {"trace_id", "spans", "total_ms", "question"}
     names = [s["name"] for s in tr["spans"]]
-    assert names.count("question") == 6 and "route" in names and "plan" in names
-    assert sorted(s["id"] for s in tr["spans"] if s["name"] == "question") == ["f1", "f2", "f3", "f4", "f5", "f6"]
+    assert names.count("question") == 7 and "route" in names and "plan" in names
+    assert sorted(s["id"] for s in tr["spans"] if s["name"] == "question") == ["f1", "f2", "f3", "f4", "f5", "f6", "f7"]
     assert inv.get("plan", {}).get("source") == "template"
 
 
 def test_investigate_case_dual_route_runs_each_question_per_jurisdiction():
     case = {"case_id": "c_dual", "card": card(program="unknown")}
     inv = investigate_case(case, FakeRetriever(), FakeAnswerProvider())
-    assert inv["questions_planned"] == 12 and len(inv["findings"]) == 12
+    assert inv["questions_planned"] == 14 and len(inv["findings"]) == 14
     assert [f["jurisdiction"] for f in inv["findings"]][:4] == ["Florida", "Federal", "Florida", "Federal"]
     assert inv["findings"][0]["question"] == inv["findings"][1]["question"]
 
@@ -456,8 +459,10 @@ def test_select_passages_caps_per_document_and_excludes():
 
     hits = [_hit_row("fl-04", i) for i in range(1, 11)] + [_hit_row("fl-27", 1), _hit_row("fl-21", 1), _hit_row("fl-21", 2), _hit_row("fl-03", 1)]
     out = select_passages(hits, k=8, per_doc_cap=3, exclude={"fl-27"})
-    assert [h.chunk["doc_id"] for h in out] == ["fl-04", "fl-04", "fl-04", "fl-21", "fl-21", "fl-03"]
+    assert [h.chunk["doc_id"] for h in out[:6]] == ["fl-04", "fl-04", "fl-04", "fl-21", "fl-21", "fl-03"]
     assert [h.chunk["page"] for h in out[:3]] == [1, 2, 3]  # rank order kept inside a document
+    # too few other documents: the capped fl-04 hits fill the list to k, in rank order (Oct 27)
+    assert [(h.chunk["doc_id"], h.chunk["page"]) for h in out[6:]] == [("fl-04", 4), ("fl-04", 5)]
     # no cap: the first eight, one document fills the list
     assert {h.chunk["doc_id"] for h in select_passages(hits, k=8, per_doc_cap=None)} == {"fl-04"}
 
@@ -577,14 +582,14 @@ def test_parallel_answers_keep_order_and_count_progress():
     t = time.perf_counter()
     inv = investigate_case(case, PoolRetriever(), prov, on_progress=lambda p: seen.append(p))
     wall = time.perf_counter() - t
-    assert inv["status"] == "done" and len(inv["findings"]) == 6
-    assert wall < 0.25, wall  # serial would be 0.35 s (one 0.1 s answer and five 0.05 s answers)
+    assert inv["status"] == "done" and len(inv["findings"]) == 7
+    assert wall < 0.3, wall  # serial would be 0.4 s (one 0.1 s answer and six 0.05 s answers)
     assert prov.max_active == 3
-    assert [f["id"] for f in inv["findings"]] == ["f1", "f2", "f3", "f4", "f5", "f6"]
-    assert [f["topic"] for f in inv["findings"]] == ["coverage", "limits", "conditions", "exclusions", "appeal", "reason"]
-    assert [p["questions_done"] for p in seen] == [1, 2, 3, 4, 5, 6, 6]
+    assert [f["id"] for f in inv["findings"]] == ["f1", "f2", "f3", "f4", "f5", "f6", "f7"]
+    assert [f["topic"] for f in inv["findings"]] == ["coverage", "limits", "conditions", "exclusions", "appeal", "reason", "exclusions"]
+    assert [p["questions_done"] for p in seen] == [1, 2, 3, 4, 5, 6, 7, 7]
     assert seen[0]["findings"][0]["id"] != "f1"  # the slow first question finished later, yet sits first at the end
-    assert inv["cost_usd"] == pytest.approx(0.006)
+    assert inv["cost_usd"] == pytest.approx(0.007)
     assert inv["latency_ms"] == pytest.approx(wall * 1000, rel=0.5)
 
 
@@ -620,7 +625,7 @@ def test_investigation_cost_includes_a_failed_plan_reply():
     inv = investigate_case({"case_id": "c_pc", "card": card()}, PoolRetriever(), PlanThenAnswer())
     assert inv["plan"]["source"] == "template" and inv["plan"]["error"] and inv["plan"]["cost_usd"] == 0.01
     assert inv["plan"]["input_tokens"] == 300 and inv["plan"]["output_tokens"] == 200
-    assert inv["cost_usd"] == pytest.approx(0.01 + 6 * 0.001)
+    assert inv["cost_usd"] == pytest.approx(0.01 + 7 * 0.001)
 
 
 def test_planner_medical_filter_and_rule_words():
@@ -648,7 +653,7 @@ def test_planner_medical_filter_and_rule_words():
         {"topic": "other", "question": "Was nursing medically necessary for the child's diagnosis of cerebral palsy?"},
     ]}
     qs = plan_questions(card(), route_case(card()), FakePlanProvider(json.dumps(plan)))
-    assert [q.question for q in qs] == [q["question"] for q in GOOD_PLAN["questions"]]
+    assert [q.question for q in qs][:5] == [q["question"] for q in GOOD_PLAN["questions"]] and len(qs) == 6
 
 
 def test_struck_reasons_are_unchanged():
@@ -694,3 +699,102 @@ def test_route_names_a_plan_outside_the_corpus():
     assert r.outside_corpus is False and "does not say which program" in r.reason
     r = route_case(card(program="florida_medicaid_mma", payer_name="Employer Health Plan"))
     assert r.outside_corpus is False
+
+
+# ---- Oct 27 tuning: exceptions elsewhere in the document --------------------
+
+
+def test_the_per_document_cap_never_shrinks_the_list_when_one_document_governs():
+    """dc-026 shape: Part D has one governing manual (fed-10). Its exception page (p14, rosacea not
+    cosmetic) ranked 4th in the live pool, and the cap of 3 dropped it. The cap diversifies the head of
+    the list; when too few other documents exist, the capped hits fill the rest in rank order."""
+    from policyqa.investigate import select_passages
+
+    pool = [_hit_row("fed-10", p, "Federal") for p in (51, 15, 52, 14, 55, 54)] + [_hit_row("fed-11", 21, "Federal")]
+    out = select_passages(pool, k=8, per_doc_cap=3)
+    got = [(h.chunk["doc_id"], h.chunk["page"]) for h in out]
+    assert got[:4] == [("fed-10", 51), ("fed-10", 15), ("fed-10", 52), ("fed-11", 21)]  # the diversified head is unchanged
+    assert got[4:] == [("fed-10", 14), ("fed-10", 55), ("fed-10", 54)]  # then the capped hits, in rank order
+    # an excluded document still never comes back
+    assert "fed-11" not in [h.chunk["doc_id"] for h in select_passages(pool, k=8, per_doc_cap=3, exclude={"fed-11"})]
+
+
+def test_template_asks_whether_an_exception_covers_the_service_despite_the_reason():
+    """dc-018 shape: the routine-services list excludes eyeglasses; the exception (one pair after cataract
+    surgery) is on the next page. The plan must ask for the exception, worded so retrieval reaches it."""
+    from policyqa.investigate import planned_question_allowed
+
+    c = card(program="medicare_b", payer_name="Medicare", member_age_group="65_plus", service="eyeglass frames after cataract surgery", denial_reason="Medicare does not cover eyeglasses or contact lenses.")
+    qs = template_questions(c, route_case(c))
+    exc = [q for q in qs if "exception" in q.question.lower()]
+    assert len(exc) == 1 and exc[0].topic == "exclusions"
+    assert exc[0].question == "Is there an exception under Medicare Part B that covers eyeglass frames after cataract surgery even though medicare does not cover eyeglasses or contact lenses?"
+    assert planned_question_allowed(exc[0].question)
+    assert len(qs) <= 7 and {"appeal", "reason"} <= {q.topic for q in qs}
+
+
+def test_a_model_plan_without_an_exception_question_gets_the_template_one():
+    c = card()
+    r = route_case(c)
+    p = FakePlanProvider(json.dumps(GOOD_PLAN))
+    qs = plan_questions(c, r, p)
+    assert [q.question for q in qs[:5]] == [q["question"] for q in GOOD_PLAN["questions"]]
+    assert qs[5] == template_questions(c, r)[-1] and len(qs) == 6
+    assert "exception" in p.calls[0]["system"].lower()
+    # the model's own exception question is kept and nothing is added
+    own = {"questions": GOOD_PLAN["questions"] + [{"topic": "exclusions", "question": "Is there an exception that lets Florida Medicaid cover more private duty nursing hours than the plan authorized?"}]}
+    qs = plan_questions(c, r, FakePlanProvider(json.dumps(own)))
+    assert [q.question for q in qs] == [q["question"] for q in own["questions"]]
+    # the cap keeps appeal, reason and the exception question
+    many = {"questions": [{"topic": "other", "question": f"Question number {i}: which rule covers private duty nursing under Florida Medicaid?"} for i in range(12)] + GOOD_PLAN["questions"][-2:]}
+    qs = plan_questions(c, r, FakePlanProvider(json.dumps(many)))
+    assert len(qs) == 7 and any("exception" in q.question.lower() for q in qs)
+
+
+QMB_REASON = "Florida Medicaid did not pay the Medicare coinsurance for this visit, so the remaining balance is the patient's responsibility."
+QMB_QUESTION = "Can a provider bill a member in the Qualified Medicare Beneficiary (QMB) program, or a member with both Medicare and Medicaid, for Medicare cost-sharing (deductible, coinsurance, or copayment) for office visit, established patient?"
+
+
+@pytest.mark.parametrize("program", ["unknown", "medicare_b"])
+def test_a_medicare_and_medicaid_member_routes_both_and_asks_the_qmb_cost_sharing_question(program):
+    """dc-021 shape: a provider statement bills a QMB member the Medicare coinsurance Medicaid did not pay.
+    The rule (fed-20 p7) is about the member's second program, which no service question reaches."""
+    from policyqa.investigate import planned_question_allowed
+
+    c = card(program=program, payer_name="Sample Medical Group", member_age_group="65_plus", service="office visit, established patient", service_code="99214", denial_reason=QMB_REASON)
+    r = route_case(c)
+    assert r.jurisdictions == ["Florida", "Federal"] and r.dual is True and r.outside_corpus is False
+    qs = template_questions(c, r)
+    assert qs[-1].question == QMB_QUESTION and planned_question_allowed(QMB_QUESTION)
+    assert len(qs) == 7
+    # a model plan with only a generic exception question still gets the QMB question
+    plan = {"questions": GOOD_PLAN["questions"][:3] + [{"topic": "exclusions", "question": "Is there an exception under Medicare that covers an office visit?"}] + GOOD_PLAN["questions"][3:]}
+    planned = plan_questions(c, r, FakePlanProvider(json.dumps(plan)))
+    assert planned[-1].question == QMB_QUESTION
+
+
+def test_a_medicare_letter_without_medicaid_still_routes_federal_only():
+    c = card(program="medicare_b", payer_name="Medicare", member_age_group="65_plus", service="eyeglass frames", denial_reason="Medicare does not cover eyeglasses or contact lenses.")
+    assert route_case(c).jurisdictions == ["Federal"]
+    assert "QMB" not in template_questions(c, route_case(c))[-1].question
+
+
+def test_the_intake_summary_reaches_the_router_and_the_planner():
+    """The card has no field for the fact an exception turns on (the cataract surgery, the QMB coverage on
+    file). The intake summary, shown on the case card screen, carries it to routing and planning."""
+
+    class PlanAndAbstain(FakePlanProvider):
+        def complete(self, system, user, max_tokens=600):
+            return json.dumps({"answer": ABSTAIN_TEXT, "abstain": True, "citations": []}), 10, 5
+
+    summary = "Sample Medical Group billed U. Sample, who has Medicare Part B and Florida Medicaid through the Qualified Medicare Beneficiary (QMB) program, for the coinsurance on an office visit."
+    c = card(program="medicare_b", payer_name="Sample Medical Group", member_age_group="65_plus", service="office visit, established patient", denial_reason="The remaining balance is the patient's responsibility.")
+    assert route_case(c).jurisdictions == ["Federal"]
+    assert route_case(c, summary).jurisdictions == ["Florida", "Federal"]
+    p = PlanAndAbstain(json.dumps(GOOD_PLAN))
+    inv = investigate_case({"case_id": "c_sum", "card": c, "summary": summary}, FakeRetriever(), p)
+    assert inv["status"] == "done"
+    assert {f["jurisdiction"] for f in inv["findings"]} == {"Florida", "Federal"}
+    plan_input = p.calls[0]["parts"][0]["text"]
+    assert summary in plan_input
+    assert any("Qualified Medicare Beneficiary" in f["question"] for f in inv["findings"])

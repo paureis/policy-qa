@@ -340,10 +340,10 @@ def test_investigation_failure_marks_the_case_failed(monkeypatch, tmp_path):
     class Boom:
         model = "boom"
 
-        def route(self, card):
+        def route(self, card, summary=None):
             from policyqa.investigate import route_case
 
-            return route_case(card)
+            return route_case(card, summary)
 
         def investigate(self, case, on_progress=None):
             raise RuntimeError("provider down")
@@ -379,9 +379,9 @@ def test_concurrent_investigate_posts_claim_the_case_once(monkeypatch, tmp_path)
     monkeypatch.setattr(api_main, "DATA", tmp_path)
 
     class SlowRoute(FixtureInvestigator):
-        def route(self, card):
+        def route(self, card, summary=None):
             time.sleep(0.05)
-            return super().route(card)
+            return super().route(card, summary)
 
     slow = SlowRoute(delay=0)
     monkeypatch.setattr(api_main, "investigator", lambda: slow)
@@ -565,10 +565,10 @@ def test_failed_investigation_does_not_run_the_verdict(monkeypatch, tmp_path):
     class Boom:
         model = "boom"
 
-        def route(self, card):
+        def route(self, card, summary=None):
             from policyqa.investigate import route_case
 
-            return route_case(card)
+            return route_case(card, summary)
 
         def investigate(self, case, on_progress=None):
             raise RuntimeError("provider down")
@@ -853,3 +853,24 @@ def test_health_counts_pdfs(page_cache):
 
     n = client.get("/health").json()["pdfs"]
     assert isinstance(n, int) and n == pdf_count()
+
+
+def test_the_stored_route_is_computed_with_the_intake_summary(monkeypatch, tmp_path):
+    """Oct 27: routing reads the intake summary (a QMB member on a Medicare letter routes both ways), so the
+    route the API stores before the investigation must see the same summary the investigation sees."""
+    from policyqa.investigate import FixtureInvestigator
+
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+    seen = []
+
+    class Recording(FixtureInvestigator):
+        def route(self, card, summary=None):
+            seen.append(summary)
+            return super().route(card, summary)
+
+    monkeypatch.setattr(api_main, "investigator", lambda: Recording(delay=0))
+    body = _intake_text().json()
+    cid = body["case_id"]
+    assert client.post(f"/case/{cid}/investigate").status_code == 202
+    stored = client.get(f"/case/{cid}").json()
+    assert seen and seen[0] == stored["summary"] and seen[0]

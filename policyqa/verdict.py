@@ -55,6 +55,14 @@ DEFAULT_SETTLE = "A policy page that states the rule for this service and this r
 DEFAULT_COVERED = "The documents we found do not say what would have made this service covered. You can ask the plan which rule it applied and what it would need."
 FALLBACK_GAP = "The rule this verdict would rest on could not be matched to a verified quote, so the documents we found do not settle the letter's reason."
 
+# Who settles the fact the letter's reason turns on (Oct 27, the not-settled misses dc-009, dc-014, dc-017).
+# The last two are open facts: a consistent or inconsistent outcome resting on one becomes not_settled.
+SETTLED_BY = ("documents", "letter", "payer_determination", "outside_documents")
+OPEN_FACT_GAPS = {
+    "payer_determination": "The letter's reason rests on the plan's own determination, which the documents do not state: {fact}",
+    "outside_documents": "The letter's reason rests on a rule or list outside these documents, so the documents do not state it: {fact}",
+}
+
 _REFS = {
     "type": "array",
     "items": {
@@ -81,33 +89,44 @@ VERDICT_SCHEMA: dict = {
             "required": ["statement", "citations"],
             "additionalProperties": False,
         },
+        "decisive_fact": {
+            "type": "object",
+            "properties": {"fact": {"type": "string"}, "settled_by": {"type": "string", "enum": list(SETTLED_BY)}},
+            "required": ["fact", "settled_by"],
+            "additionalProperties": False,
+        },
         "outcome": {"type": "string", "enum": list(OUTCOMES)},
         "gap": {"type": "string"},
         "what_would_change": {"type": ["string", "null"]},
     },
-    "required": ["steelman", "rule", "outcome", "gap", "what_would_change"],
+    "required": ["steelman", "rule", "decisive_fact", "outcome", "gap", "what_would_change"],
     "additionalProperties": False,
 }
 
-VERDICT_SYSTEM_PROMPT = f"""You decide whether a health coverage denial holds against the written policy. You are given a case card (what the denial letter says), the letter's stated reason for the denial, and findings from an investigation of public Florida Medicaid and Medicare documents. Each supported finding has verified quotes. Questions listed as "not settled by the documents" have no verified quote and prove nothing either way.
+VERDICT_SYSTEM_PROMPT = f"""You decide whether a health coverage denial holds against the written policy. You are given a case card (what the denial letter says), the letter's stated reason for the denial, sometimes the letter's facts in plain words, and findings from an investigation of public Florida Medicaid and Medicare documents. Each supported finding has verified quotes. Questions listed as "not settled by the documents" have no verified quote and prove nothing either way: each is an open question.
 
 Work in this order.
 1. Steelman. First argue the payer's side: write the strongest honest case, in two to four plain sentences, that the denial follows the policy, using only the supported findings. Cite them.
-2. Rule. State the rule that governs this service and this stated reason, in one or two plain sentences a reader with no insurance background understands. Cite it.
-3. Outcome. Only then decide, choosing exactly one:
+2. Rule. State the rule that governs this service and this stated reason, in one or two plain sentences a reader with no insurance background understands. Cite it. When the letter cites an exclusion or a limit, look in the supported findings for an exception to it: policies often state an exclusion on one page and its exception on the next, or a second program's rule protects the member (for example a member in the Qualified Medicare Beneficiary (QMB) program cannot be billed Medicare cost-sharing). An exception that covers the letter's own facts is part of the rule.
+3. Decisive fact. Name the one fact the letter's reason turns on, and who settles it (settled_by):
+   - "documents": a supported finding states it.
+   - "letter": the letter states it as a fact about the claim: the member's age, the dates, the service or quantity billed, what the prescription says the drug is for, a related surgery, other coverage on file. Take the letter's own facts as given.
+   - "payer_determination": the rule leaves it to an individual decision (a prior authorization decision, an assessment, a plan of care, the authorized amount, medical necessity for this member) and the letter only reports the payer's own conclusion about it. The payer's conclusion is not proof that the rule was met or not met.
+   - "outside_documents": it is set by a document the findings refer to but do not contain (a plan's preferred drug list or formulary, a form a contract requires, the plan's own policy) or by a rule outside these documents.
+4. Outcome. Only then decide, choosing exactly one:
    - "consistent": {HEADLINES["consistent"]}
    - "inconsistent": {HEADLINES["inconsistent"]}
    - "not_settled": {HEADLINES["not_settled"]}
-   Choose "inconsistent" only when a cited rule contradicts the letter's stated reason or the reason goes beyond what the rule allows the plan to do. Choose "not_settled" when the supported findings do not state the rule that decides the letter's reason. "not_settled" is a correct answer, not a failure; do not guess.
-4. Gap. For inconsistent: the difference between the letter's reason and the rule. For consistent: why the reason matches the rule. For not_settled: what is missing.
-5. what_would_change. For consistent: what would have made the service covered under the rule (for example an authorization or a document the rule names). For not_settled: what document or fact would settle it. For inconsistent: null.
+   Choose "consistent" only when a cited rule states the exclusion, limit, or requirement the letter cites, the letter's own facts meet it, and no cited exception covers those facts. Choose "inconsistent" only when a cited rule contradicts the letter's stated reason or the reason goes beyond what the rule allows the plan to do, including an exclusion that a cited exception covers on the letter's own facts. Choose "not_settled" when the decisive fact is "payer_determination" or "outside_documents", or when the supported findings do not state the rule that decides the letter's reason. "not_settled" is a correct answer, not a failure; do not guess.
+5. Gap. For inconsistent: the difference between the letter's reason and the rule. For consistent: why the reason matches the rule. For not_settled: what is missing.
+6. what_would_change. For consistent: what would have made the service covered under the rule (for example an authorization or a document the rule names). For not_settled: the decisive fact and the document that would show it. For inconsistent: null.
 
 Citations: each citation names a supported finding by its id (for example "f2") and copies a quote from that finding's verified quotes exactly, word for word. Citations are checked. A quote that is not in the finding is dropped, and a rule left with no valid citation turns the outcome into "not_settled". Never cite a question listed as not settled.
 
 Never give medical advice. Do not say whether the care was needed, whether it was medically necessary for this member, or anything about treatment, diagnosis, or the member's health. Argue only from the written rules and the letter's own facts. You may repeat what a rule says about medical necessity, as a rule.
 
 Write plain English, short sentences, no legal jargon. Return JSON only, matching the schema:
-{{"steelman": {{"argument": "...", "citations": [{{"finding_id": "f1", "quote": "..."}}]}}, "rule": {{"statement": "...", "citations": [...]}}, "outcome": "consistent" | "inconsistent" | "not_settled", "gap": "...", "what_would_change": "..." or null}}"""
+{{"steelman": {{"argument": "...", "citations": [{{"finding_id": "f1", "quote": "..."}}]}}, "rule": {{"statement": "...", "citations": [...]}}, "decisive_fact": {{"fact": "...", "settled_by": "documents" | "letter" | "payer_determination" | "outside_documents"}}, "outcome": "consistent" | "inconsistent" | "not_settled", "gap": "...", "what_would_change": "..." or null}}"""
 
 
 # ---- helpers shared with letter.py ---------------------------------------------
@@ -214,12 +233,14 @@ def findings_block(investigation) -> str:
         parts.append(f"[{f['id']}] topic: {f.get('topic')}, jurisdiction: {f.get('jurisdiction')}\nQuestion: {f.get('question')}\nAnswer: {f.get('answer')}\nVerified quotes:\n{quotes}")
     rest = unsettled_findings(investigation)
     if rest:
-        parts.append("Not settled by the documents (no verified quote; do not argue from these, do not cite them):\n" + "\n".join(f"- [{f.get('id')}] {f.get('question')}" for f in rest))
+        parts.append("Not settled by the documents (no verified quote; each is an open question: if the letter's reason turns on one, the decisive fact is not in the documents; do not argue from these, do not cite them):\n" + "\n".join(f"- [{f.get('id')}] {f.get('question')}" for f in rest))
     return "\n\n".join(parts)
 
 
 def verdict_user_message(case: dict, investigation) -> str:
-    return case_facts(case.get("card") or {}) + "\n\n" + findings_block(investigation) + "\n\nArgue the payer's side first, then decide. Return JSON only."
+    from .investigate import letter_summary_block
+
+    return case_facts(case.get("card") or {}) + letter_summary_block(case.get("summary")) + "\n\n" + findings_block(investigation) + "\n\nArgue the payer's side first, then decide. Return JSON only."
 
 
 # ---- verdict ---------------------------------------------------------------------
@@ -315,14 +336,23 @@ def verdict_from_data(data, investigation, meta: dict) -> dict:
     gap = " ".join(str(data.get("gap") or "").split())
     wwc = data.get("what_would_change")
     wwc = " ".join(str(wwc).split()) if isinstance(wwc, str) and wwc.strip() else None
+    df = data.get("decisive_fact") if isinstance(data.get("decisive_fact"), dict) else {}
+    fact = " ".join(str(df.get("fact") or "").split())
+    settled_by = str(df.get("settled_by") or "").strip().lower()
     if not rule_refs and outcome != "not_settled":
         outcome = "not_settled"
         gap = FALLBACK_GAP
         wwc = DEFAULT_SETTLE
+    if settled_by in OPEN_FACT_GAPS and outcome != "not_settled":
+        # The model named an open fact (the payer's own determination, or a list outside the documents)
+        # and still decided: the documents do not settle it. proposed_outcome keeps what the model said.
+        outcome = "not_settled"
+        gap = OPEN_FACT_GAPS[settled_by].format(fact=fact or "the fact the letter's reason turns on.")
+        wwc = fact or DEFAULT_SETTLE
     if outcome == "inconsistent":
         wwc = None
     elif wwc is None:
-        wwc = DEFAULT_COVERED if outcome == "consistent" else DEFAULT_SETTLE
+        wwc = DEFAULT_COVERED if outcome == "consistent" else (fact or DEFAULT_SETTLE)
     if not gap:
         gap = FALLBACK_GAP if outcome == "not_settled" else ""
     return _verdict(

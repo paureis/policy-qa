@@ -475,7 +475,7 @@ def case_investigate(case_id: str):
 
     c = _load_case(case_id)
     inv = investigator()
-    route = inv.route(c["card"]).to_dict()  # pure; computed before the claim so a failure here leaves the case in intake
+    route = inv.route(c["card"], c.get("summary")).to_dict()  # pure; computed before the claim so a failure here leaves the case in intake
     if not STORE.claim_for_investigation(case_id):
         current = (STORE.get(case_id) or c)["status"]
         raise _err(409, "wrong_status", f"Case {case_id} is already {current}.")

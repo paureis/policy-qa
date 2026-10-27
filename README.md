@@ -131,22 +131,24 @@ Scoring rule:
 - A critic failure leaves the verdict's score alone, because the product keeps the letter as drafted by design, and is counted as `critic_failures`.
 - `--limit` must be 1 or more; leave it out to run every case.
 
-Numbers, first live run, Oct 26, 2026 (`results/case-evals-2026-10-26.json` and `.md`; Muse Spark 1.3, reasoning effort low, critic 1 round, three cases at a time):
+Current numbers: Oct 27, 2026, after the verdict tuning (`results/case-evals-2026-10-27.json` and `.md`). The Oct 26 baseline is the first live run, before any tuning (`results/case-evals-2026-10-26.*`). Both runs: Muse Spark 1.3, reasoning effort low, critic 1 round, three cases at a time.
 
-| Measure | Value |
-|---|---|
-| Verdict accuracy | 22 of 30 (73.3%) |
-| Intended consistent | 9 of 10 |
-| Intended inconsistent | 10 of 13 |
-| Intended not settled | 2 of 6 |
-| Refusal on the medical question (dc-011) | correct |
-| Letter claims verified | 61 of 61 over 16 letters; 0 struck |
-| Critic revisions accepted | 9 of 16 |
-| Cost per case | mean $0.084, p50 $0.088, $2.50 for the run |
-| Seconds per case | mean 34, p50 38 |
-| Errors, template letters, critic failures | 0, 0, 0 |
+| Measure | Oct 27 (current) | Oct 26 (baseline) | Change |
+|---|---|---|---|
+| Verdict accuracy | 25 of 30 (83.3%) | 22 of 30 (73.3%) | +3 cases, +10.0 points |
+| Intended consistent | 7 of 10 | 9 of 10 | -2 |
+| Intended inconsistent | 12 of 13 | 10 of 13 | +2 |
+| Intended not settled | 5 of 6 | 2 of 6 | +3 |
+| Refusal on the medical question (dc-011) | correct | correct | same |
+| Letter claims verified | 81 of 81 over 22 letters; 0 struck | 61 of 61 over 16 letters; 0 struck | +6 letters |
+| Critic revisions accepted | 11 of 22 | 9 of 16 | +2 |
+| Cost per case | mean $0.095, p50 $0.098, $2.84 for the run | mean $0.084, p50 $0.088, $2.50 for the run | +$0.011 mean |
+| Seconds per case | mean 47, p50 51 | mean 34, p50 38 | +13 mean |
+| Errors, template letters, critic failures | 0, 0, 0 | 0, 0, 0 | same |
 
-What the misses say (recorded in DECISIONS.md, Oct 26): four "not settled" rows came out "consistent" because the model takes the payer's stated facts as given (dc-009, dc-014, dc-020 scored on its alternate, dc-002 the other way); three "inconsistent" rows whose proof is an exception elsewhere in the document came out "not settled" or "consistent" (dc-018 eyeglasses after cataract surgery, dc-026 rosacea not cosmetic, dc-021 QMB cost sharing); dc-017 is a close call either way; dc-030, the employer plan, was answered with an "inconsistent" verdict although the route said no corpus document governs it, a product bug fixed the same night. These are the tuning targets, measured before any change.
+Oct 27 misses (5): dc-002 and dc-003, consistent, came out inconsistent; dc-007, inconsistent, came out not settled; dc-017, not settled, came out inconsistent again; dc-025, consistent, came out not settled. DECISIONS.md (Oct 27) reads each one and names the next tuning target.
+
+What the Oct 26 misses said (recorded in DECISIONS.md, Oct 26): four "not settled" rows came out "consistent" because the model takes the payer's stated facts as given (dc-009, dc-014, dc-020 scored on its alternate, dc-002 the other way); three "inconsistent" rows whose proof is an exception elsewhere in the document came out "not settled" or "consistent" (dc-018 eyeglasses after cataract surgery, dc-026 rosacea not cosmetic, dc-021 QMB cost sharing); dc-017 is a close call either way; dc-030, the employer plan, was answered with an "inconsistent" verdict although the route said no corpus document governs it, a product bug fixed the same night. These are the tuning targets, measured before any change.
 
 ## Design notes
 

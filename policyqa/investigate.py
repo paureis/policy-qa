@@ -120,8 +120,20 @@ def names_plan_outside_corpus(payer: str) -> bool:
     return any(w in low for w in OUTSIDE_CORPUS_WORDS)
 
 
-def route_case(card) -> Route:
-    """Which documents govern. Pure: the same card always routes the same way."""
+_QMB = re.compile(r"\bQMB\b|qualified medicare beneficiar", re.I)
+
+
+def medicare_and_medicaid(card, summary: str | None = None) -> bool:
+    """True when the letter says the member has both Medicare and Medicaid (the QMB program, or both
+    programs named in the payer, service, reason, or intake summary). Oct 27, dc-021: a provider billed a
+    QMB member the Medicare coinsurance; the rule is about the second program, not the service."""
+    text = " ".join(str(_val(card, f) or "") for f in ("payer_name", "service", "denial_reason")) + " " + str(summary or "")
+    low = text.lower()
+    return bool(_QMB.search(text)) or ("medicaid" in low and "medicare" in low)
+
+
+def route_case(card, summary: str | None = None) -> Route:
+    """Which documents govern. Pure: the same card (and intake summary) always routes the same way."""
     program = _val(card, "program")
     program = program if program in PROGRAM_LABELS else "unknown"
     age = _val(card, "member_age_group")
@@ -135,6 +147,8 @@ def route_case(card) -> Route:
     if program.startswith("medicare_"):
         if "medicaid" in payer.lower():
             return Route(program, both, True, f"The letter is about {label}, but the payer ({payer.strip()}) also handles Medicaid, so the Medicare rules and the Florida Medicaid rules are checked side by side.")
+        if medicare_and_medicaid(card, summary):
+            return Route(program, both, True, f"The letter is about {label}, and it says the member also has Medicaid (for example the QMB program), so the Medicare rules and the Florida Medicaid rules are checked side by side.")
         return Route(program, ["Federal"], False, f"The letter is about {label}, so the federal Medicare rules decide this case.")
     if names_plan_outside_corpus(payer):
         return Route(
@@ -180,7 +194,7 @@ PLAN_SYSTEM_PROMPT = f"""You plan the investigation of a health coverage denial.
 Rules:
 1. Each question names the service and the program in plain words, as a reader with no insurance background would say them. One question per line of inquiry. The exception is the appeal question (rule 2).
 2. Topics, one per question: coverage (is the service covered), limits (hours, visits, amounts, frequency), conditions (prior authorization, medical necessity criteria, documentation), exclusions, appeal, reason (what the rules say about the payer's stated denial reason), other. An appeal question asks about the program's appeal process: the adverse benefit determination, the grievance or appeal, the fair hearing, the deadline, and where to file. Appeal questions name the program but do not name the service.
-3. Include at least one appeal question and at least one reason question about the letter's stated denial reason.
+3. Include at least one appeal question, at least one reason question about the letter's stated denial reason, and one exception question (topic exclusions): is there an exception, or a second rule or program, that covers this service or this member even though the stated reason applies? Policies often state an exclusion on one page and its exception on the next. Name in the exception question the facts the letter states that an exception could turn on: a related surgery or procedure, what the prescription says the drug is for, the member's other coverage (Medicaid, the Qualified Medicare Beneficiary (QMB) program). When the member has both Medicare and Medicaid, ask whether a provider may bill the member for Medicare cost-sharing.
 4. Ask only about coverage, billing, and appeal rules. Never ask about treatment, diagnosis, medication, dosage, or whether the care was needed. This tool never gives medical advice.
 5. Return JSON only, matching the schema: {{"questions": [{{"topic": "...", "question": "..."}}]}}"""
 
@@ -194,7 +208,7 @@ def _clean_reason(reason: str | None) -> str | None:
     return r[0].lower() + r[1:]
 
 
-def template_questions(card, route: Route) -> list[PlannedQuestion]:
+def template_questions(card, route: Route, summary: str | None = None) -> list[PlannedQuestion]:
     """The fixed plan used when the model plan fails: one question per topic, in the order the screen shows them."""
     service = str(_val(card, "service") or "").strip() or "the service"
     label = program_label(route.program)
@@ -208,10 +222,37 @@ def template_questions(card, route: Route) -> list[PlannedQuestion]:
         PlannedQuestion("exclusions", f"What exclusions apply to {service} under {label}?"),
         PlannedQuestion("appeal", f"How does a member appeal an adverse benefit determination under {label}: the appeal or grievance, the fair hearing, the deadline, and where to file?"),
         PlannedQuestion("reason", f"What do the rules say when {reason}?" if reason else f"What reasons allow {label} to deny {service}?"),
+        dual_program_question(service) if medicare_and_medicaid(card, summary) else exception_question(service, label, reason),
     ]
 
 
-def _card_summary_for_plan(card, route: Route) -> str:
+def dual_program_question(service: str) -> PlannedQuestion:
+    """For a member with Medicare and Medicaid, the "second rule" is the member's second program: may a
+    provider bill a QMB member for Medicare cost-sharing. Reached fed-20 p7 in the offline probe."""
+    return PlannedQuestion(
+        "other",
+        f"Can a provider bill a member in the Qualified Medicare Beneficiary (QMB) program, or a member with both Medicare and Medicaid, for Medicare cost-sharing (deductible, coinsurance, or copayment) for {service}?",
+    )
+
+
+def exception_question(service: str, label: str, reason: str | None) -> PlannedQuestion:
+    """The "is there an exception" question (topic exclusions). Oct 27: the proof of dc-018 and dc-026 is an
+    exception on the page after the exclusion; this wording reached both pages in the offline retrieval
+    probe when the service names the letter's fact (the surgery, what the prescription is for)."""
+    tail = f" even though {reason}" if reason else ""
+    return PlannedQuestion("exclusions", f"Is there an exception under {label} that covers {service}{tail}?")
+
+
+def letter_summary_block(summary: str | None) -> str:
+    """The intake summary as the planner, the verdict and the letter see it: the letter's own facts that the
+    card has no field for (a related surgery, what a prescription is for, other coverage on file)."""
+    s = " ".join(str(summary or "").split())
+    if not s:
+        return ""
+    return f"\n\nWhat the letter says, in plain words (the intake summary shown with the case card; where it differs from the card, the card wins):\n{s}"
+
+
+def _card_summary_for_plan(card, route: Route, summary: str | None = None) -> str:
     lines = [
         f"Program: {program_label(route.program)} (jurisdictions: {', '.join(route.jurisdictions)})",
         f"Payer: {_val(card, 'payer_name') or 'not stated'}",
@@ -221,7 +262,7 @@ def _card_summary_for_plan(card, route: Route) -> str:
         f"Payer's stated denial reason: {_val(card, 'denial_reason') or 'not stated'}",
         f"Amount billed: {_val(card, 'amount_billed') if _val(card, 'amount_billed') is not None else 'not stated'}",
     ]
-    return "Case card:\n" + "\n".join(lines) + "\n\nPlan the questions. Return JSON only."
+    return "Case card:\n" + "\n".join(lines) + letter_summary_block(summary) + "\n\nPlan the questions. Return JSON only."
 
 
 # Planned questions only; intake's scope_check (for whole letters) is unchanged. A planned
@@ -266,6 +307,17 @@ def _usable_questions(raw) -> list[PlannedQuestion]:
     return out
 
 
+_DUAL_WORDS = re.compile(r"\bQMB\b|qualified medicare beneficiar|cost.sharing", re.I)
+_EXCEPTION_WORDS = re.compile(r"\bexcept", re.I)
+
+
+def _asks_second_rule(q: PlannedQuestion, need: PlannedQuestion) -> bool:
+    """True when `q` asks what `need` (the template's last question) asks: an exception, or for a
+    Medicare and Medicaid member the QMB cost-sharing rule."""
+    pattern = _DUAL_WORDS if _DUAL_WORDS.search(need.question) else _EXCEPTION_WORDS
+    return bool(pattern.search(q.question))
+
+
 def _plan_from_reply(text: str, template: list[PlannedQuestion]) -> list[PlannedQuestion]:
     qs = _usable_questions(parse_model_json(text))
     if len(qs) < MIN_USABLE:
@@ -274,21 +326,25 @@ def _plan_from_reply(text: str, template: list[PlannedQuestion]) -> list[Planned
     for need in ("appeal", "reason"):
         if need not in topics:
             qs.append(next(t for t in template if t.topic == need))
+    second = template[-1]
+    if not any(_asks_second_rule(q, second) for q in qs):
+        qs.append(second)
     if len(qs) > MAX_PLANNED:
-        required = [next(q for q in qs if q.topic == "appeal"), next(q for q in qs if q.topic == "reason")]
+        required = [next(q for q in qs if q.topic == "appeal"), next(q for q in qs if q.topic == "reason"), next(q for q in qs if _asks_second_rule(q, second))]
         others = [q for q in qs if q not in required][: MAX_PLANNED - len(required)]
         qs = [q for q in qs if q in required or q in others]
     return qs
 
 
-def plan_questions(card, route: Route, provider, stats: dict | None = None) -> list[PlannedQuestion]:
-    """4 to 7 planned questions. `stats`, when given, receives source, tokens, latency and cost of the planning call."""
-    template = template_questions(card, route)
+def plan_questions(card, route: Route, provider, stats: dict | None = None, summary: str | None = None) -> list[PlannedQuestion]:
+    """4 to 7 planned questions. `stats`, when given, receives source, tokens, latency and cost of the planning call.
+    `summary` is the intake summary (the letter's facts the card has no field for)."""
+    template = template_questions(card, route, summary)
     t = time.perf_counter()
     rec = {"source": "template", "model": getattr(provider, "model", "?"), "input_tokens": 0, "output_tokens": 0, "reasoning_tokens": 0, "latency_ms": 0.0, "cost_usd": 0.0, "error": None}
     reply: tuple[int, int] | None = None
     try:
-        text, n_in, n_out = provider.complete_parts(PLAN_SYSTEM_PROMPT, [{"type": "text", "text": _card_summary_for_plan(card, route)}], schema=PLAN_SCHEMA, max_tokens=PLAN_MAX_TOKENS)
+        text, n_in, n_out = provider.complete_parts(PLAN_SYSTEM_PROMPT, [{"type": "text", "text": _card_summary_for_plan(card, route, summary)}], schema=PLAN_SCHEMA, max_tokens=PLAN_MAX_TOKENS)
         reply = (int(n_in or 0), int(n_out or 0))
         qs = _plan_from_reply(text, template)
         rec["source"] = "model"
@@ -342,19 +398,24 @@ def program_sentence(route: Route, jurisdiction: str) -> str:
 
 
 def select_passages(hits: list, k: int = PASSAGES_PER_QUESTION, per_doc_cap: int | None = PER_DOC_CAP, exclude=frozenset()) -> list:
-    """The first `k` hits in rank order, skipping excluded documents and any hit past `per_doc_cap` from its document."""
-    out, per_doc = [], {}
+    """The first `k` hits in rank order, skipping excluded documents and any hit past `per_doc_cap` from its document.
+
+    The cap diversifies the head of the list; it never shrinks it. When too few other documents
+    are in the pool (Part D has one governing manual), the capped hits fill the rest in rank order
+    (Oct 27: dc-026's exception page ranked 4th in fed-10 and the cap of 3 had dropped it)."""
+    out, capped, per_doc = [], [], {}
     for h in hits:
         doc = h.chunk.get("doc_id")
         if doc in exclude:
             continue
         if per_doc_cap is not None and per_doc.get(doc, 0) >= per_doc_cap:
+            capped.append(h)
             continue
         per_doc[doc] = per_doc.get(doc, 0) + 1
         out.append(h)
         if len(out) >= k:
-            break
-    return out
+            return out
+    return out + capped[: k - len(out)]
 
 
 def retrieve_passages(retriever, question: str, jurisdiction: str, k: int = PASSAGES_PER_QUESTION, per_doc_cap: int | None = PER_DOC_CAP, exclude=frozenset()) -> list:
@@ -491,12 +552,13 @@ def investigate_case(case: dict, retriever, provider, on_progress=None, k: int =
     trace = Trace(f"case {case.get('case_id', '?') if isinstance(case, dict) else '?'}")
     try:
         card = case["card"]
+        summary = case.get("summary")
         with trace.span("route"):
-            route = route_case(card)
+            route = route_case(card, summary)
         trace.set(route=route.to_dict())
         plan_stats: dict = {}
         with trace.span("plan", model=model):
-            questions = plan_questions(card, route, provider, stats=plan_stats)
+            questions = plan_questions(card, route, provider, stats=plan_stats, summary=summary)
         inv["plan"] = {**plan_stats, "questions": len(questions)}
         jobs = [(q, j) for q in questions for j in route.jurisdictions]
         inv["questions_planned"] = len(jobs)
@@ -537,8 +599,8 @@ class LiveInvestigator:
         self.provider = provider
         self.model = getattr(provider, "model", "?")
 
-    def route(self, card) -> Route:
-        return route_case(card)
+    def route(self, card, summary: str | None = None) -> Route:
+        return route_case(card, summary)
 
     def investigate(self, case: dict, on_progress=None) -> dict:
         return investigate_case(case, self.retriever, self.provider, on_progress=on_progress)
@@ -597,8 +659,8 @@ class FixtureInvestigator:
         self.fed_home = _pick_doc(rows, "medicare & home health care", "home health services", jurisdiction="Federal", fallback=("fed-24", "Medicare & Home Health Care (CMS Product No. 10969)"))
         self.fed_appeal = _pick_doc(rows, "appeals process", jurisdiction="Federal", fallback=("fed-17", "Medicare Parts A & B Appeals Process (MLN006562)"))
 
-    def route(self, card) -> Route:
-        return route_case(card)
+    def route(self, card, summary: str | None = None) -> Route:
+        return route_case(card, summary)
 
     @staticmethod
     def _cite(doc, page, quote, overlap=1.0):
