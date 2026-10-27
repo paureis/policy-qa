@@ -483,7 +483,7 @@ function withFields(text: string): ReactNode {
     const at = m.index ?? 0;
     if (at > last) parts.push(text.slice(last, at));
     parts.push(
-      <span key={at} className="box-decoration-clone rounded-sm border-b-2 border-gold bg-gold-wash px-1 print:border-0 print:bg-transparent print:px-0" data-fill-in={m[1]}>
+      <span key={at} className="box-decoration-clone border-b-2 border-gold bg-gold-wash px-1 print:border-0 print:bg-transparent print:px-0" data-fill-in={m[1]}>
         <span className="mr-1.5 text-[14px] font-semibold print:hidden">Fill in</span>
         <span className="sr-only">: </span>
         <span className="print:hidden">{m[1]}</span>
