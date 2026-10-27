@@ -107,6 +107,32 @@ The earlier sweep, 139 scorable rows on the 59 documents reachable from the buil
 
 Multi-document questions (10 rows) are the weak spot at every setting, 0.3 to 0.4 at 10. One query cannot pull two documents reliably; the fix belongs in the generation layer (one sub-query per jurisdiction), and is on the list. The reasoning behind each choice, with the chunk-size sweep, is in `DECISIONS.md`.
 
+## Denial-case evaluation
+
+Retrieval recall says whether the right page was found. This harness says whether the verdict is right. It runs the 30 reviewed letters in `cases/` (see `cases/README.md`) through the same code the API runs, without HTTP: the intake route's text path (length check, `scope_check`, the extractor), then the investigation, Steelman and Verdict, the letter, and the critic. Providers are chosen as the API chooses them: live when `POLICYQA_LLM_*` are set and the index is built, the fixtures otherwise. Cases run in a private in-memory store, so nothing lands in `data/cases`.
+
+```
+python -m policyqa.cli case-evals [--ids dc-001,dc-011] [--limit N] [--concurrency 3] [--no-critic]
+```
+
+It writes `results/case-evals-<date>.json` (per-case rows, the summary, the model, reasoning effort, prices, and modes) and `results/case-evals-<date>.md` (a summary table and a per-case table to paste here).
+
+Measured: verdict accuracy overall and by intended outcome, program, and jurisdiction; refusal on the medical-question trap; the letter verification rate (verified claims over claims, letters that apply only) and the struck rate; critic revisions accepted; cost and seconds per case (mean and p50) and in total.
+
+Scoring rule:
+
+- A case is correct when the verdict equals `intended_outcome`.
+- Two alternates are also accepted, because both blind reviewers on Oct 26 called them defensible: dc-008 `not_settled` (whether days 46 to 51 were emergency services under fl-01) and dc-020 `consistent` ("the records we received do not show" can be read as consistent with the rule).
+- dc-011 is scored on refusal: correct only when intake refuses it as `out_of_scope`, with no verdict and no letter.
+- dc-030 expects `not_settled`. The summary records the route's program, whether it is `unknown`, and whether the router said no document in the corpus governs the plan (`route.outside_corpus`, set for employer and commercial payers since Oct 26).
+- An error at any stage, or a refusal of any other letter, counts as wrong and is listed. Each row's `stage_errors` names the stages that failed.
+- A verdict model failure (the `not_settled` template with `error` set), or an investigation whose findings all errored with none supported, counts as an error, never as a real `not_settled`.
+- A template letter (letter `error` set) leaves the verdict's score alone, is left out of the verification and struck rates, and is counted as `letter_failures`.
+- A critic failure leaves the verdict's score alone, because the product keeps the letter as drafted by design, and is counted as `critic_failures`.
+- `--limit` must be 1 or more; leave it out to run every case.
+
+Numbers: not yet run live.
+
 ## Design notes
 
 - Chunks never cross a page. A citation is (document, page), and a chunk that spans pages cannot be cited honestly.

@@ -10,6 +10,8 @@
   export-review  judge-subset rows of an answers file -> JSON docs for the Judge Validation Review page
   judge-agreement  graded review docs -> results/judge-agreement-<run>.json
   smoke    one tiny chat request through the configured model; prints model, latency, tokens, cost, reply
+  case-evals  the 30 denial letters in cases/ through the API's chain; verdict accuracy, refusal,
+              letter verification, cost and time -> results/case-evals-<date>.json and .md
 """
 import argparse
 import json
@@ -139,6 +141,16 @@ def main(argv=None):
     sm.add_argument("--raw", action="store_true", help="print the full response JSON")
     sm.add_argument("--effort", default=None, help="send reasoning_effort (low, medium, high) for this request")
 
+    ce = sub.add_parser("case-evals", help="denial-case evaluation over cases/cases.csv (live when POLICYQA_LLM_* are set)")
+    ce.add_argument("--cases", type=Path, default=ROOT / "cases/cases.csv")
+    ce.add_argument("--letters", type=Path, default=ROOT / "cases/letters")
+    ce.add_argument("--ids", default=None, help="comma list of case ids, e.g. dc-001,dc-011")
+    ce.add_argument("--limit", type=int, default=None, help="first N cases (1 or more); leave it out to run every case")
+    ce.add_argument("--concurrency", type=int, default=3)
+    ce.add_argument("--out", type=Path, default=None, help="default results/case-evals-<YYYY-MM-DD>.json")
+    ce.add_argument("--md", type=Path, default=None, help="default results/case-evals-<YYYY-MM-DD>.md")
+    ce.add_argument("--no-critic", action="store_true", help="skip the letter critic (RECOURSE_CRITIC_ROUNDS=0 for this run)")
+
     args = ap.parse_args(argv)
 
     if args.cmd == "smoke":
@@ -149,6 +161,27 @@ def main(argv=None):
 
         rep = ingest(args.manifest, args.pdfs, args.text)
         print(json.dumps(rep, indent=2))
+    elif args.cmd == "case-evals":
+        from datetime import date
+
+        from .case_evals import run_evals, write_outputs
+
+        if args.limit is not None and args.limit < 1:
+            ap.error("--limit must be 1 or more; leave it out to run every case")
+        today = date.today().isoformat()
+        out = args.out or ROOT / "results" / f"case-evals-{today}.json"
+        md = args.md or ROOT / "results" / f"case-evals-{today}.md"
+        ids = [x.strip() for x in args.ids.split(",") if x.strip()] if args.ids else None
+
+        def progress(r):
+            got = r["got"] or (f"refused ({r['refused']})" if r["refused"] else "error")
+            print(f"  {r['id']}: intended {r['intended']}, got {got}, {'ok' if r['correct'] else 'WRONG'}, ${r['cost_usd']}, {r['seconds']} s" + (f", {r['error']}" if r["error"] else ""), flush=True)
+
+        res = run_evals(cases_path=args.cases, letters_dir=args.letters, ids=ids, limit=args.limit, concurrency=args.concurrency, critic=not args.no_critic, on_row=progress)
+        write_outputs(res, out, md)
+        s = res["summary"]
+        print(json.dumps({k: s[k] for k in ("n", "correct", "accuracy", "refusal_correct", "letters", "cost_usd", "seconds")}, indent=2))
+        print(f"wrote {out} and {md}")
     elif args.cmd == "chunk":
         from .chunk import chunk_corpus
 

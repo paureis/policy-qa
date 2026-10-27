@@ -57,7 +57,7 @@ def test_route_table(over, jurisdictions, dual):
     assert r.jurisdictions == jurisdictions and r.dual is dual
     assert r.reason.endswith(".") and len(r.reason.split()) >= 8
     d = r.to_dict()
-    assert set(d) == {"program", "jurisdictions", "dual", "reason"}
+    assert set(d) == {"program", "jurisdictions", "dual", "reason", "outside_corpus"}
     assert d["program"] == (over["program"] if over.get("program") else ("unknown" if "program" in over else "florida_medicaid_mma"))
 
 
@@ -680,3 +680,17 @@ def test_fixture_honors_a_dual_route():
     inv = fx.investigate({"case_id": "c_fxfl", "card": card()})
     assert {f["jurisdiction"] for f in inv["findings"]} == {"Florida"} and len(inv["findings"]) == 5
     assert all(set(f) >= {"passages", "error"} for f in inv["findings"])
+
+
+def test_route_names_a_plan_outside_the_corpus():
+    """A commercial or employer plan is not a program in the corpus: the route says no document governs it."""
+    for payer in ("Sample Employer Health Plan", "Acme Group Health Plan", "Blue Commercial PPO", "Marketplace Silver Plan"):
+        r = route_case(card(program="unknown", payer_name=payer))
+        assert r.program == "unknown" and r.jurisdictions == ["Florida", "Federal"] and r.dual is True
+        assert r.outside_corpus is True
+        assert "No document in the corpus governs" in r.reason and payer in r.reason
+        assert r.to_dict()["outside_corpus"] is True
+    r = route_case(card(program="unknown", payer_name="Sunshine Health"))
+    assert r.outside_corpus is False and "does not say which program" in r.reason
+    r = route_case(card(program="florida_medicaid_mma", payer_name="Employer Health Plan"))
+    assert r.outside_corpus is False

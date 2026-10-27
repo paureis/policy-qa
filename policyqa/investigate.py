@@ -99,15 +99,25 @@ def program_label(program: str | None) -> str:
 # ---- routing ---------------------------------------------------------------
 
 
+OUTSIDE_CORPUS_WORDS = ("employer", "group health", "commercial", "marketplace", "self-funded", "erisa", "union")
+
+
 @dataclass
 class Route:
     program: str
     jurisdictions: list[str]
     dual: bool
     reason: str
+    outside_corpus: bool = False  # the letter names a plan no corpus document governs (commercial, employer)
 
     def to_dict(self) -> dict:
-        return {"program": self.program, "jurisdictions": list(self.jurisdictions), "dual": self.dual, "reason": self.reason}
+        return {"program": self.program, "jurisdictions": list(self.jurisdictions), "dual": self.dual, "reason": self.reason, "outside_corpus": self.outside_corpus}
+
+
+def names_plan_outside_corpus(payer: str) -> bool:
+    """True when the payer name says commercial or employer coverage, which no corpus document governs."""
+    low = payer.lower()
+    return any(w in low for w in OUTSIDE_CORPUS_WORDS)
 
 
 def route_case(card) -> Route:
@@ -126,6 +136,14 @@ def route_case(card) -> Route:
         if "medicaid" in payer.lower():
             return Route(program, both, True, f"The letter is about {label}, but the payer ({payer.strip()}) also handles Medicaid, so the Medicare rules and the Florida Medicaid rules are checked side by side.")
         return Route(program, ["Federal"], False, f"The letter is about {label}, so the federal Medicare rules decide this case.")
+    if names_plan_outside_corpus(payer):
+        return Route(
+            "unknown",
+            both,
+            True,
+            f"The letter is from {payer.strip()}, a plan outside the public programs in the corpus (Florida Medicaid, KidCare, Medicare). No document in the corpus governs it; the Florida Medicaid and federal Medicare rules are checked for reference only.",
+            outside_corpus=True,
+        )
     return Route("unknown", both, True, "The letter does not say which program paid for the care, so the Florida Medicaid rules and the federal Medicare rules are checked side by side.")
 
 

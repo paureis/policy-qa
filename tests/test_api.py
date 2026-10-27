@@ -295,7 +295,7 @@ def test_investigate_fixture_path_through_the_real_app(monkeypatch, tmp_path):
     assert r.status_code == 202 and r.json() == {"case_id": cid, "status": "investigating"}
     b = client.get(f"/case/{cid}").json()
     assert b["status"] == "reviewed"  # inline: investigation, verdict, letter, and critic all ran
-    assert b["route"] == {"program": "florida_medicaid_mma", "jurisdictions": ["Florida"], "dual": False, "reason": b["route"]["reason"]}
+    assert b["route"] == {"program": "florida_medicaid_mma", "jurisdictions": ["Florida"], "dual": False, "reason": b["route"]["reason"], "outside_corpus": False}
     assert b["route"]["reason"].endswith(".")
     inv = b["investigation"]
     assert inv["status"] == "done" and inv["error"] is None and inv["model"] == "fixture"
