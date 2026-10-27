@@ -14,10 +14,13 @@ export function StageLine({
   record,
   letterHref = null,
   inRow = false,
+  compact = false,
 }: {
   record: CaseRecord;
   letterHref?: string | null;
   inRow?: boolean;
+  /* The finished case with a letter at desktop: the line steps down to body size above the outcome heading. */
+  compact?: boolean;
 }) {
   const line = stageLine(record);
   const note = stageNote(record);
@@ -25,7 +28,12 @@ export function StageLine({
   const noteClass = `mt-1 text-[16px] text-muted ${inRow ? "sm:basis-full" : ""}`;
   return (
     <div className={`mt-1 ${inRow ? "sm:contents" : ""}`} data-stage={record.status}>
-      <p className="text-[20px] font-bold" aria-live="polite" aria-atomic="true" data-stage-line="true">
+      <p
+        className={`text-[20px] font-bold ${compact ? "lg:text-[17px] lg:font-semibold" : ""}`}
+        aria-live="polite"
+        aria-atomic="true"
+        data-stage-line="true"
+      >
         {line && letterHref ? (
           <a href={letterHref} className="-my-2 inline-block py-2 text-ink underline decoration-2 underline-offset-4" data-letter-link="true">
             {line}

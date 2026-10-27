@@ -37,6 +37,15 @@ const DESKTOP_QUERY = "(min-width: 1024px)";
 interface OpenViewer {
   key: string;
   citation: ChipCitation;
+  /* "margin": the viewer opens in place inside a margin note of the appeal letter at desktop, not in the side panel. */
+  placement?: "margin";
+  /* Where focus returns on close; the chip that opened the quote when not given. */
+  returnTo?: HTMLElement | null;
+}
+
+export interface ToggleOptions {
+  placement?: "margin";
+  returnTo?: HTMLElement | null;
 }
 
 interface ViewerState {
@@ -45,7 +54,7 @@ interface ViewerState {
 }
 
 interface ViewerActions {
-  toggle: (key: string, citation: ChipCitation) => void;
+  toggle: (key: string, citation: ChipCitation, options?: ToggleOptions) => void;
   close: () => void;
   /* Close without moving focus, when the quote that owns the viewer goes away. */
   closeIf: (key: string) => void;
@@ -60,7 +69,8 @@ function subscribeDesktop(onChange: () => void): () => void {
   return () => mq.removeEventListener("change", onChange);
 }
 
-function useDesktop(): boolean {
+/* True at 1024px and up, Tailwind's lg. False on the server and during hydration. */
+export function useDesktop(): boolean {
   return useSyncExternalStore(
     subscribeDesktop,
     () => window.matchMedia(DESKTOP_QUERY).matches,
@@ -85,13 +95,13 @@ export function PageViewerProvider({ children }: { children: ReactNode }) {
   const close = useCallback(() => {
     const current = openRef.current;
     setOpen(null);
-    if (current) chipFor(current.key)?.focus();
+    if (current) (current.returnTo ?? chipFor(current.key))?.focus();
   }, []);
 
   const toggle = useCallback(
-    (key: string, citation: ChipCitation) => {
+    (key: string, citation: ChipCitation, options?: ToggleOptions) => {
       if (openRef.current?.key === key) close();
-      else setOpen({ key, citation });
+      else setOpen({ key, citation, placement: options?.placement, returnTo: options?.returnTo ?? null });
     },
     [close],
   );
@@ -128,7 +138,7 @@ export function viewerPanelId(key: string): string {
 export function PageViewerFrame({ children }: { children: ReactNode }) {
   const state = useContext(StateContext);
   const actions = useContext(ActionsContext);
-  const side = state?.desktop && state.open ? state.open : null;
+  const side = state?.desktop && state.open && state.open.placement !== "margin" ? state.open : null;
   if (!side || !actions) return <div className="flex flex-1 flex-col">{children}</div>;
   return (
     <div className="flex flex-1 items-start justify-center gap-6 pl-4" data-viewer-layout="side">
@@ -151,6 +161,27 @@ export function InlinePageViewer({ viewerKey }: { viewerKey: string }) {
       panelId={viewerPanelId(viewerKey)}
       citation={state.open.citation}
       variant="inline"
+      onClose={actions.close}
+    />
+  );
+}
+
+/*
+  The viewer inside a margin note of the appeal letter at desktop width. It
+  opens in place under the note, so the letter never shifts sideways. A
+  non-modal dialog like the side panel: focus moves in, Escape closes, and
+  focus returns to the note's button.
+*/
+export function MarginPageViewer({ viewerKey }: { viewerKey: string }) {
+  const state = useContext(StateContext);
+  const actions = useContext(ActionsContext);
+  if (!state || !actions || !state.desktop || state.open?.key !== viewerKey || state.open.placement !== "margin") return null;
+  return (
+    <PageViewerPanel
+      key={viewerKey}
+      panelId={viewerPanelId(viewerKey)}
+      citation={state.open.citation}
+      variant="margin"
       onClose={actions.close}
     />
   );
@@ -181,7 +212,7 @@ function PageViewerPanel({
   onClose,
 }: {
   citation: ChipCitation;
-  variant: "side" | "inline";
+  variant: "side" | "inline" | "margin";
   panelId: string;
   onClose: () => void;
 }) {
@@ -326,7 +357,9 @@ function PageViewerPanel({
       <>
         <div
           ref={scrollerRef}
-          className={`mt-3 overflow-auto border border-hairline bg-paper ${side ? "min-h-0 flex-1" : "max-h-[70vh]"}`}
+          className={`mt-3 overflow-auto border border-hairline bg-paper ${
+            side ? "min-h-0 flex-1" : variant === "margin" ? "page-sticky max-h-[min(70vh,560px)]" : "max-h-[70vh]"
+          }`}
           data-viewer-scroller="true"
         >
           <div
@@ -392,6 +425,22 @@ function PageViewerPanel({
     );
   }
 
+  if (variant === "margin") {
+    return (
+      <div
+        ref={panelRef}
+        id={panelId}
+        role="dialog"
+        aria-label={`Page ${citation.page} of ${title}`}
+        tabIndex={-1}
+        className="step-in mt-3 flex flex-col border-t border-ink pt-3"
+        data-page-viewer="margin"
+      >
+        {header}
+        {body}
+      </div>
+    );
+  }
   if (side) {
     return (
       <div

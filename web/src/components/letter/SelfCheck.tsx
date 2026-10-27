@@ -28,11 +28,22 @@ import { InlineChip, LetterFrame } from "./AppealLetter";
   above stays the one people copy. A rejected revision says so and the first
   draft stands; a critic error names itself; a skipped check is one muted line.
 */
-export function SelfCheck({ critique, letter, failedReason }: { critique: Critique | null; letter: Letter; failedReason: string | null }) {
+export function SelfCheck({
+  critique,
+  letter,
+  failedReason,
+  annotated = false,
+}: {
+  critique: Critique | null;
+  letter: Letter;
+  failedReason: string | null;
+  /* The finished case with a letter at desktop: after the investigation record, at the sheet's width. */
+  annotated?: boolean;
+}) {
   const error = failedReason ?? critiqueError(critique);
   if (critique?.skipped && !error) {
     return (
-      <p className="land mt-8 text-[16px] text-muted" data-selfcheck="skipped">
+      <p className={`land mt-8 text-[16px] text-muted ${annotated ? "lg:mt-16" : ""}`} data-selfcheck="skipped">
         Self-check skipped: {critique.reason?.trim() || "the service gave no reason."}
       </p>
     );
@@ -40,7 +51,7 @@ export function SelfCheck({ critique, letter, failedReason }: { critique: Critiq
   if (!letter.applicable) return null;
   if (error) {
     return (
-      <Shell state="error">
+      <Shell state="error" annotated={annotated}>
         <p className="mt-3 text-[18px] leading-relaxed lg:text-[17px]">The self-check could not run: {asClause(error)}.</p>
         <p className="mt-2 text-[16px] text-muted">The letter above is the first draft, checked sentence by sentence against its citations.</p>
       </Shell>
@@ -60,7 +71,7 @@ export function SelfCheck({ critique, letter, failedReason }: { critique: Critiq
   const draft = letter.draft_paragraphs ?? [];
 
   return (
-    <Shell state={kept ? "accepted" : "rejected"}>
+    <Shell state={kept ? "accepted" : "rejected"} annotated={annotated}>
       <p className="mt-2 text-[16px] text-muted">
         {kept
           ? "A second pass read the draft for problems and revised it. The letter above is the revised one."
@@ -105,11 +116,23 @@ export function SelfCheck({ critique, letter, failedReason }: { critique: Critiq
   );
 }
 
-function Shell({ state, children }: { state: "accepted" | "rejected" | "error"; children: React.ReactNode }) {
+function Shell({
+  state,
+  annotated,
+  children,
+}: {
+  state: "accepted" | "rejected" | "error";
+  annotated: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <section aria-labelledby="selfcheck-heading" className="land mt-10 border-t-4 border-ink pt-4" data-selfcheck={state}>
-      <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Self-check</p>
-      <h2 id="selfcheck-heading" className="mt-1 text-[22px] leading-tight font-bold">
+    <section
+      aria-labelledby="selfcheck-heading"
+      className={`land mt-10 border-t-4 border-ink pt-4 ${annotated ? "lg:mt-16 lg:max-w-[620px] lg:border-t-0 lg:pt-0" : ""}`}
+      data-selfcheck={state}
+    >
+      <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Self-check</p>
+      <h2 id="selfcheck-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? "lg:mt-0 lg:text-[28px]" : ""}`}>
         How the letter checked itself
       </h2>
       {children}

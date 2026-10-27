@@ -6,11 +6,15 @@ import {
   ERROR_COPY,
   INTAKE_MODE,
   critiqueFailed,
+  dayCountLabel,
+  daysUntil,
+  formatShortDate,
   IntakeError,
   investigate,
   isAbort,
   pollCase,
   type CaseRecord,
+  type Letter,
 } from "@/lib/case";
 import { Band } from "@/components/intake/Band";
 import { CaseHeader } from "./CaseHeader";
@@ -18,10 +22,11 @@ import { FindingsList } from "./FindingsList";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { RouteLine } from "./RouteLine";
 import { TrustPanel, verificationLines } from "./TrustPanel";
-import { PageViewerFrame, PageViewerProvider } from "./PageViewer";
+import { PageViewerFrame, PageViewerProvider, useDesktop } from "./PageViewer";
 import { StageLine } from "@/components/verdict/StageLine";
 import { VerdictSection } from "@/components/verdict/VerdictSection";
 import { APPEAL_LETTER_ID, ActionSection } from "@/components/letter/ActionSection";
+import { SelfCheck } from "@/components/letter/SelfCheck";
 
 type View =
   | { kind: "loading" }
@@ -52,6 +57,15 @@ const SECONDARY =
 const PRIMARY =
   "inline-flex min-h-12 w-full items-center justify-center rounded-sm bg-federal px-5 text-[18px] font-semibold text-white sm:w-auto";
 
+/* The deadline for the outcome block's counts line: the date and the day count, or "Deadline not stated". */
+function deadlineLine(letter: Letter, today: Date): string {
+  const d = letter.deadline;
+  if (d.source === "unknown" || typeof d.date !== "string" || d.date === "") return "Deadline not stated";
+  const days = typeof d.days_left === "number" ? d.days_left : daysUntil(d.date, today);
+  const by = `Appeal by ${formatShortDate(d.date)}`;
+  return days === null ? by : `${by}, ${dayCountLabel(days).toLowerCase()}`;
+}
+
 /*
   The case's home. Loads the case by id, polls GET /case/{id} every 1.5 s
   while the case works itself (investigation, verdict, appeal letter, self-check)
@@ -64,6 +78,8 @@ export function InvestigationView({ caseId }: { caseId: string }) {
   const [today] = useState<Date>(() => new Date());
   const [attempt, setAttempt] = useState(0);
   const [starting, setStarting] = useState<"idle" | "busy" | "failed">("idle");
+  /* Desktop width as the script sees it (the same 1024px as lg), for the pieces whose DOM order differs at desktop. */
+  const desktop = useDesktop();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -138,8 +154,25 @@ export function InvestigationView({ caseId }: { caseId: string }) {
   const outcomeFirst = record !== null && verdictDone;
   const letterHref = letterDone && letter.applicable ? `#${APPEAL_LETTER_ID}` : null;
   const proof = done && investigation && verdictDone ? verificationLines(investigation, letterDone ? letter : null) : [];
+  /*
+    The finished case with a letter (drafted, reviewing, reviewed) reads as the
+    Annotated Letter at 1024px and up: a paper desk, a 1,120 px frame (1,088 px
+    of content: the 620 px sheet, the 48 px gutter, the 420 px margin), the
+    header as a strip, the outcome heading block, the letter sheet with its
+    margin notes, the record, the self-check, the receipt. annotated switches
+    classes only, so no element remounts when the letter lands; desk (the same
+    at desktop width, from the script) moves the checklist and the filing path
+    onto the sheet and the self-check after the record, where DOM order must
+    change with the visual order. Under 1024px the page is the phone column.
+  */
+  const annotated = letterDone && letter.applicable;
+  const desk = annotated && desktop;
   /* The band and the page share one width, so the wordmark and the content share an edge. */
-  const width = dual ? "max-w-[640px] lg:max-w-[1120px]" : "max-w-[640px]";
+  const width = annotated
+    ? "max-w-[640px] lg:max-w-[1152px] lg:px-8"
+    : dual
+      ? "max-w-[640px] lg:max-w-[1120px]"
+      : "max-w-[640px]";
 
   const outcome =
     record && (verdictDone || letterDone) ? (
@@ -150,6 +183,8 @@ export function InvestigationView({ caseId }: { caseId: string }) {
             changeShownBelow={letterDone && !letter.applicable && verdict.outcome === "consistent"}
             proof={proof}
             first={outcomeFirst}
+            annotated={annotated}
+            deadlineLine={letterDone ? deadlineLine(letter, today) : null}
           />
         ) : null}
         {letterDone ? (
@@ -160,6 +195,8 @@ export function InvestigationView({ caseId }: { caseId: string }) {
             today={today}
             critique={critique}
             critiqueFailure={selfCheckFailed ? critique?.error?.trim() || "The service reported an error and gave no reason." : null}
+            annotated={annotated}
+            desk={desk}
           />
         ) : null}
       </div>
@@ -167,7 +204,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
 
   return (
     <PageViewerProvider>
-      <div className="flex min-h-full flex-col">
+      <div className={`flex min-h-full flex-col ${annotated ? "lg:bg-paper" : ""}`} data-layout={annotated ? "annotated" : "column"}>
         <Band sample={sample} widthClass={width}>
           <Link href="/case/new" className="min-h-11 rounded-sm px-2 py-2 text-[15px] font-semibold underline underline-offset-4 focus-visible:outline-white">
             New case
@@ -221,7 +258,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
 
             {record ? (
               <div data-view={record.status}>
-                <CaseHeader record={record} today={today} />
+                <CaseHeader record={record} today={today} strip={annotated} />
 
                 {record.status === "intake" ? (
                   <section className="mt-6 border-t border-hairline pt-4" aria-live="polite">
@@ -244,12 +281,15 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                       findings but is empty until the verdict exists. Chronological while the case
                       works itself; outcome first once the verdict is reached.
                     */}
-                    <div className="mt-4 border-t border-hairline pt-4" data-order={outcomeFirst ? "outcome-first" : "chronological"}>
+                    <div
+                      className={`mt-4 border-t border-hairline pt-4 ${annotated ? "lg:mt-8 lg:border-t-0 lg:pt-0" : ""}`}
+                      data-order={outcomeFirst ? "outcome-first" : "chronological"}
+                    >
                       {outcomeFirst ? null : <RouteLine route={record.route} lead />}
                       {/* One status row at tablet and up once the outcome leads, so the verdict reaches the first screen. */}
                       <div className={outcomeFirst ? "*:mt-0 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-2" : ""}>
-                        <InvestigationProgress investigation={investigation} />
-                        <StageLine record={record} letterHref={letterHref} inRow={outcomeFirst} />
+                        <InvestigationProgress investigation={investigation} compact={annotated} />
+                        <StageLine record={record} letterHref={letterHref} inRow={outcomeFirst} compact={annotated} />
                       </div>
                     </div>
                     {outcome}
@@ -258,7 +298,18 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                       route={record.route}
                       appendix={outcomeFirst}
                       lead={outcomeFirst ? <RouteLine route={record.route} lead /> : null}
+                      annotated={annotated}
                     />
+
+                    {/* At desktop the self-check follows the record (on the phone it sits under the letter, inside Action). */}
+                    {desk && letterDone ? (
+                      <SelfCheck
+                        critique={critique}
+                        letter={letter}
+                        failedReason={selfCheckFailed ? critique?.error?.trim() || "The service reported an error and gave no reason." : null}
+                        annotated
+                      />
+                    ) : null}
 
                     {failed && failure ? (
                       <section role="alert" aria-labelledby="failed-heading" className="mt-8 border-t-4 border-ink pt-4" data-view="failed" data-failed-step={failedStep}>
@@ -286,6 +337,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                           verdict={verdict}
                           letter={letterDone ? letter : null}
                           critique={letterDone ? critique : null}
+                          annotated={annotated}
                         />
                       </div>
                     ) : null}

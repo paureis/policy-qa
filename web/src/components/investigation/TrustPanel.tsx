@@ -37,11 +37,14 @@ export function TrustPanel({
   verdict = null,
   letter = null,
   critique = null,
+  annotated = false,
 }: {
   investigation: Investigation;
   verdict?: Verdict | null;
   letter?: Letter | null;
   critique?: Critique | null;
+  /* The finished case with a letter: at 1024px and up the receipt is a bond slip on the paper desk, the sheet's width. */
+  annotated?: boolean;
 }) {
   const [traceOpen, setTraceOpen] = useState(false);
   const traceId = useId();
@@ -75,9 +78,15 @@ export function TrustPanel({
   if (struck > 0) notes.push(`${struck} could not be verified and ${struck === 1 ? "is" : "are"} struck out in the findings.`);
 
   return (
-    <section aria-labelledby="trust-heading" className="land mt-10 border-t-4 border-ink bg-paper px-4 pt-4 pb-5 sm:px-6" data-trust="true">
-      <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Trust</p>
-      <h2 id="trust-heading" className="mt-1 text-[22px] leading-tight font-bold">
+    <section
+      aria-labelledby="trust-heading"
+      className={`land mt-10 border-t-4 border-ink bg-paper px-4 pt-4 pb-5 sm:px-6 ${
+        annotated ? "lg:mt-16 lg:max-w-[620px] lg:border-x lg:border-b lg:border-x-hairline lg:border-b-hairline lg:bg-bond lg:px-8 lg:pt-6 lg:pb-7" : ""
+      }`}
+      data-trust="true"
+    >
+      <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Trust</p>
+      <h2 id="trust-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? "lg:mt-0 lg:text-[28px]" : ""}`}>
         {split ? "How this case was checked" : "How this investigation was checked"}
       </h2>
 

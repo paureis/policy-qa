@@ -21,20 +21,25 @@ import { StruckList } from "./StruckList";
   settle says so in the same register as an answer. A failed model call says
   the question could not be investigated, which is not an abstention. Cost,
   time, and passages per question live in the trace, not here.
+
+  record: the finished case with a letter, at 1024px and up. The finding is
+  one row of the investigation record: the question, the answer, and its
+  citations on the left; the struck citations and their reasons on the right.
+  Grid placement only, the same elements, so nothing remounts.
 */
-export function FindingCard({ finding, level = 3 }: { finding: Finding; level?: 3 | 4 }) {
+export function FindingCard({ finding, level = 3, record = false }: { finding: Finding; level?: 3 | 4; record?: boolean }) {
   const headingId = `finding-${finding.id}-q`;
   const status = findingStatus(finding);
   const Heading = level === 4 ? "h4" : "h3";
   return (
     <article
       aria-labelledby={headingId}
-      className="land border-t border-hairline pt-4 pb-5"
+      className={`land border-t border-hairline pt-4 pb-5 ${record ? "lg:grid lg:desk-cols lg:grid-rows-[auto_1fr] lg:items-start lg:*:col-start-1" : ""}`}
       data-finding={finding.id}
       data-status={status}
       data-topic={finding.topic}
     >
-      <Heading id={headingId} className="text-[20px] leading-snug font-bold">
+      <Heading id={headingId} className={`text-[20px] leading-snug font-bold ${record ? "lg:font-semibold" : ""}`}>
         {finding.question}
       </Heading>
 
@@ -66,7 +71,7 @@ export function FindingCard({ finding, level = 3 }: { finding: Finding; level?: 
         </div>
       ) : null}
 
-      {status !== "error" ? <StruckList struck={finding.struck} /> : null}
+      {status !== "error" ? <StruckList struck={finding.struck} className={record ? "lg:col-start-2! lg:row-span-2 lg:row-start-1 lg:mt-1" : ""} /> : null}
     </article>
   );
 }

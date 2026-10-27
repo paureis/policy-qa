@@ -21,11 +21,14 @@ export function FindingsList({
   route,
   appendix = false,
   lead = null,
+  annotated = false,
 }: {
   findings: Finding[];
   route: Route | null;
   appendix?: boolean;
   lead?: ReactNode;
+  /* The finished case with a letter: at 1024px and up the record is compact, two columns per finding (classes only). */
+  annotated?: boolean;
 }) {
   const dual = route?.dual === true;
   if (findings.length === 0) return null;
@@ -34,11 +37,14 @@ export function FindingsList({
   return (
     <section
       aria-labelledby="findings-heading"
-      className={appendix ? "land mt-10 border-t-4 border-ink pt-4" : "mt-6"}
+      className={appendix ? `land mt-10 border-t-4 border-ink pt-4 ${annotated ? "lg:mt-20 lg:border-t-0 lg:pt-0" : ""}` : "mt-6"}
       data-findings={appendix ? "appendix" : "live"}
     >
-      {appendix ? <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Investigation</p> : null}
-      <h2 id="findings-heading" className={appendix ? "mt-1 text-[22px] leading-tight font-bold" : "text-[20px] font-bold"}>
+      {appendix ? <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Investigation</p> : null}
+      <h2
+        id="findings-heading"
+        className={appendix ? `mt-1 text-[22px] leading-tight font-bold ${annotated ? "lg:mt-0 lg:text-[28px]" : ""}` : "text-[20px] font-bold"}
+      >
         {appendix ? "How the case was investigated" : "Findings"}
       </h2>
       {appendix ? lead : null}
@@ -52,7 +58,7 @@ export function FindingsList({
                 ))}
               </div>
             ))
-          : findings.map((f) => <FindingCard key={f.id} finding={f} />)}
+          : findings.map((f) => <FindingCard key={f.id} finding={f} record={annotated && appendix} />)}
       </div>
     </section>
   );

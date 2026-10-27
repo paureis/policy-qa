@@ -19,18 +19,29 @@ const HEADLINE_INK: Record<VerdictOutcome, string> = {
   argument. A rule or steelman the verifier could not support is struck out
   on screen with "Could not verify", never hidden. The verification counts
   (proof) sit under the headline, so the proof is read with the claim.
+
+  annotated: the finished case with a letter. At 1024px and up the section is
+  the outcome heading block over the letter sheet: the headline at 46px with
+  no side bar, the counts and the day count on one line, then the rule and the
+  gap, what would change it, and the steelman in the sheet's two columns.
+  Classes only, so the block never remounts when the letter lands.
 */
 export function VerdictSection({
   verdict,
   changeShownBelow = false,
   proof = [],
   first = false,
+  annotated = false,
+  deadlineLine = null,
 }: {
   verdict: Verdict;
   changeShownBelow?: boolean;
   proof?: string[];
   /* The page reads outcome first: the verdict sits right under the status line, a little closer. */
   first?: boolean;
+  annotated?: boolean;
+  /* The deadline and day count for the counts line at desktop ("Appeal by Dec 13, 2026, 48 days left"). */
+  deadlineLine?: string | null;
 }) {
   const [steelOpen, setSteelOpen] = useState(false);
   const steelId = useId();
@@ -38,20 +49,29 @@ export function VerdictSection({
   const ink = HEADLINE_INK[outcome] ?? "text-ink";
 
   return (
-    <section aria-labelledby="verdict-heading" className={`land ${first ? "mt-8" : "mt-10"} border-t-4 border-ink pt-4`} data-verdict={outcome}>
-      <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Verdict</p>
-      <h2 id="verdict-heading" className="mt-1 text-[22px] leading-tight font-bold">
+    <section
+      aria-labelledby="verdict-heading"
+      className={`land ${first ? "mt-8" : "mt-10"} border-t-4 border-ink pt-4 ${annotated ? "lg:mt-5 lg:border-t-0 lg:pt-0" : ""}`}
+      data-verdict={outcome}
+    >
+      <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Verdict</p>
+      <h2 id="verdict-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? "lg:sr-only" : ""}`}>
         What the documents say
       </h2>
 
       <p
-        className={`stamp-in mt-4 border-l-[6px] border-current pl-4 text-[32px] leading-[1.15] font-bold tracking-tight sm:text-[38px] ${ink}`}
+        className={`stamp-in mt-4 border-l-[6px] border-current pl-4 text-[32px] leading-[1.15] font-bold tracking-tight sm:text-[38px] ${ink} ${
+          annotated ? "lg:mt-0 lg:max-w-[26ch] lg:border-l-0 lg:pl-0 lg:text-[46px] lg:leading-[1.08] lg:text-balance" : ""
+        }`}
         data-headline={outcome}
       >
         {verdictHeadline(verdict)}
       </p>
       {proof.length > 0 ? (
-        <p className="mt-3 pl-[22px] text-[18px] leading-snug font-semibold text-ink tabular-nums lg:text-[17px]" data-verdict-proof="true">
+        <p
+          className={`mt-3 pl-[22px] text-[18px] leading-snug font-semibold text-ink tabular-nums ${annotated ? "lg:mt-4 lg:pl-0 lg:text-[18px]" : "lg:text-[17px]"}`}
+          data-verdict-proof="true"
+        >
           {proof.map((line, i) => (
             <span key={line}>
               {i > 0 ? (
@@ -60,12 +80,22 @@ export function VerdictSection({
                 </span>
               ) : null}
               <span className="whitespace-nowrap max-[400px]:whitespace-normal">{line}</span>
-              {i < proof.length - 1 ? <span className="sr-only">. </span> : null}
+              {i < proof.length - 1 || (annotated && deadlineLine) ? <span className="sr-only">. </span> : null}
             </span>
           ))}
+          {annotated && deadlineLine ? (
+            <span className="hidden lg:inline" data-verdict-deadline="true">
+              <span aria-hidden="true" className="px-2 text-muted">
+                ·
+              </span>
+              <span className="whitespace-nowrap">{deadlineLine}</span>
+            </span>
+          ) : null}
         </p>
       ) : null}
 
+      {/* At desktop, annotated: the sheet's two columns, read row by row (the rule, the gap; what would change it, the steelman). */}
+      <div className={annotated ? "lg:mt-8 lg:grid lg:desk-cols lg:items-start lg:gap-y-5 lg:*:mt-0" : ""} data-verdict-body="true">
       <div className="mt-6 border-t border-hairline pt-4">
         <h3 className="text-[18px] font-bold">The rule</h3>
         <Claim text={verdict.rule?.statement ?? ""} unsupported={verdict.rule?.unsupported === true} citations={verdict.rule?.citations ?? []} />
@@ -109,6 +139,7 @@ export function VerdictSection({
             />
           </div>
         ) : null}
+      </div>
       </div>
     </section>
   );

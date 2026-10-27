@@ -5,11 +5,11 @@ import { struckSource, type StruckCitation } from "@/lib/case";
   each quote struck through, where it was claimed from, and the reason.
   Struck citations are shown, never hidden.
 */
-export function StruckList({ struck }: { struck: StruckCitation[] }) {
+export function StruckList({ struck, className = "" }: { struck: StruckCitation[]; className?: string }) {
   if (struck.length === 0) return null;
   const n = struck.length;
   return (
-    <div className="mt-4" data-struck={n}>
+    <div className={`mt-4 ${className}`} data-struck={n}>
       <p className="text-[15px] font-semibold text-ink">{n === 1 ? "1 citation was struck:" : `${n} citations were struck:`}</p>
       <ul className="mt-2 space-y-3" aria-label="Citations the verifier struck">
         {struck.map((s, i) => (

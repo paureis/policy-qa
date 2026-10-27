@@ -4,7 +4,7 @@ import { countErrors, type Investigation } from "@/lib/case";
   One stepped line: "Question 3 of 6". It is a polite live region, so a
   screen reader hears each step without the page moving. No bar, no art.
 */
-export function InvestigationProgress({ investigation }: { investigation: Investigation | null }) {
+export function InvestigationProgress({ investigation, compact = false }: { investigation: Investigation | null; compact?: boolean }) {
   const planned = investigation?.questions_planned ?? 0;
   const done = investigation?.questions_done ?? 0;
   const running = investigation === null || investigation.status === "running";
@@ -23,7 +23,7 @@ export function InvestigationProgress({ investigation }: { investigation: Invest
 
   return (
     <div className="mt-4" data-progress={`${done}/${planned}`}>
-      <p className="text-[20px] font-bold" aria-live="polite" aria-atomic="true">
+      <p className={`text-[20px] font-bold ${compact ? "lg:text-[17px] lg:font-semibold" : ""}`} aria-live="polite" aria-atomic="true">
         {line}
       </p>
       {running ? <p className="mt-1 text-[16px] text-muted">Findings appear below as each question is answered. Keep this screen open.</p> : null}

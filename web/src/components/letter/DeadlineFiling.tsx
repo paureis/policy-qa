@@ -15,18 +15,26 @@ const SOURCE_LINE: Record<Letter["deadline"]["source"], string> = {
   path. The citations behind the deadline and the path follow as one list, one
   chip per document and page. The heading changes when no letter applies: the
   person may still choose to appeal, so the date and the path stay visible.
+  register: set on the letter sheet's footer register at desktop, as an h3
+  under the letter's heading, without the section rule and overline.
 */
-export function DeadlineFiling({ letter, today }: { letter: Letter; today: Date }) {
+export function DeadlineFiling({ letter, today, register = false }: { letter: Letter; today: Date; register?: boolean }) {
   const { deadline, filing } = letter;
   const known = deadline.source !== "unknown" && typeof deadline.date === "string" && deadline.date !== "";
   const days = known ? (typeof deadline.days_left === "number" ? deadline.days_left : daysUntil(deadline.date as string, today)) : null;
   const sources = [deadline.citation, filing.citation].filter((c): c is CitationRef => c !== null && c !== undefined);
+  const Heading = register ? "h3" : "h2";
   return (
-    <section aria-labelledby="deadline-heading" className="land mt-10 border-t-4 border-ink pt-4" data-deadline={deadline.source}>
-      <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Deadline and filing path</p>
-      <h2 id="deadline-heading" className="mt-1 text-[22px] leading-tight font-bold">
+    <section
+      aria-labelledby="deadline-heading"
+      className={register ? "mt-10 border-t border-hairline pt-6" : "land mt-10 border-t-4 border-ink pt-4"}
+      data-deadline={deadline.source}
+      data-register={register ? "true" : undefined}
+    >
+      {register ? null : <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Deadline and filing path</p>}
+      <Heading id="deadline-heading" className={register ? "text-[20px] leading-tight font-semibold" : "mt-1 text-[22px] leading-tight font-bold"}>
         {letter.applicable ? "When and where to file" : "If you still want to appeal"}
-      </h2>
+      </Heading>
 
       <div className="mt-4" data-deadline-date={known ? deadline.date : "unknown"}>
         <p className="text-[24px] leading-tight font-bold tabular-nums">

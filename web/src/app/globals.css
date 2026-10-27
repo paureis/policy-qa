@@ -135,6 +135,29 @@ body {
   }
 }
 
+/*
+  The one sticky thing on the case page: the page image inside an expanded
+  margin note, at desktop width. Unstuck on short screens, where a sticky
+  block taller than the view would trap content.
+*/
+/*
+  Layout sizes for the case page at desktop (direction B, the Annotated
+  Letter): the letter sheet and the margin in the ratio 620 : 420 with a
+  48 px gutter, which is exactly 620 px and 420 px in the 1,088 px content of
+  the 1,120 px frame, and shrinks in proportion down to 1024 px.
+*/
+@utility desk-cols {
+  grid-template-columns: minmax(0, 620fr) minmax(0, 420fr);
+  column-gap: 48px;
+}
+
+@media (min-width: 1024px) and (min-height: 701px) {
+  .page-sticky {
+    position: sticky;
+    top: 16px;
+  }
+}
+
 @keyframes step-in {
   from {
     transform: translateY(8px);
