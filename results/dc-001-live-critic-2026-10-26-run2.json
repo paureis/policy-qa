@@ -1,0 +1,1361 @@
+{
+  "case_id": "c_e18490",
+  "source": "text",
+  "raw_text": "SAMPLE LETTER FOR DEMONSTRATION. NOT A REAL NOTICE.\n\nSample Health Plan\nFlorida Medicaid Managed Medical Assistance (MMA)\nNotice of Adverse Benefit Determination\n\nDate: October 7, 2026\nMember: A. Sample, age 9 (date of birth March 3, 2017)\nMember ID: 00000000-SAMPLE\nProvider: Sample Home Nursing LLC\n\nThis letter is about the request for private duty nursing, 16 hours per day, service code T1000, for dates of service September 1, 2026 through September 30, 2026. The amount billed was $11,520.00.\n\nWe have denied part of this request. We approved 8 hours per day and denied the remaining 8 hours per day.\nReason: Florida Medicaid limits private duty nursing to 8 hours per day. The request for 16 hours per day exceeds this limit.\n\nYou have the right to ask for a plan appeal. Your appeal must be received within 60 days of the date of this letter, by December 6, 2026. You may ask for a free copy of the rule and the records we used. After the plan appeal you may ask for a Medicaid Fair Hearing.\n\nThis letter is synthetic. It was written for a software demonstration and does not describe a real member, provider, claim, or payer decision.",
+  "summary": "Sample Health Plan denied part of a request for private duty nursing for member A. Sample, approving 8 hours per day and denying the other 8 hours per day of the 16 hours per day requested for September 1-30, 2026. The letter says the denial is because Florida Medicaid limits private duty nursing to 8 hours per day, with $11,520.00 billed, and says an appeal must be received by December 6, 2026.",
+  "card": {
+    "payer_name": {
+      "value": "Sample Health Plan",
+      "confidence": "high",
+      "verified": true
+    },
+    "program": {
+      "value": "florida_medicaid_mma",
+      "confidence": "high"
+    },
+    "member_age_group": {
+      "value": "under_21",
+      "confidence": "high"
+    },
+    "service": {
+      "value": "private duty nursing, 16 hours per day",
+      "confidence": "high"
+    },
+    "service_code": {
+      "value": "T1000",
+      "confidence": "high",
+      "verified": true
+    },
+    "dates_of_service": {
+      "value": "2026-09-01/2026-09-30",
+      "confidence": "high",
+      "verified": true
+    },
+    "amount_billed": {
+      "value": 11520.0,
+      "confidence": "high",
+      "verified": true
+    },
+    "denial_reason": {
+      "value": "We approved 8 hours per day and denied the remaining 8 hours per day. Reason: Florida Medicaid limits private duty nursing to 8 hours per day. The request for 16 hours per day exceeds this limit.",
+      "confidence": "high"
+    },
+    "letter_date": {
+      "value": "2026-10-07",
+      "confidence": "high",
+      "verified": true
+    },
+    "appeal_deadline_claimed": {
+      "value": "2026-12-06",
+      "confidence": "high",
+      "verified": true
+    }
+  },
+  "model": "muse-spark-1.3",
+  "cost_usd": 0.007093,
+  "latency_ms": 4800.8,
+  "status": "reviewed",
+  "created_at": "2026-10-27T00:49:47Z",
+  "route": {
+    "program": "florida_medicaid_mma",
+    "jurisdictions": [
+      "Florida"
+    ],
+    "dual": false,
+    "reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case."
+  },
+  "investigation": {
+    "status": "done",
+    "started_at": "2026-10-27T00:49:53Z",
+    "finished_at": "2026-10-27T00:50:08Z",
+    "questions_planned": 5,
+    "questions_done": 5,
+    "findings": [
+      {
+        "id": "f1",
+        "question": "Does Florida Medicaid cover private duty nursing for children under 21?",
+        "topic": "coverage",
+        "jurisdiction": "Florida",
+        "status": "supported",
+        "answer": "Yes. Florida Medicaid directs recipients under age 21 who require more care than can be furnished through a home health visit to the Personal Care Services and Private Duty Nursing Services Coverage Policies, and under the Private Duty Nursing policy services for recipients under 21 exceeding the described coverage may be approved if medically necessary. The passages do not state the specific hour limits or authorization criteria.",
+        "citations": [
+          {
+            "doc_id": "fl-03",
+            "title": "Florida Medicaid Home Health Services Coverage Policy (Rule 59G-4.130)",
+            "page": 5,
+            "quote": "See the Florida Medicaid Personal Care Services and Private Duty Nursing Services Coverage Policies if the recipient is under the age of 21 years and requires more care than can be furnished through a home health visit.",
+            "overlap": 1.0
+          },
+          {
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 6,
+            "quote": "As such, services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary.",
+            "overlap": 1.0
+          }
+        ],
+        "struck": [],
+        "passages": [
+          {
+            "chunk_id": "fl-03:p005:1",
+            "doc_id": "fl-03",
+            "title": "Florida Medicaid Home Health Services Coverage Policy (Rule 59G-4.130)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-04:p006:0",
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 6
+          },
+          {
+            "chunk_id": "fl-05:p004:0",
+            "doc_id": "fl-05",
+            "title": "Florida Medicaid Personal Care Services Coverage Policy (Rule 59G-4.215)",
+            "page": 4
+          },
+          {
+            "chunk_id": "fl-14:p005:0",
+            "doc_id": "fl-14",
+            "title": "Florida Medicaid Inpatient Hospital Services Coverage Policy (Rule 59G-4.150)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-05:p006:0",
+            "doc_id": "fl-05",
+            "title": "Florida Medicaid Personal Care Services Coverage Policy (Rule 59G-4.215)",
+            "page": 6
+          },
+          {
+            "chunk_id": "fl-13:p007:0",
+            "doc_id": "fl-13",
+            "title": "Florida Medicaid Non-Emergency Transportation Services Coverage Policy (Rule 59G-4.330)",
+            "page": 7
+          },
+          {
+            "chunk_id": "fl-15:p005:1",
+            "doc_id": "fl-15",
+            "title": "Florida Medicaid Outpatient Hospital Services Coverage Policy (Rule 59G-4.160)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-14:p005:1",
+            "doc_id": "fl-14",
+            "title": "Florida Medicaid Inpatient Hospital Services Coverage Policy (Rule 59G-4.150)",
+            "page": 5
+          }
+        ],
+        "error": null,
+        "model": "muse-spark-1.3",
+        "input_tokens": 3354,
+        "output_tokens": 675,
+        "reasoning_tokens": 478,
+        "latency_ms": 5371.0,
+        "cost_usd": 0.007061
+      },
+      {
+        "id": "f2",
+        "question": "How many hours per day of private duty nursing does Florida Medicaid allow for children under 21?",
+        "topic": "limits",
+        "jurisdiction": "Florida",
+        "status": "supported",
+        "answer": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient when the recipient requires more extensive and continual care than can be provided through a home health visit, requires services that can be safely provided in their home or the community, and is under the care of a licensed practitioner in accordance with State law.",
+        "citations": [
+          {
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 5,
+            "quote": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:",
+            "overlap": 1.0
+          },
+          {
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 5,
+            "quote": "Requires more extensive and continual care than can be provided through a home health visit",
+            "overlap": 1.0
+          }
+        ],
+        "struck": [],
+        "passages": [
+          {
+            "chunk_id": "fl-04:p005:1",
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-03:p005:1",
+            "doc_id": "fl-03",
+            "title": "Florida Medicaid Home Health Services Coverage Policy (Rule 59G-4.130)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-14:p005:0",
+            "doc_id": "fl-14",
+            "title": "Florida Medicaid Inpatient Hospital Services Coverage Policy (Rule 59G-4.150)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-21:p039:0",
+            "doc_id": "fl-21",
+            "title": "SMMC Model Health Plan Contract, Exhibit II-A: Managed Medical Assistance (MMA) Program",
+            "page": 39
+          },
+          {
+            "chunk_id": "fl-04:p005:0",
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-15:p005:0",
+            "doc_id": "fl-15",
+            "title": "Florida Medicaid Outpatient Hospital Services Coverage Policy (Rule 59G-4.160)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-04:p007:0",
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 7
+          },
+          {
+            "chunk_id": "fl-19:p084:0",
+            "doc_id": "fl-19",
+            "title": "Florida Medicaid Consumer-Directed Care Plus Program Coverage, Limitations, and Reimbursement Handbook (Rule 59G-13.088)",
+            "page": 84
+          }
+        ],
+        "error": null,
+        "model": "muse-spark-1.3",
+        "input_tokens": 3496,
+        "output_tokens": 1214,
+        "reasoning_tokens": 1038,
+        "latency_ms": 6496.5,
+        "cost_usd": 0.009529
+      },
+      {
+        "id": "f3",
+        "question": "What prior authorization or documentation requirements does Florida Medicaid require for private duty nursing for children under 21?",
+        "topic": "conditions",
+        "jurisdiction": "Florida",
+        "status": "supported",
+        "answer": "For private duty nursing, all documentation must substantiate the need for skilled nursing based on clinical indicators for clinical presentation, skilled intervention required, and care required in the home or community. For recipients under age 21, services exceeding the coverage described in the policy or fee schedule may be approved if medically necessary, and plans must report each authorization or denial with enrollee name/ID, date, and hours authorized or denied. The passages do not state the specific prior-authorization forms, submission steps, or approval timeframes for private duty nursing.",
+        "citations": [
+          {
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 10,
+            "quote": "All documentation must substantiate the need for skilled nursing based on the following clinical indicators:",
+            "overlap": 1.0
+          },
+          {
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 6,
+            "quote": "services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary.",
+            "overlap": 1.0
+          },
+          {
+            "doc_id": "fl-21",
+            "title": "SMMC Model Health Plan Contract, Exhibit II-A: Managed Medical Assistance (MMA) Program",
+            "page": 54,
+            "quote": "the data must include the enrollee’s name and unique ID number, the date of the authorization or denial, and the number of hours of private duty nursing authorized or denied, if any.",
+            "overlap": 1.0
+          }
+        ],
+        "struck": [],
+        "passages": [
+          {
+            "chunk_id": "fl-04:p006:0",
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 6
+          },
+          {
+            "chunk_id": "fl-21:p039:0",
+            "doc_id": "fl-21",
+            "title": "SMMC Model Health Plan Contract, Exhibit II-A: Managed Medical Assistance (MMA) Program",
+            "page": 39
+          },
+          {
+            "chunk_id": "fl-15:p005:1",
+            "doc_id": "fl-15",
+            "title": "Florida Medicaid Outpatient Hospital Services Coverage Policy (Rule 59G-4.160)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-17:p008:1",
+            "doc_id": "fl-17",
+            "title": "Florida Medicaid Early Intervention Services Coverage Policy (Rule 59G-4.085)",
+            "page": 8
+          },
+          {
+            "chunk_id": "fl-05:p006:0",
+            "doc_id": "fl-05",
+            "title": "Florida Medicaid Personal Care Services Coverage Policy (Rule 59G-4.215)",
+            "page": 6
+          },
+          {
+            "chunk_id": "fl-21:p054:0",
+            "doc_id": "fl-21",
+            "title": "SMMC Model Health Plan Contract, Exhibit II-A: Managed Medical Assistance (MMA) Program",
+            "page": 54
+          },
+          {
+            "chunk_id": "fl-03:p005:1",
+            "doc_id": "fl-03",
+            "title": "Florida Medicaid Home Health Services Coverage Policy (Rule 59G-4.130)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-04:p010:0",
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 10
+          }
+        ],
+        "error": null,
+        "model": "muse-spark-1.3",
+        "input_tokens": 3167,
+        "output_tokens": 1146,
+        "reasoning_tokens": 885,
+        "latency_ms": 7251.6,
+        "cost_usd": 0.008829
+      },
+      {
+        "id": "f4",
+        "question": "What does Florida Medicaid say about limiting private duty nursing to 8 hours per day for children under 21?",
+        "topic": "reason",
+        "jurisdiction": "Florida",
+        "status": "supported",
+        "answer": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient when criteria are met, not 8 hours per day. For recipients under age 21, services exceeding the described coverage may be approved if medically necessary. The passages do not state an 8-hour-per-day limit for children under 21.",
+        "citations": [
+          {
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 5,
+            "quote": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:",
+            "overlap": 1.0
+          },
+          {
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 6,
+            "quote": "As such, services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary.",
+            "overlap": 1.0
+          }
+        ],
+        "struck": [],
+        "passages": [
+          {
+            "chunk_id": "fl-03:p005:1",
+            "doc_id": "fl-03",
+            "title": "Florida Medicaid Home Health Services Coverage Policy (Rule 59G-4.130)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-14:p005:0",
+            "doc_id": "fl-14",
+            "title": "Florida Medicaid Inpatient Hospital Services Coverage Policy (Rule 59G-4.150)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-04:p005:1",
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-04:p005:0",
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-04:p006:0",
+            "doc_id": "fl-04",
+            "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+            "page": 6
+          },
+          {
+            "chunk_id": "fl-15:p005:0",
+            "doc_id": "fl-15",
+            "title": "Florida Medicaid Outpatient Hospital Services Coverage Policy (Rule 59G-4.160)",
+            "page": 5
+          },
+          {
+            "chunk_id": "fl-03:p006:0",
+            "doc_id": "fl-03",
+            "title": "Florida Medicaid Home Health Services Coverage Policy (Rule 59G-4.130)",
+            "page": 6
+          },
+          {
+            "chunk_id": "fl-13:p007:0",
+            "doc_id": "fl-13",
+            "title": "Florida Medicaid Non-Emergency Transportation Services Coverage Policy (Rule 59G-4.330)",
+            "page": 7
+          }
+        ],
+        "error": null,
+        "model": "muse-spark-1.3",
+        "input_tokens": 3471,
+        "output_tokens": 951,
+        "reasoning_tokens": 755,
+        "latency_ms": 4658.9,
+        "cost_usd": 0.00838
+      },
+      {
+        "id": "f5",
+        "question": "After an adverse benefit determination under Florida Medicaid, what are the steps and deadlines to file a grievance or appeal or request a fair hearing, and where do I file?",
+        "topic": "appeal",
+        "jurisdiction": "Florida",
+        "status": "supported",
+        "answer": "Under Florida Medicaid, fair hearings under 42 C.F.R. 431.200 and Florida Administrative Code 65-2.042 through 65-2.066 are used to challenge actions relating to Medicaid services, while Chapter 120 provides administrative hearings for state general revenue-funded services. Long-term care enrollees have the right to file an appeal or fair hearing if services have been denied, reduced, terminated, or suspended, but Title XXI MediKids enrollees are not eligible for the Medicaid Fair Hearing process. The passages do not state the steps, deadlines, or where to file a grievance, appeal, or fair hearing request.",
+        "citations": [
+          {
+            "doc_id": "fl-19",
+            "title": "Florida Medicaid Consumer-Directed Care Plus Program Coverage, Limitations, and Reimbursement Handbook (Rule 59G-13.088)",
+            "page": 11,
+            "quote": "Title 42, subsection 431.200 of the Code of Federal Regulations and Section 65-2.042 through Section 65-2.066, Florida Administrative Code, provides for fair hearings which are used to challenge or appeal actions relating to Medicaid services;",
+            "overlap": 1.0
+          },
+          {
+            "doc_id": "fl-19",
+            "title": "Florida Medicaid Consumer-Directed Care Plus Program Coverage, Limitations, and Reimbursement Handbook (Rule 59G-13.088)",
+            "page": 11,
+            "quote": "Chapter 120, Florida Statutes, provides for administrative hearings. These hearings challenge actions related to services funded by state general revenue money.",
+            "overlap": 1.0
+          },
+          {
+            "doc_id": "fl-16",
+            "title": "Florida Medicaid Statewide Medicaid Managed Care Long-term Care Program Coverage Policy (Rule 59G-4.192)",
+            "page": 11,
+            "quote": "\"I have received and read the plan of care. I understand that I have the right to file an appeal or fair hearing if my services have been denied, reduced, terminated, or suspended.\"",
+            "overlap": 1.0
+          },
+          {
+            "doc_id": "fl-21",
+            "title": "SMMC Model Health Plan Contract, Exhibit II-A: Managed Medical Assistance (MMA) Program",
+            "page": 71,
+            "quote": "Title XXI MediKids enrollees are not eligible to participate in the Medicaid Fair Hearing process.",
+            "overlap": 1.0
+          }
+        ],
+        "struck": [],
+        "passages": [
+          {
+            "chunk_id": "fl-23:p043:0",
+            "doc_id": "fl-23",
+            "title": "SMMC Model Health Plan Contract, Exhibit II-C: Children's Medical Services (CMS) Health Plan",
+            "page": 43
+          },
+          {
+            "chunk_id": "fl-21:p071:0",
+            "doc_id": "fl-21",
+            "title": "SMMC Model Health Plan Contract, Exhibit II-A: Managed Medical Assistance (MMA) Program",
+            "page": 71
+          },
+          {
+            "chunk_id": "fl-19:p011:0",
+            "doc_id": "fl-19",
+            "title": "Florida Medicaid Consumer-Directed Care Plus Program Coverage, Limitations, and Reimbursement Handbook (Rule 59G-13.088)",
+            "page": 11
+          },
+          {
+            "chunk_id": "fl-19:p011:1",
+            "doc_id": "fl-19",
+            "title": "Florida Medicaid Consumer-Directed Care Plus Program Coverage, Limitations, and Reimbursement Handbook (Rule 59G-13.088)",
+            "page": 11
+          },
+          {
+            "chunk_id": "fl-16:p011:1",
+            "doc_id": "fl-16",
+            "title": "Florida Medicaid Statewide Medicaid Managed Care Long-term Care Program Coverage Policy (Rule 59G-4.192)",
+            "page": 11
+          },
+          {
+            "chunk_id": "fl-16:p011:0",
+            "doc_id": "fl-16",
+            "title": "Florida Medicaid Statewide Medicaid Managed Care Long-term Care Program Coverage Policy (Rule 59G-4.192)",
+            "page": 11
+          },
+          {
+            "chunk_id": "fl-02:p009:1",
+            "doc_id": "fl-02",
+            "title": "Florida Medicaid Provider Enrollment Policy (Rule 59G-1.060)",
+            "page": 9
+          },
+          {
+            "chunk_id": "fl-02:p010:0",
+            "doc_id": "fl-02",
+            "title": "Florida Medicaid Provider Enrollment Policy (Rule 59G-1.060)",
+            "page": 10
+          }
+        ],
+        "error": null,
+        "model": "muse-spark-1.3",
+        "input_tokens": 3174,
+        "output_tokens": 1218,
+        "reasoning_tokens": 874,
+        "latency_ms": 4995.7,
+        "cost_usd": 0.009144
+      }
+    ],
+    "coverage": {
+      "claims": 5,
+      "supported": 5,
+      "errors": 0
+    },
+    "cost_usd": 0.048058,
+    "latency_ms": 14986.7,
+    "model": "muse-spark-1.3",
+    "error": null,
+    "plan": {
+      "source": "model",
+      "model": "muse-spark-1.3",
+      "input_tokens": 546,
+      "output_tokens": 1043,
+      "reasoning_tokens": 871,
+      "latency_ms": 3491.0,
+      "cost_usd": 0.005115,
+      "error": null,
+      "questions": 5
+    },
+    "trace": {
+      "trace_id": "ee177c1845da",
+      "started": 1793062193.4382632,
+      "question": "case c_e18490",
+      "total_ms": 82777.7,
+      "spans": [
+        {
+          "name": "route",
+          "ms": 0.0
+        },
+        {
+          "name": "plan",
+          "ms": 3491.0,
+          "model": "muse-spark-1.3"
+        },
+        {
+          "name": "retrieve",
+          "ms": 1980.6,
+          "id": "f1",
+          "jurisdiction": "Florida",
+          "k": 8
+        },
+        {
+          "name": "retrieve",
+          "ms": 2101.2,
+          "id": "f2",
+          "jurisdiction": "Florida",
+          "k": 8
+        },
+        {
+          "name": "retrieve",
+          "ms": 2101.6,
+          "id": "f3",
+          "jurisdiction": "Florida",
+          "k": 8
+        },
+        {
+          "name": "generate",
+          "ms": 3390.4,
+          "id": "f1",
+          "model": "muse-spark-1.3",
+          "passages": 8
+        },
+        {
+          "name": "question",
+          "ms": 5371.0,
+          "id": "f1",
+          "topic": "coverage",
+          "jurisdiction": "Florida"
+        },
+        {
+          "name": "retrieve",
+          "ms": 811.3,
+          "id": "f4",
+          "jurisdiction": "Florida",
+          "k": 8
+        },
+        {
+          "name": "generate",
+          "ms": 4395.3,
+          "id": "f2",
+          "model": "muse-spark-1.3",
+          "passages": 8
+        },
+        {
+          "name": "question",
+          "ms": 6496.5,
+          "id": "f2",
+          "topic": "limits",
+          "jurisdiction": "Florida"
+        },
+        {
+          "name": "retrieve",
+          "ms": 720.6,
+          "id": "f5",
+          "jurisdiction": "Florida",
+          "k": 8
+        },
+        {
+          "name": "generate",
+          "ms": 5150.0,
+          "id": "f3",
+          "model": "muse-spark-1.3",
+          "passages": 8
+        },
+        {
+          "name": "question",
+          "ms": 7251.5,
+          "id": "f3",
+          "topic": "conditions",
+          "jurisdiction": "Florida"
+        },
+        {
+          "name": "generate",
+          "ms": 3847.6,
+          "id": "f4",
+          "model": "muse-spark-1.3",
+          "passages": 8
+        },
+        {
+          "name": "question",
+          "ms": 4658.9,
+          "id": "f4",
+          "topic": "reason",
+          "jurisdiction": "Florida"
+        },
+        {
+          "name": "generate",
+          "ms": 4275.1,
+          "id": "f5",
+          "model": "muse-spark-1.3",
+          "passages": 8
+        },
+        {
+          "name": "question",
+          "ms": 4995.7,
+          "id": "f5",
+          "topic": "appeal",
+          "jurisdiction": "Florida"
+        },
+        {
+          "name": "steelman_verdict",
+          "ms": 3485.5,
+          "model": "muse-spark-1.3",
+          "outcome": "inconsistent",
+          "proposed_outcome": "inconsistent",
+          "rule_citations": 1,
+          "steelman_citations": 2,
+          "input_tokens": 2486,
+          "output_tokens": 850,
+          "reasoning_tokens": 533,
+          "cost_usd": 0.00672,
+          "error": null
+        },
+        {
+          "name": "letter",
+          "ms": 5613.3,
+          "model": "muse-spark-1.3",
+          "applicable": true,
+          "claims": 3,
+          "verified": 3,
+          "struck": 0,
+          "input_tokens": 2514,
+          "output_tokens": 1805,
+          "reasoning_tokens": 1177,
+          "cost_usd": 0.010814,
+          "error": null
+        },
+        {
+          "name": "critic",
+          "ms": 12640.6,
+          "model": "muse-spark-1.3",
+          "skipped": false,
+          "rounds": 1,
+          "accepted": true,
+          "issues_found": 2,
+          "issues_fixed": 2,
+          "input_tokens": 3846,
+          "output_tokens": 3497,
+          "reasoning_tokens": 2744,
+          "cost_usd": 0.01967,
+          "error": null
+        }
+      ],
+      "route": {
+        "program": "florida_medicaid_mma",
+        "jurisdictions": [
+          "Florida"
+        ],
+        "dual": false,
+        "reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case."
+      },
+      "status": "done",
+      "findings": 5,
+      "cost_usd": 0.048058
+    }
+  },
+  "verdict": {
+    "status": "done",
+    "steelman": {
+      "argument": "The plan must make sure documentation shows the need for skilled nursing, and it must report how many hours it authorized or denied. The plan did that here by approving 8 hours per day and denying the other 8 hours per day.",
+      "citations": [
+        {
+          "finding_id": "f3",
+          "doc_id": "fl-04",
+          "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+          "page": 10,
+          "quote": "All documentation must substantiate the need for skilled nursing based on the following clinical indicators:"
+        },
+        {
+          "finding_id": "f3",
+          "doc_id": "fl-21",
+          "title": "SMMC Model Health Plan Contract, Exhibit II-A: Managed Medical Assistance (MMA) Program",
+          "page": 54,
+          "quote": "the data must include the enrollee’s name and unique ID number, the date of the authorization or denial, and the number of hours of private duty nursing authorized or denied, if any."
+        }
+      ],
+      "unsupported": false
+    },
+    "outcome": "inconsistent",
+    "proposed_outcome": "inconsistent",
+    "headline": "The denial appears inconsistent with the policy.",
+    "rule": {
+      "statement": "Florida Medicaid covers up to 24 hours of private duty nursing per day, not 8 hours per day, when the recipient meets the policy criteria.",
+      "citations": [
+        {
+          "finding_id": "f4",
+          "doc_id": "fl-04",
+          "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+          "page": 5,
+          "quote": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:"
+        }
+      ],
+      "unsupported": false
+    },
+    "gap": "The letter says Florida Medicaid limits private duty nursing to 8 hours per day. The rule says Florida Medicaid covers up to 24 hours per day when criteria are met, and does not state an 8-hour limit.",
+    "what_would_change": null,
+    "model": "muse-spark-1.3",
+    "input_tokens": 2486,
+    "output_tokens": 850,
+    "reasoning_tokens": 533,
+    "latency_ms": 3485.2,
+    "cost_usd": 0.00672,
+    "error": null
+  },
+  "letter": {
+    "status": "done",
+    "applicable": true,
+    "explanation": null,
+    "to": "Sample Health Plan",
+    "re": "Appeal of the denial of private duty nursing, 16 hours per day for dates of service September 1, 2026 through September 30, 2026, member 00000000-SAMPLE",
+    "paragraphs": [
+      {
+        "sentences": [
+          {
+            "text": "I am writing to appeal your letter dated 2026-10-07 about private duty nursing, code T1000, for 2026-09-01 through 2026-09-30.",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          },
+          {
+            "text": "The letter states you approved 8 hours per day and denied the remaining 8 hours per day because Florida Medicaid limits private duty nursing to 8 hours per day.",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          },
+          {
+            "text": "This appeal is filed within the December 6, 2026 deadline stated in your letter.",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "sentences": [
+          {
+            "text": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:",
+            "claim": true,
+            "citation": {
+              "finding_id": "f4",
+              "doc_id": "fl-04",
+              "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+              "page": 5,
+              "quote": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:"
+            },
+            "verified": true,
+            "struck": false,
+            "reason": null
+          },
+          {
+            "text": "As such, services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary.",
+            "claim": true,
+            "citation": {
+              "finding_id": "f4",
+              "doc_id": "fl-04",
+              "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+              "page": 6,
+              "quote": "As such, services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary."
+            },
+            "verified": true,
+            "struck": false,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "sentences": [
+          {
+            "text": "The denial applies an 8-hour-per-day limit to the request for 16 hours per day.",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          },
+          {
+            "text": "That 8-hour limit does not match the written rule, which provides that Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:",
+            "claim": true,
+            "citation": {
+              "finding_id": "f2",
+              "doc_id": "fl-04",
+              "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+              "page": 5,
+              "quote": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:"
+            },
+            "verified": true,
+            "struck": false,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "sentences": [
+          {
+            "text": "Please reverse the denial of the remaining 8 hours per day and apply the written policy.",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          },
+          {
+            "text": "If you do not reverse, please send the specific rule you applied and the records you used to decide.",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          },
+          {
+            "text": "Thank you for your review.",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          },
+          {
+            "text": "Sincerely, [Your name]",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          }
+        ]
+      }
+    ],
+    "evidence_checklist": [
+      {
+        "item": "The provider's records that address the policy's medical necessity standard",
+        "why": "The policy lets the plan approve services that meet its medical necessity standard, and the plan decides that from the provider's records.",
+        "citation": {
+          "finding_id": "f3",
+          "doc_id": "fl-04",
+          "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+          "page": 6,
+          "quote": "services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary."
+        }
+      },
+      {
+        "item": "Proof of the member's age",
+        "why": "Some rules in the policy apply only to recipients under 21.",
+        "citation": {
+          "finding_id": "f3",
+          "doc_id": "fl-04",
+          "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+          "page": 6,
+          "quote": "services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary."
+        }
+      },
+      {
+        "item": "The plan's authorization notice for this service, showing the hours or units approved and their dates",
+        "why": "The policy ties payment to what the plan authorizes, so the appeal should show exactly what was approved.",
+        "citation": {
+          "finding_id": "f3",
+          "doc_id": "fl-21",
+          "title": "SMMC Model Health Plan Contract, Exhibit II-A: Managed Medical Assistance (MMA) Program",
+          "page": 54,
+          "quote": "the data must include the enrollee’s name and unique ID number, the date of the authorization or denial, and the number of hours of private duty nursing authorized or denied, if any."
+        }
+      },
+      {
+        "item": "A day-by-day record of the hours requested, approved, and billed for the dates of service",
+        "why": "The policy sets its limits in hours, so the appeal should show the hours for each day.",
+        "citation": {
+          "finding_id": "f3",
+          "doc_id": "fl-21",
+          "title": "SMMC Model Health Plan Contract, Exhibit II-A: Managed Medical Assistance (MMA) Program",
+          "page": 54,
+          "quote": "the data must include the enrollee’s name and unique ID number, the date of the authorization or denial, and the number of hours of private duty nursing authorized or denied, if any."
+        }
+      }
+    ],
+    "evidence_note": null,
+    "deadline": {
+      "date": "2026-12-06",
+      "days_left": 41,
+      "source": "letter",
+      "citation": null,
+      "note": "The letter states this deadline."
+    },
+    "filing": {
+      "where": "Not stated in the documents we found.",
+      "how": "Check the appeal section of the letter or call the number on it.",
+      "citation": null
+    },
+    "verification": {
+      "claims": 3,
+      "verified": 3,
+      "struck": 0
+    },
+    "draft_paragraphs": [
+      {
+        "sentences": [
+          {
+            "text": "I am writing to appeal your letter dated 2026-10-07 about private duty nursing, code T1000, for 2026-09-01 through 2026-09-30.",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          },
+          {
+            "text": "The letter states you approved 8 hours per day and denied the remaining 8 hours per day because Florida Medicaid limits private duty nursing to 8 hours per day.",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "sentences": [
+          {
+            "text": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:",
+            "claim": true,
+            "citation": {
+              "finding_id": "f4",
+              "doc_id": "fl-04",
+              "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+              "page": 5,
+              "quote": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:"
+            },
+            "verified": true,
+            "struck": false,
+            "reason": null
+          },
+          {
+            "text": "As such, services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary.",
+            "claim": true,
+            "citation": {
+              "finding_id": "f4",
+              "doc_id": "fl-04",
+              "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+              "page": 6,
+              "quote": "As such, services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary."
+            },
+            "verified": true,
+            "struck": false,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "sentences": [
+          {
+            "text": "The denial applies an 8-hour-per-day limit to the request for 16 hours per day.",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          },
+          {
+            "text": "That 8-hour limit does not match the written rule, which provides that Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:",
+            "claim": true,
+            "citation": {
+              "finding_id": "f2",
+              "doc_id": "fl-04",
+              "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+              "page": 5,
+              "quote": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:"
+            },
+            "verified": true,
+            "struck": false,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "sentences": [
+          {
+            "text": "Please reverse the denial of the remaining 8 hours per day and apply the written policy.",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          },
+          {
+            "text": "If you do not reverse, please send the specific rule you applied and the records you used to decide.",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          },
+          {
+            "text": "Thank you for your review.",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          },
+          {
+            "text": "Sincerely, [Your name]",
+            "claim": false,
+            "citation": null,
+            "verified": false,
+            "struck": false,
+            "reason": null
+          }
+        ]
+      }
+    ],
+    "model": "muse-spark-1.3",
+    "input_tokens": 2514,
+    "output_tokens": 1805,
+    "reasoning_tokens": 1177,
+    "latency_ms": 5610.3,
+    "cost_usd": 0.010814,
+    "error": null
+  },
+  "critique": {
+    "status": "done",
+    "skipped": false,
+    "reason": null,
+    "rounds": [
+      {
+        "round": 1,
+        "issues": [
+          {
+            "kind": "missing_deadline",
+            "severity": "medium",
+            "where": null,
+            "note": "The letter does not state that the appeal is filed within the deadline stated in the denial letter.",
+            "fixed": true
+          },
+          {
+            "kind": "unsupported_fact",
+            "severity": "medium",
+            "where": null,
+            "note": "The Re line includes a member number that is not on the case card and not in a supported finding.",
+            "fixed": true
+          }
+        ],
+        "before": [
+          {
+            "sentences": [
+              {
+                "text": "I am writing to appeal your letter dated 2026-10-07 about private duty nursing, code T1000, for 2026-09-01 through 2026-09-30.",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              },
+              {
+                "text": "The letter states you approved 8 hours per day and denied the remaining 8 hours per day because Florida Medicaid limits private duty nursing to 8 hours per day.",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              }
+            ]
+          },
+          {
+            "sentences": [
+              {
+                "text": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:",
+                "claim": true,
+                "citation": {
+                  "finding_id": "f4",
+                  "doc_id": "fl-04",
+                  "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+                  "page": 5,
+                  "quote": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:"
+                },
+                "verified": true,
+                "struck": false,
+                "reason": null
+              },
+              {
+                "text": "As such, services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary.",
+                "claim": true,
+                "citation": {
+                  "finding_id": "f4",
+                  "doc_id": "fl-04",
+                  "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+                  "page": 6,
+                  "quote": "As such, services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary."
+                },
+                "verified": true,
+                "struck": false,
+                "reason": null
+              }
+            ]
+          },
+          {
+            "sentences": [
+              {
+                "text": "The denial applies an 8-hour-per-day limit to the request for 16 hours per day.",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              },
+              {
+                "text": "That 8-hour limit does not match the written rule, which provides that Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:",
+                "claim": true,
+                "citation": {
+                  "finding_id": "f2",
+                  "doc_id": "fl-04",
+                  "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+                  "page": 5,
+                  "quote": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:"
+                },
+                "verified": true,
+                "struck": false,
+                "reason": null
+              }
+            ]
+          },
+          {
+            "sentences": [
+              {
+                "text": "Please reverse the denial of the remaining 8 hours per day and apply the written policy.",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              },
+              {
+                "text": "If you do not reverse, please send the specific rule you applied and the records you used to decide.",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              },
+              {
+                "text": "Thank you for your review.",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              },
+              {
+                "text": "Sincerely, [Your name]",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              }
+            ]
+          }
+        ],
+        "after": [
+          {
+            "sentences": [
+              {
+                "text": "I am writing to appeal your letter dated 2026-10-07 about private duty nursing, code T1000, for 2026-09-01 through 2026-09-30.",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              },
+              {
+                "text": "The letter states you approved 8 hours per day and denied the remaining 8 hours per day because Florida Medicaid limits private duty nursing to 8 hours per day.",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              },
+              {
+                "text": "This appeal is filed within the December 6, 2026 deadline stated in your letter.",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              }
+            ]
+          },
+          {
+            "sentences": [
+              {
+                "text": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:",
+                "claim": true,
+                "citation": {
+                  "finding_id": "f4",
+                  "doc_id": "fl-04",
+                  "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+                  "page": 5,
+                  "quote": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:"
+                },
+                "verified": true,
+                "struck": false,
+                "reason": null
+              },
+              {
+                "text": "As such, services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary.",
+                "claim": true,
+                "citation": {
+                  "finding_id": "f4",
+                  "doc_id": "fl-04",
+                  "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+                  "page": 6,
+                  "quote": "As such, services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary."
+                },
+                "verified": true,
+                "struck": false,
+                "reason": null
+              }
+            ]
+          },
+          {
+            "sentences": [
+              {
+                "text": "The denial applies an 8-hour-per-day limit to the request for 16 hours per day.",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              },
+              {
+                "text": "That 8-hour limit does not match the written rule, which provides that Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:",
+                "claim": true,
+                "citation": {
+                  "finding_id": "f2",
+                  "doc_id": "fl-04",
+                  "title": "Florida Medicaid Private Duty Nursing and Family Home Health Aide Services Coverage Policy (Rule 59G-4.261)",
+                  "page": 5,
+                  "quote": "Florida Medicaid covers up to 24 hours of PDN services per day, per recipient, in accordance with the applicable Florida Medicaid fee schedule, or as specified in this policy, when the recipient meets all of the following criteria:"
+                },
+                "verified": true,
+                "struck": false,
+                "reason": null
+              }
+            ]
+          },
+          {
+            "sentences": [
+              {
+                "text": "Please reverse the denial of the remaining 8 hours per day and apply the written policy.",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              },
+              {
+                "text": "If you do not reverse, please send the specific rule you applied and the records you used to decide.",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              },
+              {
+                "text": "Thank you for your review.",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              },
+              {
+                "text": "Sincerely, [Your name]",
+                "claim": false,
+                "citation": null,
+                "verified": false,
+                "struck": false,
+                "reason": null
+              }
+            ]
+          }
+        ],
+        "verification_before": {
+          "claims": 3,
+          "verified": 3,
+          "struck": 0
+        },
+        "verification_after": {
+          "claims": 3,
+          "verified": 3,
+          "struck": 0
+        },
+        "accepted": true,
+        "rejected_reason": null,
+        "model": "muse-spark-1.3",
+        "input_tokens": 3846,
+        "output_tokens": 3497,
+        "reasoning_tokens": 2744,
+        "latency_ms": 12637.0,
+        "cost_usd": 0.01967,
+        "error": null
+      }
+    ],
+    "issues_found": 2,
+    "issues_fixed": 2,
+    "accepted": true,
+    "model": "muse-spark-1.3",
+    "cost_usd": 0.01967,
+    "latency_ms": 12637.0,
+    "error": null
+  }
+}

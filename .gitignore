@@ -21,3 +21,6 @@ review/export/
 # Claude Code project settings and skills (Impeccable is installed globally on the developer machine)
 .claude/
 *.egg-info/
+
+# Impeccable local state (shape-pass questions, mocks, hook cache)
+.impeccable/
