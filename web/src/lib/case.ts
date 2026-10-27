@@ -981,8 +981,19 @@ function startFixtureInvestigation(caseId: string, at: number = Date.now()): voi
   if (!fixtureStarts.has(caseId)) fixtureStarts.set(caseId, at);
 }
 
+const FIXTURE_ID = /^c_(sample\d*|dual\d*|fail\d*|error\d*|consistent\d*|rejected\d*|checkerror\d*)$/;
+
+/*
+  Fixture ids never collide with the API's (c_ and six hex digits), so outside
+  a production build they render from the fixture in live mode too: every
+  state stays reachable for screenshots on the live dev server.
+*/
+export function isFixtureCase(caseId: string): boolean {
+  return INTAKE_MODE !== "live" || (process.env.NODE_ENV !== "production" && FIXTURE_ID.test(caseId));
+}
+
 function fixtureCase(caseId: string, now: number): CaseRecord | null {
-  if (!/^c_(sample\d*|dual\d*|fail\d*|error\d*|consistent\d*|rejected\d*|checkerror\d*)$/.test(caseId)) return null;
+  if (!FIXTURE_ID.test(caseId)) return null;
   const dual = caseId.startsWith("c_dual");
   const consistent = caseId.startsWith("c_consistent");
   const fail = caseId.startsWith("c_fail");
@@ -1114,7 +1125,7 @@ async function readCaseError(res: Response): Promise<IntakeError> {
 
 /* GET /case/{id}. Throws IntakeError("not_found") on 404. */
 export function getCase(caseId: string, signal?: AbortSignal): Promise<CaseRecord> {
-  return INTAKE_MODE === "live" ? liveGetCase(caseId, signal) : fixtureGetCase(caseId, signal);
+  return isFixtureCase(caseId) ? fixtureGetCase(caseId, signal) : liveGetCase(caseId, signal);
 }
 
 /* Keep polling while the investigation runs (the investigation step alone). */
@@ -2044,7 +2055,7 @@ export function docSourceUrl(docId: string): string | null {
 /* The <img> src for a highlight: the API's image_url in live mode, the bundled fixture page otherwise. */
 export function pageImageSrc(h: Pick<PageHighlight, "image_url">): string {
   if (/^https?:\/\//.test(h.image_url)) return h.image_url;
-  return INTAKE_MODE === "live" ? `${API_URL}${h.image_url}` : h.image_url;
+  return INTAKE_MODE === "live" && !h.image_url.startsWith("/fixtures/") ? `${API_URL}${h.image_url}` : h.image_url;
 }
 
 function pagePath(docId: string, page: number): string {
@@ -2077,6 +2088,11 @@ async function pageFetch(path: string, init: RequestInit, signal?: AbortSignal):
   }
 }
 
+/* Fixture mode, or a fixture case's synthetic quote on the live dev server. */
+function fixtureQuote(quote: string): boolean {
+  return INTAKE_MODE !== "live" || (process.env.NODE_ENV !== "production" && quote.startsWith(SYNTHETIC));
+}
+
 function checkQuote(quote: string): void {
   if (quote.trim().length < QUOTE_MIN) throw new PageError("too_short");
 }
@@ -2107,7 +2123,7 @@ function fixtureHighlightFor(docId: string, page: number, quote: string): PageHi
 /* GET /doc/{doc_id}/page/{page}/highlight?quote=…&dpi=110. Throws PageError. */
 export async function getHighlight(docId: string, page: number, quote: string, signal?: AbortSignal): Promise<PageHighlight> {
   checkQuote(quote);
-  if (INTAKE_MODE !== "live") {
+  if (fixtureQuote(quote)) {
     await sleep(FIXTURE_HIGHLIGHT_MS, signal);
     return fixtureHighlightFor(docId, page, quote);
   }
@@ -2120,7 +2136,7 @@ export async function getHighlight(docId: string, page: number, quote: string, s
 /* POST /doc/{doc_id}/page/{page}/vision-check with {quote}. Throws PageError. */
 export async function visionCheck(docId: string, page: number, quote: string, signal?: AbortSignal): Promise<VisionCheckResponse> {
   checkQuote(quote);
-  if (INTAKE_MODE !== "live") {
+  if (fixtureQuote(quote)) {
     await sleep(FIXTURE_VISION_MS, signal);
     const h = fixtureHighlightFor(docId, page, quote);
     const fx = PAGE_FIXTURES.find((f) => f.doc_id === docId && f.page === page);

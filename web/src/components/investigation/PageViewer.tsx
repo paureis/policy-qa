@@ -32,7 +32,8 @@ import type { ChipCitation } from "./CitationChip";
   quote is open; the panel holds its own requests and aborts them on close.
 */
 
-const DESKTOP_QUERY = "(min-width: 1024px)";
+/* print: a printed page is about 816 px wide, and the desk form (the paginated sheet) is the one that prints. */
+const DESKTOP_QUERY = "(min-width: 1024px), print";
 
 interface OpenViewer {
   key: string;
@@ -188,7 +189,7 @@ export function MarginPageViewer({ viewerKey }: { viewerKey: string }) {
 }
 
 type Load = { kind: "loading" } | { kind: "error"; error: PageError } | { kind: "ready"; highlight: PageHighlight };
-type Vision =
+export type Vision =
   | { kind: "idle" }
   | { kind: "checking" }
   | { kind: "done"; vision: VisionCheck }
@@ -201,8 +202,29 @@ function pct(n: number): string {
   return `${(n * 100).toFixed(4)}%`;
 }
 
-function cleanError(text: string): string {
+export function cleanError(text: string): string {
   return text.trim().replace(/\.$/, "") || "the vision model gave no reason";
+}
+
+/*
+  The vision line under a highlighted page. named: at desktop width the check
+  is labeled with the model that ran it ("Muse Spark vision check"), so the
+  reader knows which model read the page image; the phone keeps the short
+  label.
+*/
+export function visionLine(located: boolean, vision: Vision, named = false): string {
+  if (!located) return "The quote was not located on this page image; the verifier matched the text layer.";
+  if (vision.kind === "checking") return "Checking the highlight with vision…";
+  if (vision.kind === "done" && vision.vision.model === "fixture")
+    return "Vision check not run: no model key on this server, so the stand-in echoed the quote. The highlight above comes from the page's text layer.";
+  if (vision.kind === "done") {
+    const label = named && /^muse-spark/i.test(vision.vision.model) ? "Muse Spark vision check" : "Vision check";
+    return `${label}: the highlighted text reads “${vision.vision.text_in_highlight}” and ${
+      vision.vision.agrees ? "matches the quote." : "does not match the quote."
+    }`;
+  }
+  if (vision.kind === "unavailable") return `Vision check unavailable: ${vision.error}.`;
+  return "";
 }
 
 function PageViewerPanel({
@@ -404,19 +426,7 @@ function PageViewerPanel({
           </div>
         </div>
         <p aria-live="polite" className="mt-3 min-h-7 text-[16px] leading-relaxed text-ink" data-viewer-vision={located ? vision.kind : "not_located"}>
-          {!located
-            ? "The quote was not located on this page image; the verifier matched the text layer."
-            : vision.kind === "checking"
-              ? "Checking the highlight with vision…"
-              : vision.kind === "done" && vision.vision.model === "fixture"
-                ? "Vision check not run: no model key on this server, so the stand-in echoed the quote. The highlight above comes from the page's text layer."
-                : vision.kind === "done"
-                  ? `Vision check: the highlighted text reads “${vision.vision.text_in_highlight}” and ${
-                      vision.vision.agrees ? "matches the quote." : "does not match the quote."
-                    }`
-                : vision.kind === "unavailable"
-                  ? `Vision check unavailable: ${vision.error}.`
-                  : ""}
+          {visionLine(located, vision, variant !== "inline")}
         </p>
         {imageFailed ? (
           <button type="button" onClick={retry} className={`${BUTTON} mt-2 self-start`}>
@@ -435,7 +445,8 @@ function PageViewerPanel({
         role="dialog"
         aria-label={`Page ${citation.page} of ${title}`}
         tabIndex={-1}
-        className="step-in mt-3 flex flex-col border-t border-ink pt-3"
+        /* An overlay over the margin below the note: absolute, so the note, the notes under it, and the letter never move. */
+        className="step-in absolute inset-x-0 top-full z-20 mt-2 flex flex-col border border-ink bg-bond px-3 pt-2 pb-3"
         data-page-viewer="margin"
       >
         {header}

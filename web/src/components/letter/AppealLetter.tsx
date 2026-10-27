@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   API_URL,
   INTAKE_MODE,
+  citationLabel,
+  isFixtureCase,
   letterPlainText,
   sentenceStruck,
   type CitationRef,
@@ -11,7 +13,7 @@ import {
   type LetterSentence,
   type Paragraph,
 } from "@/lib/case";
-import { InlineReferenceChip, QuoteFigure, groupCitations, shortDocName, type ChipCitation } from "@/components/investigation/CitationChip";
+import { InlineReferenceChip, QuoteFigure, groupCitations, pageFolio, shortDocName, type ChipCitation } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
 import { MarginPageViewer, usePageViewer, viewerPanelId } from "@/components/investigation/PageViewer";
 
@@ -22,39 +24,60 @@ const ACTION =
 const COPIED_MS = 2000;
 
 /*
+  The sheet at desktop is US Letter: 620 px wide at 1,280 (8.5 in), so a page
+  is 802 px tall (11 in), and it scales in proportion at 1,024. Inner margins
+  72 px on every side (1 in), a 24 px strip of desk between pages, the folio
+  in the bottom margin.
+*/
+const PAGE_RATIO = 802 / 620;
+const PAGE_GAP = 24;
+const MARGIN = 72;
+/* Space between two margin notes, and between a note and the next paragraph's notes. */
+const NOTE_GAP = 20;
+
+/*
   The appeal letter. On the phone and tablet: set on bond in a hairline frame,
   To, Re, then the paragraphs, every claim sentence with a small citation chip
   (title, page; the quote on toggle). At desktop width (desk): the Annotated
-  Letter, a bond sheet with a 1 px ink edge on the darker desk, set like a
-  printed letter (inside address, Re line, wide margins, a closing block),
-  each claim sentence carrying a footnote number and each paragraph's notes
-  in a margin column beside it (one grid row per paragraph, so notes align
-  with no measuring script), the one postmark at the sheet's top right, Copy
-  and Download in the margin. The sheet ends at the signature block; the
-  checklist and the filing path are the page's next section. A sentence the
-  verifier struck, or a claim it could not verify, is shown struck with
-  "Could not verify", never hidden, and is left out of what is copied or
-  downloaded.
+  Letter, a real document: US Letter pages of bond with a 1 px ink edge on the
+  darker desk, each with its folio ("Page 1 of 2"); a date line, the inside
+  address and the Re line; the paragraphs at 18 px; the closing block with the
+  fields to fill in by hand in gold wash ("Fill in", gold being reserved for
+  what the person must check or complete). A paragraph never splits across a
+  page; it moves to the next one.
+
+  Beside the sheet, the margin: next to the sheet head the deadline, Copy the
+  letter and Download as text; next to each paragraph its notes, set as
+  sidenotes. A note starts at its paragraph's first line, clears the note
+  above it, and stacks downward past its paragraph when the notes are taller
+  than the paragraph; the paragraphs never stretch and no blank sheet opens.
+  Each note is in the DOM right after its paragraph. A claim sentence ends in
+  its footnote number; the number opens the expanded quote over the margin
+  below the note, and "page N" opens the page image there; one thing open at
+  a time, Escape closes it and returns focus. A sentence the verifier struck,
+  or a claim it could not verify, is shown struck with "Could not verify",
+  never hidden, and is left out of what is copied, downloaded, or printed.
+
+  Printing the page prints the sheet alone (globals.css, data-print-sheet).
 */
 export function AppealLetter({
   letter,
   caseId,
   desk = false,
-  stamp = null,
+  today = null,
+  deadlineLine = null,
 }: {
   letter: Letter;
   caseId: string;
   desk?: boolean;
-  /* The postmark, set at the sheet's top right corner (desk only). */
-  stamp?: ReactNode;
+  /* The date line at the sheet's head (desk only). */
+  today?: Date | null;
+  /* "Appeal by Dec 6, 2026, 41 days left", in the margin beside the sheet head (desk only). */
+  deadlineLine?: string | null;
 }) {
   const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const paragraphs = letter.paragraphs ?? [];
-  /* Desk only: the one margin note shown in full (quote and full title), by its footnote number. */
-  const [openNote, setOpenNote] = useState<number | null>(null);
-  const toggleNote = useCallback((n: number) => setOpenNote((o) => (o === n ? null : n)), []);
-  const noteBase = useId();
 
   useEffect(
     () => () => {
@@ -83,13 +106,14 @@ export function AppealLetter({
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  const liveDownload = INTAKE_MODE === "live" && !isFixtureCase(caseId);
   const actions = (
     <>
       <div className={desk ? "flex flex-wrap gap-3" : "mt-4 flex flex-col gap-3 sm:flex-row"}>
         <button type="button" onClick={onCopy} className={`${ACTION} bg-federal text-white`} data-copy="true">
           Copy the letter
         </button>
-        {INTAKE_MODE === "live" ? (
+        {liveDownload ? (
           <a
             href={`${API_URL}/case/${encodeURIComponent(caseId)}/letter.txt`}
             download={`appeal-letter-${caseId}.txt`}
@@ -107,7 +131,7 @@ export function AppealLetter({
       <p role="status" aria-live="polite" className="mt-2 min-h-7 text-[16px] font-semibold" data-copy-status={copy}>
         {copy === "copied" ? "Copied." : copy === "failed" ? "Could not copy. Select the letter text and copy it by hand." : ""}
       </p>
-      <p className="mt-1 text-[16px] text-muted">
+      <p className={`mt-1 text-[16px] text-muted ${desk ? "lg:text-[15px]" : ""}`}>
         Struck sentences are left out of the copy and the download. Each verified claim keeps a short citation in brackets.
       </p>
     </>
@@ -122,128 +146,386 @@ export function AppealLetter({
     );
   }
 
+  return <Sheet letter={letter} paragraphs={paragraphs} actions={actions} today={today} deadlineLine={deadlineLine} />;
+}
+
+/* One margin note: the verified quotes of one (document, page) pair, or one struck citation. */
+interface NoteGroup {
+  n: number;
+  citations: ChipCitation[];
+  struck: boolean;
+}
+
+/*
+  Footnote numbers run through the letter, one per margin note: a paragraph's
+  verified (document, page) pairs merge into one note, so two sentences citing
+  the same page carry the same number. A struck sentence that still names a
+  citation gets its own note, marked "Could not verify".
+*/
+function numberNotes(paragraphs: Paragraph[]): NoteGroup[][] {
+  let next = 1;
+  return paragraphs.map((p) => {
+    const sentences = p.sentences ?? [];
+    const verified = groupCitations(sentences.filter((s) => !sentenceStruck(s) && s.claim && s.citation).map((s) => s.citation as CitationRef));
+    const groups: NoteGroup[] = verified.map((citations) => ({ n: next++, citations, struck: false }));
+    for (const s of sentences) {
+      if (sentenceStruck(s) && s.citation) groups.push({ n: next++, citations: [s.citation], struck: true });
+    }
+    return groups;
+  });
+}
+
+function noteFor(groups: NoteGroup[], s: LetterSentence): NoteGroup | null {
+  if (!s.citation) return null;
+  const struck = sentenceStruck(s);
+  if (struck) return groups.find((g) => g.struck && g.citations[0] === s.citation) ?? null;
+  if (!s.claim) return null;
+  const c = s.citation;
+  return groups.find((g) => !g.struck && g.citations[0].doc_id === c.doc_id && g.citations[0].page === c.page) ?? null;
+}
+
+function Sheet({
+  letter,
+  paragraphs,
+  actions,
+  today,
+  deadlineLine,
+}: {
+  letter: Letter;
+  paragraphs: Paragraph[];
+  actions: ReactNode;
+  today: Date | null;
+  deadlineLine: string | null;
+}) {
+  const noteBase = useId();
+  const groups = numberNotes(paragraphs);
+  /* The one expanded quote, by footnote number. Pages open through the viewer provider; one of the two at a time. */
+  const [openNote, setOpenNote] = useState<number | null>(null);
+  const viewer = usePageViewer();
+  const viewerOpenKey = viewer?.state.open?.placement === "margin" ? viewer.state.open.key : null;
+  const closeIf = viewer?.actions.closeIf;
+  const frameRef = useRef<HTMLDivElement>(null);
+  const articleRef = useRef<HTMLElement>(null);
+  const [pages, setPages] = useState<{ n: number; height: number }>({ n: 1, height: 802 });
+  /* The lowest point of the margin notes and of an open overlay, in the article's coordinates; the frame grows to the larger. */
+  const notesBottom = useRef(0);
+  const overlayBottom = useRef(0);
+  const fitFrame = useCallback(() => {
+    const article = articleRef.current;
+    const frame = frameRef.current;
+    if (!article || !frame) return;
+    const need = Math.max(notesBottom.current, overlayBottom.current);
+    frame.style.minHeight = need > article.offsetHeight ? `${need}px` : "";
+  }, []);
+
+  const toggleNote = useCallback(
+    (n: number) => {
+      if (viewerOpenKey && closeIf) closeIf(viewerOpenKey);
+      setOpenNote((o) => (o === n ? null : n));
+    },
+    [viewerOpenKey, closeIf],
+  );
+  const closeQuote = useCallback(() => setOpenNote(null), []);
+
+  /* Escape closes the expanded quote and returns focus to its footnote number. */
+  useEffect(() => {
+    if (openNote === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      const n = openNote;
+      setOpenNote(null);
+      frameRef.current?.querySelector<HTMLElement>(`[data-footnote="${n}"]`)?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [openNote]);
+
   /*
-    Footnote numbers run through the letter, one per margin note: a paragraph's
-    cited (document, page) pairs are merged into one note, so two sentences
-    citing the same page carry the same number.
+    Pagination and the sidenotes, measured once per layout change: every
+    paragraph that would cross a page's bottom margin moves to the next page
+    (a spacer before it takes up the rest of the page and the desk strip),
+    then each margin block is placed at its anchor's top or under the block
+    above it, whichever is lower. Only spacer heights and note offsets are
+    written, so nothing re-renders but the page count.
   */
-  const noteGroups: ChipCitation[][][] = [];
-  let numbered = 0;
-  const firstNumber: number[] = [];
-  for (const p of paragraphs) {
-    const cited = (p.sentences ?? []).filter((s) => !sentenceStruck(s) && s.claim && s.citation).map((s) => s.citation as CitationRef);
-    const groups = groupCitations(cited);
-    firstNumber.push(numbered + 1);
-    numbered += groups.length;
-    noteGroups.push(groups);
-  }
+  useLayoutEffect(() => {
+    const article = articleRef.current;
+    const frame = frameRef.current;
+    if (!article || !frame) return;
+    let raf = 0;
+    const layout = () => {
+      const width = article.offsetWidth;
+      if (width === 0) return;
+      const pageH = Math.round(width * PAGE_RATIO);
+      const pitch = pageH + PAGE_GAP;
+      const spacers = Array.from(article.querySelectorAll<HTMLElement>("[data-page-spacer]"));
+      for (const s of spacers) s.style.height = "0px";
+      article.style.minHeight = "";
+      let bottom = MARGIN;
+      for (const s of spacers) {
+        const block = s.nextElementSibling as HTMLElement | null;
+        if (!block) continue;
+        const top = block.offsetTop;
+        const h = block.offsetHeight;
+        const k = Math.floor(top / pitch);
+        const limit = k * pitch + pageH - MARGIN;
+        if ((top + h > limit && h <= pageH - 2 * MARGIN) || top > limit) {
+          s.style.height = `${(k + 1) * pitch + MARGIN - top}px`;
+        }
+        bottom = block.offsetTop + h;
+      }
+      const n = Math.max(1, Math.floor((bottom + MARGIN - 1) / pitch) + 1);
+      article.style.minHeight = `${n * pageH + (n - 1) * PAGE_GAP}px`;
+
+      let prev = -Infinity;
+      for (const m of Array.from(article.querySelectorAll<HTMLElement>("[data-margin-anchor]"))) {
+        const anchor = article.querySelector<HTMLElement>(`[data-block="${m.dataset.marginAnchor}"]`);
+        if (!anchor) continue;
+        const top = Math.max(anchor.offsetTop, prev + NOTE_GAP);
+        m.style.top = `${top}px`;
+        prev = top + m.offsetHeight;
+      }
+      notesBottom.current = prev;
+      fitFrame();
+      setPages((p) => (p.n === n && p.height === pageH ? p : { n, height: pageH }));
+    };
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(layout);
+    };
+    layout();
+    const ro = new ResizeObserver(schedule);
+    ro.observe(article);
+    for (const el of Array.from(article.querySelectorAll<HTMLElement>("[data-block], [data-margin-anchor]"))) ro.observe(el);
+    void document.fonts?.ready.then(schedule);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [paragraphs, fitFrame]);
+
+  /*
+    An open overlay (the expanded quote or the page) hangs below its note.
+    When it would run past the last page, it opens upward from the note
+    instead; when there is no room above either, the frame grows to hold it,
+    so it never paints over the next section. Re-measured as the page image
+    loads.
+  */
+  useLayoutEffect(() => {
+    const article = articleRef.current;
+    if (!article) return;
+    const overlay = article.querySelector<HTMLElement>('[data-note-region], [data-page-viewer="margin"]');
+    if (!overlay) {
+      overlayBottom.current = 0;
+      fitFrame();
+      return;
+    }
+    const place = () => {
+      const note = overlay.parentElement;
+      if (!note) return;
+      overlay.style.top = "";
+      overlay.style.bottom = "";
+      overlay.style.marginTop = "";
+      overlay.style.marginBottom = "";
+      const base = article.getBoundingClientRect().top;
+      const noteBox = note.getBoundingClientRect();
+      const h = overlay.offsetHeight;
+      const below = noteBox.bottom - base + 8 + h;
+      const sheetBottom = article.offsetHeight;
+      const above = noteBox.top - base - 8 - h;
+      if (below > sheetBottom && above >= 0) {
+        overlay.style.top = "auto";
+        overlay.style.bottom = "100%";
+        overlay.style.marginTop = "0px";
+        overlay.style.marginBottom = "8px";
+        overlayBottom.current = 0;
+      } else {
+        overlayBottom.current = below;
+      }
+      fitFrame();
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(overlay);
+    return () => {
+      ro.disconnect();
+      overlayBottom.current = 0;
+      fitFrame();
+    };
+  }, [openNote, viewerOpenKey, fitFrame]);
+
+  const dateLine = today ? today.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : null;
 
   return (
-    <div className="mt-8 @container/letter" data-sheet="annotated">
-      <div className="grid grid-cols-1 @min-[880px]/letter:desk-cols">
-        <article aria-label="Appeal letter" className="col-span-full grid grid-cols-subgrid" data-letter="true">
-          <div className={`${SHEET} relative border-t pt-16 pb-10`} data-sheet-head="true">
-            {stamp ? (
-              <div className="absolute top-6 right-6" data-sheet-stamp="true">
-                {stamp}
+    <div className="mt-8" data-sheet="annotated">
+      <div ref={frameRef} className="relative" data-letter-frame="true">
+        <article
+          ref={articleRef}
+          aria-label="Appeal letter"
+          /* z-10: the letter, with its margin overlays, stacks above the sections after it. */
+          className="relative isolate z-10 w-[calc((100%-48px)*620/1040)] px-[72px] pt-[72px]"
+          data-letter="true"
+          data-print-sheet="true"
+          data-pages={pages.n}
+        >
+          {/* The pages, behind the text: bond with a 1 px ink edge, the desk between them, the folio in the bottom margin. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10" data-print-hide="true" data-sheet-pages="true">
+            {Array.from({ length: pages.n }, (_, k) => (
+              <div
+                key={k}
+                className="absolute inset-x-0 border border-ink bg-bond"
+                style={{ top: k * (pages.height + PAGE_GAP), height: pages.height }}
+                data-sheet-page={k + 1}
+              >
+                <p className="absolute right-[72px] bottom-8 text-[14px] text-muted tabular-nums">
+                  Page {k + 1} of {pages.n}
+                </p>
               </div>
+            ))}
+          </div>
+
+          <div data-page-spacer="true" />
+          <div className="mb-7" data-block="head" data-sheet-head="true">
+            {dateLine ? (
+              <p className="text-[17px] tabular-nums" data-letter-date="true">
+                {dateLine}
+              </p>
             ) : null}
             {/* Set like a letter: the addressee as the inside address, then the Re line; no rules. */}
-            <dl className={`text-[17px] leading-snug ${stamp ? "pr-[150px]" : ""}`}>
+            <dl className={`text-[17px] leading-snug ${dateLine ? "mt-7" : ""}`}>
               <div>
                 <dt className="sr-only">To:</dt>
                 <dd className="font-semibold" data-letter-to="true">
                   {letter.to}
                 </dd>
               </div>
-              <div className="mt-7 flex gap-2">
-                <dt className="shrink-0 font-bold">Re:</dt>
+              <div className="mt-6 flex gap-2">
+                <dt className="shrink-0 font-semibold">Re:</dt>
                 <dd>{letter.re}</dd>
               </div>
             </dl>
           </div>
-          {paragraphs.map((p, i) => (
-            <SheetParagraph
-              key={i}
-              sentences={p.sentences ?? []}
-              index={i}
-              groups={noteGroups[i]}
-              first={firstNumber[i]}
-              noteBase={noteBase}
-              openNote={openNote}
-              onToggleNote={toggleNote}
-            />
-          ))}
-        </article>
-
-        <div className="col-span-full grid grid-cols-subgrid" data-signoff="true">
-          {/* Blank lines to fill in by hand on the printed letter, set as a letter's closing block; the instruction above says what goes there. */}
-          <div className={`${SHEET} border-b pt-6 pb-16`} aria-hidden="true" data-signature="true">
-            <div className="max-w-[300px] space-y-4">
-              {SIGNATURE_LINES.map((label) => (
-                <div key={label}>
-                  <div className={`${label === "Signature" ? "h-12" : "h-8"} border-b border-ink`} />
-                  <p className="mt-1 text-[14px] text-muted">{label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="pt-6 pb-4 @min-[880px]/letter:col-start-2 @min-[880px]/letter:self-start @min-[880px]/letter:pb-0" data-letter-actions="true">
+          <div className={MARGIN_BLOCK} data-margin-anchor="head" data-print-hide="true" data-letter-actions="true">
+            {deadlineLine ? (
+              <p className="mb-4 text-[17px] leading-snug font-semibold tabular-nums" data-letter-deadline="true">
+                {deadlineLine}
+              </p>
+            ) : null}
             {actions}
           </div>
-        </div>
+
+          {paragraphs.map((p, i) => (
+            <Fragment key={i}>
+              <div data-page-spacer="true" />
+              <SheetParagraph
+                sentences={p.sentences ?? []}
+                index={i}
+                groups={groups[i]}
+                noteBase={noteBase}
+                openNote={openNote}
+                onToggleNote={toggleNote}
+                onOpenPage={closeQuote}
+              />
+            </Fragment>
+          ))}
+
+          <div data-page-spacer="true" />
+          <SignOff askName={!paragraphs.some((p) => (p.sentences ?? []).some((s) => /\[[^\]\n]*name[^\]\n]*\]/i.test(s.text)))} />
+        </article>
       </div>
     </div>
   );
 }
 
-/* A letter's closing order: the signature, the printed name, the member ID, the date. */
-const SIGNATURE_LINES = ["Signature", "Name", "Member ID", "Date"] as const;
+/* A block in the margin column, beside the sheet: absolute, its top set by the layout above. */
+const MARGIN_BLOCK = "absolute top-0 left-[calc(100%+48px)] w-[calc(100%*420/620)]";
 
 /*
-  A cell of the bond sheet: column one of the letter grid. The sheet's 1 px
-  ink edge (no shadow, no radius) runs down its sides; the head cell closes it
-  at the top and the signature cell at the bottom. Inner margins like a
-  printed letter: 48 px at 1024, 72 px from 1280.
+  The closing block: the fields a letter is signed with, each a gold-wash
+  field marked "Fill in", so they cannot be mistaken for text the service
+  wrote. In print they are plain ruled lines. The name is asked once: when
+  the sign-off already carries a name placeholder ("[Your name]"), the block
+  drops its Name field.
 */
-const SHEET = "border-x border-ink bg-bond px-12 xl:px-[72px] @min-[880px]/letter:col-start-1";
+function SignOff({ askName }: { askName: boolean }) {
+  const SIGNATURE_FIELDS = askName ? ["Signature", "Name", "Member ID", "Date"] : ["Signature", "Member ID", "Date"];
+  return (
+    <div className="pt-3" data-block="signoff" data-signature="true">
+      <ul className="grid grid-cols-2 items-end gap-x-8 gap-y-5">
+        {SIGNATURE_FIELDS.map((label) => (
+          <li key={label} className={!askName && label === "Signature" ? "col-span-2 max-w-[calc(50%-16px)]" : ""}>
+            <p className="text-[14px] leading-5 text-muted">{label}</p>
+            <span
+              className={`mt-1 flex ${label === "Signature" ? "h-12" : "h-9"} items-end border-b-2 border-gold bg-gold-wash px-2 pb-1 text-[14px] leading-5 font-semibold text-ink print:border-ink print:bg-transparent`}
+              data-fill-in={label}
+            >
+              <span className="print:invisible">Fill in</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 /*
-  One paragraph of the sheet and, right after it in the DOM, its margin notes:
-  the same grid row, so each note's top sits on the paragraph's first line.
-  Each claim sentence ends in its footnote number; the number opens the note
-  with the same number. Below the container's two-column width the notes
-  stack under the paragraph on the sheet itself.
+  A bracketed placeholder the letter leaves for the person ("[Your name]")
+  becomes a gold-wash field marked "Fill in"; in print it is the bracket text
+  again, so nothing prints as a label.
+*/
+const PLACEHOLDER = /\[([^\]\n]{1,40})\]/g;
+
+function withFields(text: string): ReactNode {
+  const parts: ReactNode[] = [];
+  let last = 0;
+  for (const m of text.matchAll(PLACEHOLDER)) {
+    const at = m.index ?? 0;
+    if (at > last) parts.push(text.slice(last, at));
+    parts.push(
+      <span key={at} className="box-decoration-clone rounded-sm border-b-2 border-gold bg-gold-wash px-1 print:border-0 print:bg-transparent print:px-0" data-fill-in={m[1]}>
+        <span className="mr-1.5 text-[14px] font-semibold print:hidden">Fill in</span>
+        <span className="sr-only">: </span>
+        <span className="print:hidden">{m[1]}</span>
+        <span className="hidden print:inline">[{m[1]}]</span>
+      </span>,
+    );
+    last = at + m[0].length;
+  }
+  if (parts.length === 0) return text;
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+/*
+  One paragraph of the sheet and, right after it in the DOM, its margin notes
+  (absolute, placed by the sheet's layout). Each claim sentence ends in its
+  footnote number, which opens the note's expanded quote.
 */
 function SheetParagraph({
   sentences,
   index,
   groups,
-  first,
   noteBase,
   openNote,
   onToggleNote,
+  onOpenPage,
 }: {
   sentences: LetterSentence[];
   index: number;
-  groups: ChipCitation[][];
-  /* The footnote number of this paragraph's first note. */
-  first: number;
+  groups: NoteGroup[];
   noteBase: string;
   openNote: number | null;
   onToggleNote: (n: number) => void;
+  onOpenPage: () => void;
 }) {
-  const numberOf = (c: CitationRef): number | null => {
-    const g = groups.findIndex((x) => x[0].doc_id === c.doc_id && x[0].page === c.page);
-    return g < 0 ? null : first + g;
-  };
   return (
     <>
-      <div className={`${SHEET} pb-7`} data-paragraph={index}>
+      <div className="mb-5" data-block={`p${index}`} data-paragraph={index}>
         <p className="text-[18px] leading-[1.6]">
           {sentences.map((s, i) => {
             const struck = sentenceStruck(s);
-            const n = !struck && s.claim && s.citation ? numberOf(s.citation) : null;
+            const note = noteFor(groups, s);
             return (
               <span key={i} data-sentence={struck ? "struck" : s.claim ? "claim" : "plain"}>
                 {i > 0 ? " " : ""}
@@ -252,10 +534,22 @@ function SheetParagraph({
                     <s className="decoration-ink decoration-2">{s.text}</s> <CouldNotVerifyTag inline />
                   </>
                 ) : (
-                  s.text
+                  withFields(s.text)
                 )}
-                {n !== null ? (
-                  <FootnoteRef n={n} open={openNote === n} controls={noteRegionId(noteBase, n)} onToggle={() => onToggleNote(n)} />
+                {note ? (
+                  <FootnoteRef
+                    n={note.n}
+                    label={`${shortDocName(note.citations[0])}, ${pageFolio(note.citations[0])}`}
+                    open={openNote === note.n}
+                    controls={noteRegionId(noteBase, note.n)}
+                    onToggle={() => onToggleNote(note.n)}
+                  />
+                ) : null}
+                {!struck && s.claim && s.verified && s.citation ? (
+                  <span className="hidden print:inline">
+                    {" "}
+                    [cite: {citationLabel(s.citation)}, p. {s.citation.page}]
+                  </span>
                 ) : null}
               </span>
             );
@@ -263,19 +557,15 @@ function SheetParagraph({
         </p>
       </div>
       {groups.length > 0 ? (
-        <ul
-          aria-label={`Citations for paragraph ${index + 1}`}
-          className="border-x border-ink bg-bond px-12 pb-6 @min-[880px]/letter:col-start-2 @min-[880px]/letter:self-start @min-[880px]/letter:border-0 @min-[880px]/letter:bg-transparent @min-[880px]/letter:px-0 @min-[880px]/letter:pt-1 @min-[880px]/letter:pb-7"
-          data-margin={index}
-        >
-          {groups.map((g, gi) => (
+        <ul aria-label={`Citations for paragraph ${index + 1}`} className={`${MARGIN_BLOCK} space-y-5`} data-margin-anchor={`p${index}`} data-margin={index} data-print-hide="true">
+          {groups.map((g) => (
             <MarginNote
-              key={`${g[0].doc_id}-${g[0].page}`}
-              n={first + gi}
-              citations={g}
+              key={g.n}
+              group={g}
               noteBase={noteBase}
-              open={openNote === first + gi}
-              onToggle={() => onToggleNote(first + gi)}
+              open={openNote === g.n}
+              onClose={() => onToggleNote(g.n)}
+              onOpenPage={onOpenPage}
             />
           ))}
         </ul>
@@ -289,21 +579,35 @@ function noteRegionId(base: string, n: number): string {
 }
 
 /*
-  A footnote number after a claim sentence: small, tabular, ink, raised like a
-  superscript. Its target is 44 px square by padding, with negative margins so
-  the line keeps its rhythm. It opens the margin note with the same number
-  (the full quote and the document's full title).
+  A footnote number after a claim sentence: 14 px, tabular, ink, raised like
+  a superscript and underlined so it reads as a link. Its hit area is its own
+  box, a few pixels around the digits, so it never covers the words beside
+  it or the lines above and below (an inline target in running text, the
+  exception WCAG 2.5.8 makes; the note's own controls carry the 44 px
+  targets). Its name says what it points to.
 */
-function FootnoteRef({ n, open, controls, onToggle }: { n: number; open: boolean; controls: string; onToggle: () => void }) {
+function FootnoteRef({
+  n,
+  label,
+  open,
+  controls,
+  onToggle,
+}: {
+  n: number;
+  label: string;
+  open: boolean;
+  controls: string;
+  onToggle: () => void;
+}) {
   return (
     <button
       type="button"
-      aria-label={`citation ${n}`}
+      aria-label={`citation ${n}: ${label}`}
       aria-expanded={open}
-      aria-controls={controls}
+      aria-controls={open ? controls : undefined}
       onClick={onToggle}
-      className={`relative -top-[0.55em] -mx-4 -my-3.5 inline-flex min-w-11 justify-center rounded-sm py-3.5 align-baseline text-[13px] leading-4 font-semibold text-ink tabular-nums hover:underline ${
-        open ? "underline decoration-2 underline-offset-2" : ""
+      className={`relative -top-[0.45em] ml-0.5 inline-block rounded-sm px-[3px] align-baseline text-[14px] leading-4 font-semibold text-ink tabular-nums underline underline-offset-2 print:hidden ${
+        open ? "bg-hairline decoration-2" : "decoration-1 hover:decoration-2"
       }`}
       data-footnote={n}
     >
@@ -312,33 +616,36 @@ function FootnoteRef({ n, open, controls, onToggle }: { n: number; open: boolean
   );
 }
 
-/* Reference-style links in a note: small, underlined, a 44 px tall target. */
+/* Reference-style links in a note: underlined, a 44 px tall target. */
 const NOTE_LINK =
-  "-ml-1 inline-flex min-h-11 items-center rounded-sm px-1 text-[15px] font-semibold text-ink underline decoration-1 underline-offset-4";
+  "-my-2.5 inline-flex min-h-11 items-center rounded-sm px-1 text-[15px] font-semibold text-ink underline decoration-1 underline-offset-4 tabular-nums";
 
 /*
-  A margin note, set as a footnote: its number, the short document name and
-  page folio, the quote clipped to two lines; "more" shows the whole quote
-  and the document's full title. One small link per note, "page 5", opens the
-  cited page in place (the page image with the gold box and the vision line);
-  its name carries the full title. One page is open at a time; Escape closes
-  it and returns focus to the link.
+  A margin note, set as a sidenote: its number, the short document name and
+  the folio, the full quote, then its verification state as words: "Found on
+  page 5" with a small stamp-blue tick, "page 5" being the link that opens
+  the cited page over the margin (the page image with the gold box and the
+  vision line); a struck citation carries "Could not verify" instead. The
+  footnote number in the letter opens the expanded quote (the full title and
+  the quote) over the margin below the note. Overlays are absolute, so the
+  notes below and the letter never move.
 */
 function MarginNote({
-  n,
-  citations,
+  group,
   noteBase,
   open,
-  onToggle,
+  onClose,
+  onOpenPage,
 }: {
-  n: number;
-  citations: ChipCitation[];
+  group: NoteGroup;
   noteBase: string;
   open: boolean;
-  onToggle: () => void;
+  onClose: () => void;
+  onOpenPage: () => void;
 }) {
   const viewer = usePageViewer();
   const closeIf = viewer?.actions.closeIf;
+  const { n, citations, struck } = group;
   const first = citations[0];
   const title = first.title?.trim() || first.doc_id;
   const region = noteRegionId(noteBase, n);
@@ -349,57 +656,70 @@ function MarginNote({
   }, [closeIf, viewKey]);
   const pageOpen = viewer?.state.open?.key === viewKey;
   return (
-    <li className="relative mt-6 pl-8 first:mt-0" data-note={n} data-note-open={open ? "true" : "false"}>
-      <p className="text-[15px] leading-6 tabular-nums">
-        <span className="absolute left-0 font-semibold" data-note-number={n}>
+    <li className={`relative pl-8 ${open || pageOpen ? "z-30" : ""}`} data-note={n} data-note-open={open ? "quote" : pageOpen ? "page" : "false"} data-note-struck={struck ? "true" : undefined}>
+      <p className="text-[15px] leading-6 font-semibold tabular-nums" data-note-head="true">
+        <span className="absolute left-0" data-note-number={n}>
           {n}
           <span className="sr-only">. </span>
         </span>
-        <span className="font-semibold">{shortDocName(first)}</span>
-        <span aria-hidden="true" className="mx-1.5 text-muted">
-          ·
-        </span>
-        <span className="whitespace-nowrap">
-          <span aria-hidden="true">p.&nbsp;</span>
-          <span className="sr-only">page </span>
-          {first.page}
-        </span>
+        {shortDocName(first)}, {pageFolio(first)}
       </p>
-      <div id={region} data-note-region="true">
-        {open ? (
-          <p className="mt-0.5 text-[15px] leading-6 text-muted" data-note-title="true">
-            {title}, page {first.page}
+      {citations.map((c, k) => (
+        <blockquote key={k} className="mt-1 text-[16px] leading-[1.5] text-ink" data-note-quote="full">
+          {struck ? <s className="decoration-ink decoration-2">“{c.quote}”</s> : <>“{c.quote}”</>}
+        </blockquote>
+      ))}
+      {struck ? (
+        <p className="mt-2">
+          <CouldNotVerifyTag inline />
+        </p>
+      ) : (
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-[15px] leading-6 text-ink tabular-nums" data-note-found="true">
+          <svg viewBox="0 0 16 16" aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-stamp">
+            <path d="M3 8.5l3 3 7-7.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="square" />
+          </svg>
+          <span>Found on</span>
+          {viewer ? (
+            <button
+              type="button"
+              aria-expanded={pageOpen}
+              aria-controls={pageOpen ? viewerPanelId(viewKey) : undefined}
+              aria-label={`page ${first.page} of ${title}`}
+              onClick={(e) => {
+                onOpenPage();
+                viewer.actions.toggle(viewKey, first, { placement: "margin", returnTo: e.currentTarget });
+              }}
+              className={`${NOTE_LINK} -ml-1 ${pageOpen ? "bg-hairline" : ""}`}
+              data-note-page="true"
+            >
+              page {first.page}
+            </button>
+          ) : (
+            <span>page {first.page}</span>
+          )}
+        </p>
+      )}
+      {open ? (
+        <div
+          id={region}
+          role="group"
+          aria-label={`Citation ${n}`}
+          className="step-in absolute inset-x-0 top-full z-20 mt-2 border border-ink bg-bond px-4 pt-3 pb-4"
+          data-note-region="true"
+        >
+          {citations.map((c, k) => (
+            <blockquote key={k} className={`${k > 0 ? "mt-3" : ""} border-l-4 border-federal pl-4 text-[17px] leading-relaxed text-ink`}>
+              “{c.quote}”
+            </blockquote>
+          ))}
+          <p className="mt-3 text-[15px] leading-snug text-muted" data-note-title="true">
+            {title}, {pageFolio(first)}.{struck ? "" : " This quote was found on the cited page."}
           </p>
-        ) : null}
-        {citations.map((c, k) => (
-          <blockquote
-            key={k}
-            className={`mt-1 text-[15px] leading-[1.55] text-ink ${open ? "" : "line-clamp-2"}`}
-            data-note-quote={open ? "full" : "clipped"}
-          >
-            “{c.quote}”
-          </blockquote>
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-x-5">
-        {viewer ? (
-          <button
-            type="button"
-            aria-expanded={pageOpen}
-            aria-controls={pageOpen ? viewerPanelId(viewKey) : undefined}
-            aria-label={`page ${first.page} of ${title}`}
-            onClick={(e) => viewer.actions.toggle(viewKey, first, { placement: "margin", returnTo: e.currentTarget })}
-            className={`${NOTE_LINK} tabular-nums ${pageOpen ? "bg-hairline" : ""}`}
-            data-note-page="true"
-          >
-            page {first.page}
+          <button type="button" onClick={onClose} className="mt-2 inline-flex min-h-11 items-center rounded-sm border border-ink bg-bond px-3 text-[16px] font-semibold text-ink">
+            Close
           </button>
-        ) : null}
-        <button type="button" aria-expanded={open} aria-controls={region} onClick={onToggle} className={NOTE_LINK} data-note-more="true">
-          {open ? "less" : "more"}
-          <span className="sr-only">, citation {n}</span>
-        </button>
-      </div>
+        </div>
+      ) : null}
       <MarginPageViewer viewerKey={viewKey} />
     </li>
   );
@@ -432,6 +752,8 @@ export function LetterFrame({
       className="border border-hairline bg-bond px-4 py-5 shadow-[0_1px_0_var(--hairline)] sm:px-7 sm:py-7"
       data-letter={kind === "final" ? "true" : undefined}
       data-draft={kind === "draft" ? "true" : undefined}
+      /* Printing from a narrow window (or the browser's print layout, narrower than 1,024 px) prints this letter alone too. */
+      data-print-sheet={kind === "final" ? "true" : undefined}
     >
       <dl className="space-y-1 border-b border-hairline pb-4 text-[17px] leading-snug">
         <div className="flex gap-2">
@@ -482,7 +804,12 @@ function LetterParagraph({ sentences, index }: { sentences: LetterSentence[]; in
               {chip ? (
                 <>
                   {" "}
-                  <InlineChip citation={chip} open={open.has(i)} controls={`${base}-q${i}`} onToggle={() => toggle(i)} />
+                  <span className="print:hidden">
+                    <InlineChip citation={chip} open={open.has(i)} controls={`${base}-q${i}`} onToggle={() => toggle(i)} />
+                  </span>
+                  <span className="hidden print:inline">
+                    [cite: {citationLabel(chip)}, p. {chip.page}]
+                  </span>
                 </>
               ) : null}
             </span>
@@ -490,7 +817,11 @@ function LetterParagraph({ sentences, index }: { sentences: LetterSentence[]; in
         })}
       </p>
       {sentences.map((s, i) =>
-        open.has(i) && s.citation && !sentenceStruck(s) ? <QuoteFigure key={i} id={`${base}-q${i}`} citation={s.citation} /> : null,
+        open.has(i) && s.citation && !sentenceStruck(s) ? (
+          <div key={i} className="print:hidden">
+            <QuoteFigure id={`${base}-q${i}`} citation={s.citation} />
+          </div>
+        ) : null,
       )}
     </div>
   );

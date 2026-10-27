@@ -174,3 +174,57 @@ body {
     transform: none;
   }
 }
+
+/*
+  Print: printing the finished case prints the appeal letter alone, as the
+  letter it is. Every element that neither holds the sheet nor sits inside
+  it is dropped; the sheet's ancestors lose their layout (frame widths,
+  padding, the desk); the screen pagination (spacers, page backgrounds, the
+  margin notes, Copy and Download) is off, and the browser paginates on
+  US Letter with the folio in the page margin (the @page rule).
+*/
+@page {
+  size: letter;
+  margin: 0.9in 1in;
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font-size: 9pt;
+    color: #565c65;
+  }
+}
+
+@media print {
+  body:has([data-print-sheet]) {
+    background: #fff;
+  }
+  body:has([data-print-sheet]) :not(:has([data-print-sheet]), [data-print-sheet], [data-print-sheet] *) {
+    display: none !important;
+  }
+  body:has([data-print-sheet]) :has([data-print-sheet]) {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: none !important;
+  }
+  [data-print-sheet] {
+    width: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+  [data-print-sheet] [data-print-hide] {
+    display: none !important;
+  }
+  [data-print-sheet] [data-page-spacer] {
+    height: 0 !important;
+  }
+  [data-print-sheet] [data-block] {
+    break-inside: avoid;
+  }
+}

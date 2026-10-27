@@ -4,21 +4,17 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   ERROR_COPY,
-  INTAKE_MODE,
+  critiqueError,
   critiqueFailed,
-  dayCountLabel,
-  daysUntil,
-  formatShortDate,
   IntakeError,
   investigate,
   isAbort,
+  isFixtureCase,
   pollCase,
   type CaseRecord,
-  type Letter,
 } from "@/lib/case";
 import { Band } from "@/components/intake/Band";
 import { CaseHeader } from "./CaseHeader";
-import { SECTION_COUNTER } from "./SectionTitle";
 import { FindingsList } from "./FindingsList";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { RouteLine } from "./RouteLine";
@@ -57,15 +53,6 @@ const SECONDARY =
   "inline-flex min-h-12 w-full items-center justify-center rounded-sm border border-ink bg-bond px-5 text-[18px] font-semibold text-ink sm:w-auto";
 const PRIMARY =
   "inline-flex min-h-12 w-full items-center justify-center rounded-sm bg-federal px-5 text-[18px] font-semibold text-white sm:w-auto";
-
-/* The deadline for the outcome block's counts line: the date and the day count, or "Deadline not stated". */
-function deadlineLine(letter: Letter, today: Date): string {
-  const d = letter.deadline;
-  if (d.source === "unknown" || typeof d.date !== "string" || d.date === "") return "Deadline not stated";
-  const days = typeof d.days_left === "number" ? d.days_left : daysUntil(d.date, today);
-  const by = `Appeal by ${formatShortDate(d.date)}`;
-  return days === null ? by : `${by}, ${dayCountLabel(days).toLowerCase()}`;
-}
 
 /*
   The case's home. Loads the case by id, polls GET /case/{id} every 1.5 s
@@ -108,7 +95,8 @@ export function InvestigationView({ caseId }: { caseId: string }) {
     }
   };
 
-  const sample = INTAKE_MODE === "fixture";
+  /* The band marks a fixture case, also when one renders on the live dev server. */
+  const sample = isFixtureCase(caseId);
   const record = view.kind === "ready" ? view.record : null;
   const dual = record?.route?.dual === true;
   const investigation = record?.investigation ?? null;
@@ -159,11 +147,14 @@ export function InvestigationView({ caseId }: { caseId: string }) {
     The finished case with a letter (drafted, reviewing, reviewed) reads as the
     Annotated Letter at 1024px and up: the desk (--desk, a step darker than
     paper), a 1,120 px frame (1,088 px of content: the 620 px sheet, the 48 px
-    gutter, the 420 px margin), the header as a line of facts, then six
-    numbered sections, each opened by a 4 px ink rule across the frame:
-    1 Verdict, 2 Appeal letter (the sheet with footnoted margin notes),
-    3 What to send and where to file, 4 Investigation record, 5 Self-check,
-    6 Receipt. annotated switches classes only, so no element remounts when
+    gutter, the 420 px margin), the header as the notice register floated at
+    the top right with the page's one postmark, then numbered sections:
+    1 Verdict (headline, counts, the exhibit pair), 2 Appeal letter (US Letter
+    pages with sidenotes), 3 What to send and where to file, each opened by a
+    4 px ink rule; then 4 Investigation record, 5 Self-check, 6 Receipt in the
+    appendix register (a 1 px rule, 20 px titles). The numbers are passed as
+    props, so an absent self-check leaves no gap. annotated switches classes
+    only, so no element remounts when
     the letter lands; desk (the same at desktop width, from the script) adds
     section 3 under the sheet and moves the self-check after the record, where
     DOM order must change with the visual order. Under 1024px the page is the
@@ -171,6 +162,12 @@ export function InvestigationView({ caseId }: { caseId: string }) {
   */
   const annotated = letterDone && letter.applicable;
   const desk = annotated && desktop;
+  /* The self-check opens a numbered section only when it ran (or failed); skipped or still running, it does not. */
+  const selfCheckSection =
+    letterDone && critique !== null && (selfCheckFailed || critiqueError(critique) !== null || (critique.status === "done" && !critique.skipped));
+  const numbers = annotated
+    ? { verdict: 1, letter: 2, send: 3, record: 4, selfCheck: selfCheckSection ? 5 : null, receipt: selfCheckSection ? 6 : 5 }
+    : null;
   /* The band and the page share one width, so the wordmark and the content share an edge. */
   const width = annotated
     ? "max-w-[640px] lg:max-w-[1152px] lg:px-8"
@@ -188,7 +185,8 @@ export function InvestigationView({ caseId }: { caseId: string }) {
             proof={proof}
             first={outcomeFirst}
             annotated={annotated}
-            deadlineLine={letterDone ? deadlineLine(letter, today) : null}
+            n={numbers?.verdict ?? null}
+            card={record.card}
           />
         ) : null}
         {letterDone ? (
@@ -201,6 +199,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
             critiqueFailure={selfCheckFailed ? critique?.error?.trim() || "The service reported an error and gave no reason." : null}
             annotated={annotated}
             desk={desk}
+            n={numbers ? { letter: numbers.letter, send: numbers.send } : null}
           />
         ) : null}
       </div>
@@ -210,6 +209,12 @@ export function InvestigationView({ caseId }: { caseId: string }) {
     <PageViewerProvider>
       <div className={`flex min-h-full flex-col ${annotated ? "lg:bg-desk" : ""}`} data-layout={annotated ? "annotated" : "column"}>
         <Band sample={sample} widthClass={width}>
+          {annotated && record ? (
+            <span className="hidden font-mono text-[15px] lg:inline" data-band-case={record.case_id}>
+              <span className="sr-only">Case </span>
+              {record.case_id}
+            </span>
+          ) : null}
           <Link href="/case/new" className="min-h-11 rounded-sm px-2 py-2 text-[15px] font-semibold underline underline-offset-4 focus-visible:outline-white">
             New case
           </Link>
@@ -261,8 +266,21 @@ export function InvestigationView({ caseId }: { caseId: string }) {
             ) : null}
 
             {record ? (
-              <div data-view={record.status} className={annotated ? SECTION_COUNTER : undefined}>
-                <CaseHeader record={record} today={today} strip={annotated} />
+              <div data-view={record.status}>
+                <CaseHeader
+                  record={record}
+                  today={today}
+                  register={annotated}
+                  titled={!verdictDone}
+                  deadline={
+                    annotated && letter
+                      ? {
+                          iso: letter.deadline.source !== "unknown" && typeof letter.deadline.date === "string" && letter.deadline.date !== "" ? letter.deadline.date : null,
+                          daysLeft: letter.deadline.days_left,
+                        }
+                      : null
+                  }
+                />
 
                 {record.status === "intake" ? (
                   <section className="mt-6 border-t border-hairline pt-4" aria-live="polite">
@@ -286,7 +304,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                       works itself; outcome first once the verdict is reached.
                     */}
                     <div
-                      className={`mt-4 border-t border-hairline pt-4 ${annotated ? "lg:mt-8 lg:border-t-0 lg:pt-0" : ""}`}
+                      className={`mt-4 border-t border-hairline pt-4 ${annotated ? "lg:mt-0 lg:border-t-0 lg:pt-0" : ""}`}
                       data-order={outcomeFirst ? "outcome-first" : "chronological"}
                     >
                       {outcomeFirst ? null : <RouteLine route={record.route} lead />}
@@ -303,6 +321,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                       appendix={outcomeFirst}
                       lead={outcomeFirst ? <RouteLine route={record.route} lead /> : null}
                       annotated={annotated}
+                      n={numbers?.record ?? null}
                     />
 
                     {/* At desktop the self-check follows the record (on the phone it sits under the letter, inside Action). */}
@@ -312,6 +331,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                         letter={letter}
                         failedReason={selfCheckFailed ? critique?.error?.trim() || "The service reported an error and gave no reason." : null}
                         annotated
+                        n={numbers?.selfCheck ?? null}
                       />
                     ) : null}
 
@@ -342,6 +362,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                           letter={letterDone ? letter : null}
                           critique={letterDone ? critique : null}
                           annotated={annotated}
+                          n={numbers?.receipt ?? null}
                         />
                       </div>
                     ) : null}

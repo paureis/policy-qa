@@ -1,7 +1,6 @@
 "use client";
 
-import type { Critique, Letter, Verdict } from "@/lib/case";
-import { DeadlineStamp } from "@/components/intake/DeadlineStamp";
+import { dayCountLabel, daysUntil, formatShortDate, type Critique, type Letter, type Verdict } from "@/lib/case";
 import { OPENING, OPENING_H2, SectionTitle } from "@/components/investigation/SectionTitle";
 import { AppealLetter } from "./AppealLetter";
 import { DeadlineFiling } from "./DeadlineFiling";
@@ -10,6 +9,15 @@ import { SelfCheck } from "./SelfCheck";
 
 /* The anchor the status line "Appeal letter ready." links to. */
 export const APPEAL_LETTER_ID = "appeal-letter";
+
+/* The deadline beside the sheet head: the date and the day count, or "Deadline not stated". */
+function deadlineLine(letter: Letter, today: Date): string {
+  const d = letter.deadline;
+  if (d.source === "unknown" || typeof d.date !== "string" || d.date === "") return "Deadline not stated";
+  const days = typeof d.days_left === "number" ? d.days_left : daysUntil(d.date, today);
+  const by = `Appeal by ${formatShortDate(d.date)}`;
+  return days === null ? by : `${by}, ${dayCountLabel(days).toLowerCase()}`;
+}
 
 /*
   Action. With an applicable letter: the letter, copy and download, the
@@ -21,10 +29,11 @@ export const APPEAL_LETTER_ID = "appeal-letter";
   annotated: the finished case with a letter; its classes take the desktop
   layout at 1024px and up (CSS only, so nothing remounts): the letter is
   section 2 of the page, with its numbered opening. desk: the same at desktop
-  width as the script sees it; the letter becomes the Annotated Letter, the
-  checklist and the filing path become section 3 ("What to send and where to
-  file") under the sheet, and the self-check is left to the page, which places
-  it after the investigation record.
+  width as the script sees it; the letter becomes the Annotated Letter (US
+  Letter pages, sidenotes, Copy, Download and the deadline in the margin
+  beside the sheet head), the checklist and the filing path become section 3
+  ("What to send and where to file") under the sheet, and the self-check is
+  left to the page, which places it after the investigation record.
 */
 export function ActionSection({
   letter,
@@ -35,6 +44,7 @@ export function ActionSection({
   critiqueFailure = null,
   annotated = false,
   desk = false,
+  n = null,
 }: {
   letter: Letter;
   verdict: Verdict | null;
@@ -44,11 +54,11 @@ export function ActionSection({
   critiqueFailure?: string | null;
   annotated?: boolean;
   desk?: boolean;
+  /* The numbers of the letter section and of "What to send and where to file" at desktop. */
+  n?: { letter: number; send: number } | null;
 }) {
   const settledAgainst = verdict?.outcome === "consistent";
   const sheet = desk && letter.applicable;
-  const { deadline } = letter;
-  const deadlineIso = deadline.source !== "unknown" && typeof deadline.date === "string" && deadline.date !== "" ? deadline.date : null;
   return (
     <>
       <section
@@ -60,7 +70,7 @@ export function ActionSection({
         {letter.applicable ? (
           <>
             <h2 id="action-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? OPENING_H2 : ""}`}>
-              <SectionTitle title="Your appeal letter" short="Appeal letter" numbered={annotated} />
+              <SectionTitle title="Your appeal letter" short="Appeal letter" n={annotated ? (n?.letter ?? null) : null} />
             </h2>
             <p className={`mt-2 text-[16px] text-muted ${annotated ? "lg:mt-3" : ""}`}>
               {sheet
@@ -71,7 +81,8 @@ export function ActionSection({
               letter={letter}
               caseId={caseId}
               desk={sheet}
-              stamp={sheet ? <DeadlineStamp deadlineIso={deadlineIso} daysLeft={deadline.days_left} today={today} landed className="w-[128px]" /> : null}
+              today={sheet ? today : null}
+              deadlineLine={sheet ? deadlineLine(letter, today) : null}
             />
           </>
         ) : (
@@ -98,7 +109,7 @@ export function ActionSection({
         */
         <section aria-labelledby="send-heading" className={`land mt-10 border-t-4 border-ink pt-4 ${OPENING}`} data-send="true">
           <h2 id="send-heading" className={`mt-1 text-[22px] leading-tight font-bold ${OPENING_H2}`}>
-            <SectionTitle title="What to send and where to file" short="What to send and where to file" numbered />
+            <SectionTitle title="What to send and where to file" short="What to send and where to file" n={n?.send ?? null} />
           </h2>
           <div className="mt-8 grid desk-cols items-start">
             <EvidenceChecklist items={letter.evidence_checklist ?? []} register />

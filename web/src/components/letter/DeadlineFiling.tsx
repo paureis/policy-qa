@@ -39,7 +39,7 @@ export function DeadlineFiling({ letter, today, register = false }: { letter: Le
       </Heading>
 
       <div className="mt-4" data-deadline-date={known ? deadline.date : "unknown"}>
-        <p className="text-[24px] leading-tight font-bold tabular-nums">
+        <p className={`leading-tight tabular-nums ${register ? "text-[20px] font-semibold" : "text-[24px] font-bold"}`}>
           {known ? `Appeal by ${formatLongDate(deadline.date as string)}` : "No deadline found"}
         </p>
         {days !== null ? <p className="mt-1 text-[18px] font-semibold tabular-nums">{dayCountLabel(days)}</p> : null}

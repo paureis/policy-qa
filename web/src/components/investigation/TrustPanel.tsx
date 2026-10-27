@@ -14,7 +14,7 @@ import {
   type Letter,
   type Verdict,
 } from "@/lib/case";
-import { OPENING, OPENING_H2, SectionTitle } from "./SectionTitle";
+import { APPENDIX, APPENDIX_H2, SectionTitle } from "./SectionTitle";
 
 /* The two verification counts as lines, for the receipt and for the verdict. Counts, never a percentage. */
 export function verificationLines(investigation: Investigation, letter: Letter | null): string[] {
@@ -39,6 +39,7 @@ export function TrustPanel({
   letter = null,
   critique = null,
   annotated = false,
+  n = null,
 }: {
   investigation: Investigation;
   verdict?: Verdict | null;
@@ -46,6 +47,8 @@ export function TrustPanel({
   critique?: Critique | null;
   /* The finished case with a letter: at 1024px and up the receipt is a bond slip on the paper desk, the sheet's width. */
   annotated?: boolean;
+  /* The section's number at desktop on the finished case. */
+  n?: number | null;
 }) {
   const [traceOpen, setTraceOpen] = useState(false);
   const traceId = useId();
@@ -81,12 +84,12 @@ export function TrustPanel({
   return (
     <section
       aria-labelledby="trust-heading"
-      className={`land mt-10 border-t-4 border-ink bg-paper px-4 pt-4 pb-5 sm:px-6 ${annotated ? `${OPENING} lg:bg-transparent lg:px-0 lg:pb-0` : ""}`}
+      className={`land mt-10 border-t-4 border-ink bg-paper px-4 pt-4 pb-5 sm:px-6 ${annotated ? `${APPENDIX} lg:bg-transparent lg:px-0 lg:pb-0` : ""}`}
       data-trust="true"
     >
       <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Trust</p>
-      <h2 id="trust-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? OPENING_H2 : ""}`}>
-        <SectionTitle title={split ? "How this case was checked" : "How this investigation was checked"} short="Receipt" numbered={annotated} />
+      <h2 id="trust-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? APPENDIX_H2 : ""}`}>
+        <SectionTitle title={split ? "How this case was checked" : "How this investigation was checked"} short="Receipt" n={annotated ? n : null} />
       </h2>
 
       {/*
@@ -100,7 +103,7 @@ export function TrustPanel({
         data-receipt-slip="true"
       >
       <div className={`mt-5 border-t border-hairline pt-4 ${annotated ? "lg:mt-0 lg:border-t-0 lg:pt-0" : ""}`} data-coverage="true">
-        <p className={`text-[28px] leading-tight font-bold tabular-nums ${annotated ? "lg:text-[24px]" : ""}`}>
+        <p className={`text-[28px] leading-tight font-bold tabular-nums ${annotated ? "lg:text-[20px] lg:font-semibold" : ""}`}>
           {coverage.supported} of {coverage.claims} findings verified
         </p>
         {notes.length > 0 ? <p className="mt-1 text-[15px] text-muted">{notes.join(" ")}</p> : null}
@@ -113,7 +116,7 @@ export function TrustPanel({
 
       {showLetter ? (
         <div className="mt-4 border-t border-hairline pt-4">
-          <p className={`text-[28px] leading-tight font-bold tabular-nums ${annotated ? "lg:text-[24px]" : ""}`} data-letter-verification="true">
+          <p className={`text-[28px] leading-tight font-bold tabular-nums ${annotated ? "lg:text-[20px] lg:font-semibold" : ""}`} data-letter-verification="true">
             {letterVerificationLine(letter.verification)}
           </p>
           <p className="mt-1 text-[15px] text-muted">Struck sentences are shown crossed out in the letter and left out of the copy.</p>
@@ -122,7 +125,7 @@ export function TrustPanel({
 
       {selfCheck ? (
         <p className="mt-4 border-t border-hairline pt-4 text-[17px] leading-snug tabular-nums" data-selfcheck-trust="true">
-          <span className="font-bold">Self-check: </span>
+          <span className={`font-bold ${annotated ? "lg:font-semibold" : ""}`}>Self-check: </span>
           {selfCheck.lead}
           {selfCheck.detail ? `; ${selfCheck.detail}` : ""}
         </p>
@@ -156,11 +159,11 @@ export function TrustPanel({
         </tbody>
         <tfoot>
           <tr className="border-b border-ink">
-            <th scope="row" className="py-2 pr-3 font-bold">
+            <th scope="row" className={`py-2 pr-3 font-bold ${annotated ? "lg:font-semibold" : ""}`}>
               Total
             </th>
-            <td className="py-2 pr-3 text-right font-bold whitespace-nowrap">{formatSeconds(totalMs)}</td>
-            <td className="py-2 text-right font-bold" data-total-cost="true">
+            <td className={`py-2 pr-3 text-right font-bold whitespace-nowrap ${annotated ? "lg:font-semibold" : ""}`}>{formatSeconds(totalMs)}</td>
+            <td className={`py-2 text-right font-bold ${annotated ? "lg:font-semibold" : ""}`} data-total-cost="true">
               {formatCost(totalCost, costModel)}
             </td>
           </tr>

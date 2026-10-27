@@ -1,7 +1,19 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import { printedPage } from "@/lib/printed-folios";
 import { InlinePageViewer, usePageViewer, viewerPanelId } from "./PageViewer";
+
+/*
+  A page reference that cannot be misread: "page 5" when the page prints its
+  own index or no folio, "PDF page 5 (printed page 3)" when the number printed
+  on the page differs (front matter before page 1), so the reader who opens
+  the PDF and the reader who holds the paper find the same page.
+*/
+export function pageFolio(c: { doc_id: string; page: number }): string {
+  const printed = printedPage(c.doc_id, c.page);
+  return printed === null ? `page ${c.page}` : `PDF page ${c.page} (printed page ${printed})`;
+}
 
 /* What a chip needs: a finding's Citation and the verdict's CitationRef both fit. */
 export interface ChipCitation {

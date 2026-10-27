@@ -12,6 +12,8 @@ export function DeadlineStamp({
   className = "",
   daysLeft,
   bottomText,
+  countClass = "text-[13px]",
+  dateWeight = "font-bold",
 }: {
   deadlineIso: string | null;
   today: Date;
@@ -21,6 +23,10 @@ export function DeadlineStamp({
   daysLeft?: number | null;
   /* The lower arc; CASE OPENED everywhere (one stamp, one ring text), before and after it lands. */
   bottomText?: string;
+  /* The day count's size; the desktop register sets it at 14 px, the type scale's floor. */
+  countClass?: string;
+  /* The date's weight; the desktop register sets 600, since 700 is kept for the verdict and the h2s. */
+  dateWeight?: string;
 }) {
   const days = deadlineIso ? (typeof daysLeft === "number" ? daysLeft : daysUntil(deadlineIso, today)) : null;
   const missing = deadlineIso === null || days === null;
@@ -78,15 +84,15 @@ export function DeadlineStamp({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center px-5 text-center leading-tight">
         {missing ? (
-          <span className="text-[15px] font-bold uppercase tracking-wide">
+          <span className={`text-[15px] ${dateWeight} uppercase tracking-wide`}>
             No deadline
             <br />
             found
           </span>
         ) : (
           <>
-            <span className="text-[17px] font-bold uppercase tracking-wide">{dateText}</span>
-            <span className="mt-1 text-[13px] font-semibold">{countText}</span>
+            <span className={`text-[17px] ${dateWeight} uppercase tracking-wide`}>{dateText}</span>
+            <span className={`mt-1 ${countClass} font-semibold`}>{countText}</span>
           </>
         )}
       </div>

@@ -148,3 +148,68 @@ that animate up; no skeleton shimmer; no dark mode.
   and focus handling. Anything taken is rewritten into this world's tokens, type, and motion rules;
   no visual style, gradient, glass, glow, shadow, or fade is copied. Alvaro decided this on Oct 26.
 - Open, ask Alvaro: the exact landing copy (no new copy may be written without him).
+
+## 8. Round 3 decisions (Oct 27, 2026, after the round 2 evaluation and the Impeccable critique)
+
+Decided by Alvaro on Oct 27 by decision prompt. Round 2 (commit 2ed5dd5) stays as the base. The
+Impeccable critique of that round scored 24 of 40 and read the page as the softest rendition of the
+right world: the claim shown, the proof hidden (`.impeccable/critique/2026-10-27T15-32-03Z__web-src-app-case-id-page-tsx.md`).
+Round 3 raises the rendition within the committed world. Nothing below changes the world, the API,
+the data contract, or the phone layout.
+
+Three moves, in this order of priority, all in round 3:
+
+1. **The exhibit pair** (P0). Under the verdict headline and the counts line, in place of "The rule"
+   and "The gap" as two text columns: two facing exhibits on bond, about 520 px each, 1 px ink edge,
+   no shadow. Left, overline "The letter says": the payer's stated reason verbatim at 22 px with the
+   source line under it in 14 px muted (payer name, "letter dated <date>"). Right, overline "The
+   policy says": a crop of the real page image showing only the highlighted lines, drawn large enough
+   to read (about 1.5x the viewer's scale), with the existing gold box; under it the folio ("Rule
+   59G-4.261, PDF page 5 (printed page 3)") and the vision-check sentence as a 15 px caption, labeled
+   as the Muse Spark vision check. The rule and the gap paragraphs stay, set under the exhibits in
+   one column at 17 px. The exhibit pair must sit inside the first viewport at 1280 x 800 together
+   with the headline and the counts; the letter still begins in the second viewport. When the page
+   image is not located or unavailable, the right exhibit shows the quote as text on bond with the
+   same folio and the viewer's existing state copy.
+2. **The letter as a real document** (P1). The sheet keeps US Letter proportion (620 wide, pages of
+   802, a folio "Page 1 of n" at each page foot) and gets a date line. The placeholders ([Your name],
+   [Relationship to member], member ID, signature, date) become gold-wash fields labeled "Fill in",
+   using the existing gold token; gold is reserved for fields to check and this is that. A print
+   stylesheet scoped to the sheet, so printing the page prints the letter alone. Copy the letter,
+   Download as text, and the deadline line move into the margin beside the sheet head (today they sit
+   below the last paragraph). Each margin note carries its verification state as words: "Found on
+   page 5" with a small stamp-blue tick; a struck sentence's note carries "Could not verify" as today.
+3. **The notice register at the top** (P1). The four-line case header becomes a ruled reference
+   box at the top right of the outcome block, tabular, label and value: Member, Plan, Letter dated,
+   Service and code, Amount, Case (mono). The one postmark moves into the first viewport, overlapping
+   that box's corner, and becomes the only carrier of the day count up there; the deadline no longer
+   repeats four times (once in the postmark, once in the filing panel with its citation, once in the
+   letter). The band carries the case number at the right in mono. "Show the full case card" stays
+   as the disclosure.
+
+Also decided, same day:
+
+- Open note: **overlay**. The expanded quote and the page image open over the margin column below
+  the note (absolute, within the margin), never growing the row; the letter never moves. One thing
+  open at a time across quotes and pages; Escape closes it and returns focus.
+- Margin mechanics: **sidenote floats** replace the one-grid-row-per-paragraph rule in section 6.
+  Each note floats in the margin, clears the one above, and stacks downward past its paragraph when
+  the notes are taller than the paragraph; a paragraph never stretches and no blank sheet opens.
+- The margin note shows the **full quote** (no two-line clamp, no "more" or "less").
+- The investigation record is **compact** as section 3 item 6 says: question and the answer's first
+  sentence, expand a finding for the full answer and its citations; two columns only when there are
+  struck citations; the record, the self-check, and the receipt take an appendix register (hairline
+  rule, 20 px titles) under the numbered openings.
+- Section 3 "What to send and where to file" stays its own section; the gray desk token stays.
+- Copy approved by Alvaro: the section titles of round 2; "page N" as the page link; "The letter
+  says" and "The policy says"; "Found on page N"; "PDF page N (printed page M)" where the printed
+  folio differs; "Fill in". "more" and "less" go away with the full quote.
+- The six contract failures from the round 2 evaluation are fixed in the same pass: heading names
+  carry their number for screen readers ("1. Verdict"); one note open at a time across quotes and
+  pages; Escape collapses an expanded note; the footnote hit area does not overlap the letter text;
+  72 px sheet margins from 1024; footnote numbers at 14 px and the receipt lines inside the type
+  scale (no 24 px, 700 only on the verdict and h2). The verdict headline is a heading (h1 names the
+  outcome, the payer's name is not the h1).
+- A demo case with one struck sentence, so the verifier is seen acting: the fixture that has a struck
+  sentence must render the strike at desktop; the live cases of Oct 26 had 61 of 61 verified, so a
+  live struck case is not forced.

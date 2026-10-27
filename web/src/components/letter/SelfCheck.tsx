@@ -18,7 +18,7 @@ import {
 } from "@/lib/case";
 import { QuoteFigure } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
-import { OPENING, OPENING_H2, SectionTitle } from "@/components/investigation/SectionTitle";
+import { APPENDIX, APPENDIX_H2, SectionTitle } from "@/components/investigation/SectionTitle";
 import { InlineChip, LetterFrame } from "./AppealLetter";
 
 /*
@@ -34,12 +34,15 @@ export function SelfCheck({
   letter,
   failedReason,
   annotated = false,
+  n = null,
 }: {
   critique: Critique | null;
   letter: Letter;
   failedReason: string | null;
   /* The finished case with a letter at desktop: after the investigation record, at the sheet's width. */
   annotated?: boolean;
+  /* The section's number at desktop on the finished case. */
+  n?: number | null;
 }) {
   const error = failedReason ?? critiqueError(critique);
   if (critique?.skipped && !error) {
@@ -52,7 +55,7 @@ export function SelfCheck({
   if (!letter.applicable) return null;
   if (error) {
     return (
-      <Shell state="error" annotated={annotated}>
+      <Shell state="error" annotated={annotated} n={n}>
         <p className="mt-3 text-[18px] leading-relaxed lg:text-[17px]">The self-check could not run: {asClause(error)}.</p>
         <p className="mt-2 text-[16px] text-muted">The letter above is the first draft, checked sentence by sentence against its citations.</p>
       </Shell>
@@ -74,7 +77,7 @@ export function SelfCheck({
   const h3 = annotated ? "lg:text-[20px] lg:font-semibold" : "";
 
   return (
-    <Shell state={kept ? "accepted" : "rejected"} annotated={annotated}>
+    <Shell state={kept ? "accepted" : "rejected"} annotated={annotated} n={n}>
       <p className={`mt-2 text-[16px] text-muted ${annotated ? "lg:mt-3" : ""}`}>
         {kept
           ? "A second pass read the draft for problems and revised it. The letter above is the revised one."
@@ -122,21 +125,23 @@ export function SelfCheck({
 function Shell({
   state,
   annotated,
+  n,
   children,
 }: {
   state: "accepted" | "rejected" | "error";
   annotated: boolean;
+  n: number | null;
   children: React.ReactNode;
 }) {
   return (
     <section
       aria-labelledby="selfcheck-heading"
-      className={`land mt-10 border-t-4 border-ink pt-4 ${annotated ? `${OPENING} lg:*:max-w-[620px]` : ""}`}
+      className={`land mt-10 border-t-4 border-ink pt-4 ${annotated ? `${APPENDIX} lg:*:max-w-[620px]` : ""}`}
       data-selfcheck={state}
     >
       <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Self-check</p>
-      <h2 id="selfcheck-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? OPENING_H2 : ""}`}>
-        <SectionTitle title="How the letter checked itself" short="Self-check" numbered={annotated} />
+      <h2 id="selfcheck-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? APPENDIX_H2 : ""}`}>
+        <SectionTitle title="How the letter checked itself" short="Self-check" n={annotated ? n : null} />
       </h2>
       {children}
     </section>
@@ -148,7 +153,7 @@ function IssueRow({ issue, round }: { issue: CritiqueIssue; round: CritiqueRound
   return (
     <li className="py-3" data-issue={issue.kind} data-fixed={fixed ? "true" : "false"}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-[18px] leading-snug font-bold lg:text-[17px]">{issueKindLabel(issue.kind)}</p>
+        <p className="text-[18px] leading-snug font-bold lg:text-[17px] lg:font-semibold">{issueKindLabel(issue.kind)}</p>
         {/* Plain words, no box or fill: the filled ink tag belongs to "Could not verify" only. */}
         <p className="text-[16px] leading-6 font-semibold text-ink">{fixed ? "Fixed" : "Not fixed"}</p>
       </div>
