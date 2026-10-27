@@ -126,6 +126,16 @@ def main(argv=None):
     ea.add_argument("--name", default=None)
     ea.add_argument("--traces", type=Path, default=ROOT / "data/traces.jsonl", help="JSONL trace log; pass an empty string to disable")
 
+    jd = sub.add_parser("judge-answers", help="grade a saved answers file (from eval-answers --judge none) with the Claude or mock judge")
+    jd.add_argument("answers", type=Path, help="results/answers-<name>.json")
+    jd.add_argument("--judge", choices=["claude", "mock"], default="claude")
+    jd.add_argument("--judge-model", default=None)
+    jd.add_argument("--golden", type=Path, default=ROOT / "golden/golden.csv")
+    jd.add_argument("--chunks", type=Path, default=ROOT / "data/chunks.jsonl")
+    jd.add_argument("--out", type=Path, default=None, help="default: <answers stem>-judged.json beside the input")
+    jd.add_argument("--ids", default=None, help="comma list of row ids to judge")
+    jd.add_argument("--rejudge", action="store_true", help="grade rows that already carry a verdict")
+
     xr = sub.add_parser("export-review")
     xr.add_argument("answers", type=Path, help="results/answers-<name>.json")
     xr.add_argument("--run", required=True, help="run label shown on the page, e.g. llama70b-oct28")
@@ -261,6 +271,22 @@ def main(argv=None):
             write_results(res, summary, ROOT / "results" / f"answers-{name}.json", config)
             print(json.dumps(summary, indent=2))
             print(f"wrote results/answers-{name}.json")
+    elif args.cmd == "judge-answers":
+        from .judge import JUDGE_MODEL, Judge, MockJudge
+        from .judge_answers import judge_file
+
+        judge = MockJudge() if args.judge == "mock" else Judge(args.judge_model or JUDGE_MODEL)
+        out = args.out or args.answers.with_name(args.answers.stem + "-judged.json")
+        ids = {x.strip() for x in args.ids.split(",") if x.strip()} if args.ids else None
+        done = []
+
+        def progress(row):
+            done.append(row)
+            if len(done) % 10 == 0:
+                print(f"  {len(done)} rows judged", flush=True)
+
+        rep = judge_file(args.answers, args.golden, args.chunks, judge, out, only_ids=ids, rejudge=args.rejudge, on_row=progress)
+        print(json.dumps(rep, indent=2))
     elif args.cmd == "export-review":
         from .review_sync import export
 
