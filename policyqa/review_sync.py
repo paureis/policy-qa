@@ -21,7 +21,7 @@ ACC = ["correct", "partially_correct", "incorrect"]
 
 
 def export(answers_path: Path, golden_path: Path, out_dir: Path, run: str, judge_subset_only: bool = True) -> int:
-    data = json.loads(answers_path.read_text())
+    data = json.loads(answers_path.read_text(encoding="utf-8"))
     gold = {r["id"]: r for r in csv.DictReader(open(golden_path, encoding="utf-8"))}
     out_dir.mkdir(parents=True, exist_ok=True)
     n = 0
@@ -47,7 +47,7 @@ def export(answers_path: Path, golden_path: Path, out_dir: Path, run: str, judge
             "judge": {k: rec["verdict"][k] for k in ("accuracy", "faithfulness", "rationale")} if rec.get("verdict") else None,
             "model": a.get("model"),
         }
-        (out_dir / f"{run}--{rec['id']}.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1))
+        (out_dir / f"{run}--{rec["id"]}.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1), encoding="utf-8")
         n += 1
     return n
 
@@ -72,7 +72,7 @@ def _kappa(pairs: list[tuple[str, str]], labels: list[str]) -> float | None:
 
 
 def agreement(docs_dir: Path, run: str) -> dict:
-    docs = [json.loads(p.read_text()) for p in sorted(docs_dir.glob("*.json"))]
+    docs = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(docs_dir.glob("*.json"))]
     docs = [d for d in docs if d.get("run") == run]
     graded = [d for d in docs if d.get("human_accuracy") and d.get("judge")]
     pairs = [(d["human_accuracy"], _judge_acc(d)) for d in graded]
