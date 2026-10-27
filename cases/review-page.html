@@ -1,0 +1,443 @@
+<title>Case Review</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: one case at a time. Check-first strip on top, then the letter beside the policy page
+   (stacked on phones), verdict bar fixed at the bottom. Letter = sans (a notice), policy = serif (rule text). */
+:root{
+  --bg:#EDF0F3; --surface:#FFFFFF; --surface-2:#E3E8EE; --fg:#16202B; --fg-2:#3F4B58; --fg-3:#566270; --line:#CDD5DE; --field:#717D8A;
+  --accent:#1F4E8C; --accent-fg:#FFFFFF; --accent-soft:#DCE6F4;
+  --keep:#1E6B3A; --keep-soft:#DAEFE1; --edit:#7D4A00; --edit-soft:#F8EAD0; --reject:#9E241C; --reject-soft:#F8DEDB;
+  --mark-bg:#FFE47A; --mark-fg:#16202B;
+  --sans:"Public Sans","Segoe UI",Roboto,Arial,sans-serif; --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace;
+  --radius:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F151C; --surface:#17202A; --surface-2:#222D39; --fg:#E6ECF2; --fg-2:#B4BFCB; --fg-3:#95A1AE; --line:#2F3B48; --field:#6E7A87;
+  --accent:#8DB8F2; --accent-fg:#0C1A2C; --accent-soft:#1C2E45;
+  --keep:#74D39A; --keep-soft:#153424; --edit:#F0BA62; --edit-soft:#3A2A10; --reject:#F4928A; --reject-soft:#45201C;
+  --mark-bg:#6B5600; --mark-fg:#FFF6CF; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0F151C; --surface:#17202A; --surface-2:#222D39; --fg:#E6ECF2; --fg-2:#B4BFCB; --fg-3:#95A1AE; --line:#2F3B48; --field:#6E7A87;
+  --accent:#8DB8F2; --accent-fg:#0C1A2C; --accent-soft:#1C2E45;
+  --keep:#74D39A; --keep-soft:#153424; --edit:#F0BA62; --edit-soft:#3A2A10; --reject:#F4928A; --reject-soft:#45201C;
+  --mark-bg:#6B5600; --mark-fg:#FFF6CF; color-scheme:dark }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 160px}
+h1{font-size:24px;font-weight:700;margin:0;letter-spacing:-.01em}
+h2{font-size:20px;font-weight:700;margin:0 0 10px;text-wrap:balance}
+.top{display:flex;justify-content:space-between;align-items:end;gap:10px 16px;flex-wrap:wrap;margin-bottom:10px}
+.counter{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.counts{display:flex;gap:4px 12px;flex-wrap:wrap;font-size:14px;color:var(--fg-2);font-variant-numeric:tabular-nums}
+.counts .k{color:var(--keep)} .counts .e{color:var(--edit)} .counts .r{color:var(--reject)}
+.keys{font-size:13px;color:var(--fg-3)}
+kbd{font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--fg-2)}
+.bar{height:8px;background:var(--surface-2);border-radius:999px;overflow:hidden;margin-bottom:14px;display:flex}
+.bar i{display:block;height:100%}
+.bar .k{background:var(--keep)} .bar .e{background:var(--edit)} .bar .r{background:var(--reject)}
+.filters{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.filters label{font-size:14px;color:var(--fg-2);display:flex;gap:8px;align-items:center}
+select,input[type=text],textarea{max-width:100%;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--field);border-radius:8px;padding:8px 10px;min-height:44px}
+textarea{width:100%;resize:vertical;font-size:17px;line-height:1.5;min-height:88px}
+input[type=text]{width:100%;font-size:17px}
+.ghost{background:none;border:1px solid var(--line);color:var(--accent);font:inherit;font-weight:600;cursor:pointer;padding:8px 14px;border-radius:8px;min-height:44px}
+.ghost:hover{background:var(--accent-soft)}
+button:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.pos{font-size:14px;color:var(--fg-3);font-variant-numeric:tabular-nums}
+.notice{background:var(--edit-soft);color:var(--edit);padding:10px 14px;border-radius:8px;font-size:15px;font-weight:500;margin-bottom:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px clamp(16px,2.5vw,26px)}
+.empty{text-align:center;color:var(--fg-2);padding:36px 8px;font-size:17px}
+.head{display:flex;gap:8px 10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.cid{font-family:var(--mono);font-size:20px;font-weight:700;letter-spacing:.01em;margin:0}
+.cid:focus{outline:none}
+.cid:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.pill{display:inline-flex;align-items:center;font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--surface-2);color:var(--fg-2)}
+.pill.trap{background:var(--reject-soft);color:var(--reject)}
+.pill.demo{background:var(--accent-soft);color:var(--accent)}
+.pill.v-keep{background:var(--keep-soft);color:var(--keep)} .pill.v-edit{background:var(--edit-soft);color:var(--edit)} .pill.v-reject{background:var(--reject-soft);color:var(--reject)}
+.lbl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-3);font-weight:700;margin:0 0 6px}
+.check{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:14px 22px;padding:16px 18px;background:var(--surface-2);border-radius:8px;margin-bottom:18px}
+.verdict-line{font-size:20px;font-weight:700;line-height:1.3;text-wrap:balance}
+.verdict-line small{display:block;font-size:13px;font-weight:500;color:var(--fg-3);font-family:var(--mono);margin-top:4px}
+.notes{font-size:17px;line-height:1.55}
+.reason{font-size:16px;color:var(--fg-2);margin-top:10px}
+.reason b{color:var(--fg)}
+.changed{font-size:12px;font-weight:700;color:var(--edit);margin-left:6px;letter-spacing:.04em;text-transform:uppercase}
+.docs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px}
+.doc{min-width:0}
+.letter{font-family:var(--sans);font-size:18px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;margin:0;padding:16px 18px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.policy{font-family:var(--serif);font-size:18px;line-height:1.6;overflow-wrap:anywhere;margin:0;padding:16px 18px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:0 8px 8px 0;background:var(--surface)}
+.policy mark{background:var(--mark-bg);color:var(--mark-fg);padding:1px 2px;border-radius:2px;font-weight:600;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.src{font-size:15px;color:var(--fg-2);margin-bottom:10px}
+.src .t{font-weight:600;color:var(--fg)}
+.src .m{font-family:var(--mono);font-size:14px}
+.missing{font-size:15px;color:var(--edit);margin-bottom:8px}
+.alt{margin-top:12px}
+.alt .policy{border-left-color:var(--edit)}
+details{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;font-weight:600;color:var(--accent);min-height:44px;display:flex;align-items:center}
+dl.fields{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 16px;margin:8px 0 0;font-size:15px}
+dl.fields dt{color:var(--fg-3);font-family:var(--mono);font-size:13px;padding-top:2px}
+dl.fields dd{margin:0;overflow-wrap:anywhere}
+.panel{border:2px solid var(--edit);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;background:var(--edit-soft)}
+.panel.rej{border-color:var(--reject);background:var(--reject-soft)}
+.panel h2{color:var(--edit)} .panel.rej h2{color:var(--reject)}
+.form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px 18px}
+.form .full{grid-column:1/-1}
+.form>div{min-width:0}
+.form select{width:100%;max-width:100%;text-overflow:ellipsis}
+#ed-quote{min-height:120px}
+.form label{display:block;font-weight:600;font-size:14px;margin-bottom:4px;color:var(--fg)}
+.form .hint{font-weight:400;color:var(--fg-2)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center}
+.primary{font:inherit;font-weight:700;font-size:16px;border:0;border-radius:8px;padding:10px 18px;min-height:44px;cursor:pointer;background:var(--edit);color:var(--surface)}
+.panel.rej .primary{background:var(--reject)}
+.err{color:var(--reject);font-weight:600;font-size:15px}
+.verdicts{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));z-index:5}
+.verdicts .in{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:auto 1fr 1fr 1fr auto;gap:8px;align-items:stretch}
+.vb{font:inherit;font-weight:700;font-size:17px;padding:10px 8px;min-height:56px;border-radius:9px;border:2px solid transparent;cursor:pointer;color:var(--fg);background:var(--surface-2)}
+.vb.keep{background:var(--keep-soft);color:var(--keep)} .vb.edit{background:var(--edit-soft);color:var(--edit)} .vb.reject{background:var(--reject-soft);color:var(--reject)}
+.vb.on{border-color:currentColor}
+.vb small{display:block;font-weight:500;font-size:12px;opacity:.9}
+.vb:disabled,.nav:disabled{opacity:.45;cursor:default}
+.nav{font:inherit;font-size:20px;background:var(--surface-2);color:var(--fg);border:0;border-radius:9px;min-width:52px;min-height:56px;cursor:pointer;font-weight:700}
+.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+table.sum{border-collapse:collapse;width:100%;font-size:16px;font-variant-numeric:tabular-nums}
+table.sum th,table.sum td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+table.sum th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-3)}
+table.sum td.n{text-align:right} table.sum th.n{text-align:right}
+.sumgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+.tablewrap{overflow-x:auto}
+@media (max-width:860px){.docs,.check{grid-template-columns:minmax(0,1fr)}.sumgrid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:600px){.form{grid-template-columns:minmax(0,1fr)}.keys{display:none}.vb{font-size:16px}.vb small{display:none}.nav{min-width:48px}.letter,.policy{padding:14px}}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Case Review</h1>
+      <div class="counter" id="counter">Loading cases…</div>
+      <div class="counts" id="counts"></div>
+    </div>
+    <div class="keys"><kbd>K</kbd> keep · <kbd>E</kbd> edit · <kbd>R</kbd> reject · <kbd>←</kbd> <kbd>→</kbd> move · <kbd>Esc</kbd> close a form</div>
+  </div>
+  <div class="bar" id="bar" aria-hidden="true"><i class="k" style="width:0"></i><i class="e" style="width:0"></i><i class="r" style="width:0"></i></div>
+  <div class="notice" id="notice" hidden></div>
+  <div class="filters">
+    <label for="f-status">Show
+      <select id="f-status">
+        <option value="todo">Unreviewed</option><option value="all">All cases</option>
+        <option value="keep">Kept</option><option value="edit">Edited</option><option value="reject">Rejected</option>
+        <option value="trap">Traps</option><option value="demo">Demo letters</option>
+      </select>
+    </label>
+    <span class="pos" id="pos"></span>
+    <button class="ghost" id="jump" type="button">Next unreviewed</button>
+    <button class="ghost" id="sumbtn" type="button" aria-pressed="false">Summary</button>
+  </div>
+  <div id="card"><div class="card"><div class="empty">Loading cases from the database…</div></div></div>
+</div>
+
+<div class="verdicts"><div class="in">
+  <button class="nav" id="prev" type="button" aria-label="Previous case">←</button>
+  <button class="vb keep" id="b-keep" data-v="keep" type="button">Keep<small>right as drafted</small></button>
+  <button class="vb edit" id="b-edit" data-v="edit" type="button">Edit<small>change a field</small></button>
+  <button class="vb reject" id="b-reject" data-v="reject" type="button">Reject<small>drop this case</small></button>
+  <button class="nav" id="next" type="button" aria-label="Next case">→</button>
+</div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="sr" id="announce" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+const COLLECTION='cases';
+const $=(s,el=document)=>el.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const PROGRAMS={florida_medicaid_mma:'Florida Medicaid MMA',florida_medicaid_ltc:'Florida Medicaid LTC',florida_kidcare:'Florida KidCare',medicare_a:'Medicare Part A',medicare_b:'Medicare Part B',medicare_advantage:'Medicare Advantage',medicare_part_d:'Medicare Part D',unknown:'Outside the corpus (commercial plan)'};
+const AGES={under_21:'under 21',adult:'adult',['65_plus']:'65 and over',unknown:'age unknown'};
+const OUTCOMES=['inconsistent','consistent','not_settled'];
+const PHRASE={consistent:'the denial matches the policy',inconsistent:'the denial appears inconsistent with the policy',not_settled:'the documents do not settle it'};
+const EDITABLE=['intended_outcome','hinge_quote','hinge_page','denial_reason','notes'];
+const VLABEL={keep:'Kept',edit:'Edited',reject:'Rejected'};
+const state={rows:[],db:null,canWrite:true,i:0,list:[],panel:null,summary:false,loaded:false,saving:false,shownId:null,saveErr:false};
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),1400);}
+function notice(m){const n=$('#notice');n.hidden=!m;n.textContent=m||'';}
+// The value a field has after review: the edit wins over the drafted value.
+function eff(r,f){return (r.verdict==='edit'&&r.edit&&Object.prototype.hasOwnProperty.call(r.edit,f))?r.edit[f]:r[f];}
+function isChanged(r,f){return r.verdict==='edit'&&r.edit&&Object.prototype.hasOwnProperty.call(r.edit,f);}
+
+function filtered(){
+  const st=$('#f-status').value;
+  return state.rows.filter(r=>st==='all'||(st==='todo'&&!r.verdict)||(st==='trap'&&r.trap==='yes')||(st==='demo'&&r.demo==='yes')||st===r.verdict);
+}
+function tally(){
+  const n=state.rows.length,c={keep:0,edit:0,reject:0};
+  state.rows.forEach(r=>{if(c[r.verdict]!==undefined)c[r.verdict]++;});
+  return {n,...c,done:c.keep+c.edit+c.reject};
+}
+function counts(){
+  const t=tally();
+  $('#counter').textContent=state.loaded?`${t.done} of ${t.n} reviewed`:'Loading cases…';
+  $('#counts').innerHTML=state.loaded?`<span class="k">${t.keep} kept</span><span class="e">${t.edit} edited</span><span class="r">${t.reject} rejected</span><span>${t.n-t.done} left</span>`:'';
+  const b=$('#bar').children,n=t.n||1;
+  b[0].style.width=(t.keep/n*100)+'%'; b[1].style.width=(t.edit/n*100)+'%'; b[2].style.width=(t.reject/n*100)+'%';
+}
+
+function contextHtml(ctx){
+  const a=ctx.indexOf('[['),b=ctx.indexOf(']]',a+2);
+  if(a<0||b<0) return esc(ctx);
+  return esc(ctx.slice(0,a))+'<mark>'+esc(ctx.slice(a+2,b))+'</mark>'+esc(ctx.slice(b+2));
+}
+
+function setButtons(r){
+  const off=!r||!state.canWrite||!state.db||state.summary;
+  ['#b-keep','#b-edit','#b-reject'].forEach(s=>{const b=$(s);b.disabled=off;b.classList.toggle('on',!!r&&b.dataset.v===r.verdict);});
+  $('#prev').disabled=state.summary||state.i<=0; $('#next').disabled=state.summary||state.i>=state.list.length-1;
+}
+
+function render(){
+  const hadFocus=document.activeElement?.id==='cid';
+  state.list=filtered(); counts();
+  if(state.i>=state.list.length) state.i=Math.max(0,state.list.length-1);
+  const r=state.list[state.i];
+  $('#pos').textContent=state.list.length?`Case ${state.i+1} of ${state.list.length} shown`:'';
+  setButtons(r);
+  if(state.summary){ renderSummary(); return; }
+  if(!state.loaded){ return; }
+  if(!state.rows.length){ $('#card').innerHTML='<div class="card"><div class="empty">No cases in the database yet. The 30 drafted cases appear here once they are loaded into the <b>cases</b> collection.</div></div>'; return; }
+  if(!r){
+    if($('#f-status').value==='todo'){ renderSummary('All cases are reviewed.'); return; }
+    $('#card').innerHTML='<div class="card"><div class="empty">No cases in this view. Pick another option under Show.</div></div>'; return;
+  }
+  const outcome=eff(r,'intended_outcome'), page=eff(r,'hinge_page'), quote=eff(r,'hinge_quote');
+  const quoteEdited=isChanged(r,'hinge_quote')||isChanged(r,'hinge_page');
+  const ch=f=>isChanged(r,f)?'<span class="changed">edited</span>':'';
+  const ctx=r.hinge_context||'';
+  const fields=[['payer_name','Payer'],['service','Service'],['service_code','Code'],['member_age_group','Age group'],['jurisdiction','Jurisdiction'],['amount_billed','Amount billed'],['dates_of_service','Dates of service'],['letter_date','Letter date'],['appeal_deadline_claimed','Appeal deadline claimed']];
+  $('#card').innerHTML=`<article class="card" aria-labelledby="cid">
+    <div class="head">
+      <h2 class="cid" id="cid" tabindex="-1">${esc(r.id)}</h2>
+      <span class="pill">${esc(PROGRAMS[r.program]||r.program)}</span>
+      <span class="pill">${esc(r.difficulty)}</span>
+      ${r.trap==='yes'?'<span class="pill trap">Trap</span>':''}
+      ${r.demo==='yes'?'<span class="pill demo">Demo letter</span>':''}
+      ${r.verdict?`<span class="pill v-${esc(r.verdict)}">${VLABEL[r.verdict]||esc(r.verdict)}</span>`:''}
+    </div>
+    <div id="panel-slot"></div>
+    <section class="check" aria-label="What to check first">
+      <div>
+        <div class="lbl">Intended verdict${ch('intended_outcome')}</div>
+        <div class="verdict-line">${esc(PHRASE[outcome]||outcome)}<small>${esc(outcome)}</small></div>
+      </div>
+      <div>
+        <div class="lbl">Check first${ch('notes')}</div>
+        <div class="notes">${esc(eff(r,'notes'))}</div>
+        <div class="reason"><b>Stated reason${ch('denial_reason')}:</b> ${esc(eff(r,'denial_reason'))}</div>
+        ${r.verdict==='reject'||r.verdict==='edit'?(r.edit_note?`<div class="reason"><b>Your note:</b> ${esc(r.edit_note)}</div>`:''):''}
+      </div>
+    </section>
+    <div class="docs">
+      <section class="doc" aria-label="Denial letter">
+        <div class="lbl">Denial letter</div>
+        <div class="src"><span class="t">${esc(r.payer_name)}</span> · <span class="m">cases/letters/${esc(r.id)}.txt</span></div>
+        <pre class="letter">${esc(r.letter_text||'Letter text missing.')}</pre>
+      </section>
+      <section class="doc" aria-label="Policy page">
+        <div class="lbl">Policy page · hinge quote highlighted</div>
+        <div class="src"><span class="t">${esc(r.hinge_doc_title||'Untitled document')}</span><br><span class="m">${esc(r.hinge_doc_id)} · page ${esc(r.hinge_page)}</span></div>
+        ${ctx?`<div class="policy">${contextHtml(ctx)}</div>`:`<div class="missing">The page text for this document is not on the machine that built the seed, so only the quote is shown.</div><div class="policy"><mark>${esc(r.hinge_quote)}</mark></div>`}
+        ${quoteEdited?`<div class="alt"><div class="lbl">Your edited quote · ${esc(r.hinge_doc_id)} page ${esc(page)}</div><div class="policy">${esc(quote)}</div></div>`:''}
+      </section>
+    </div>
+    <details>
+      <summary>All case fields</summary>
+      <dl class="fields">${fields.map(([k,l])=>`<dt>${l}</dt><dd>${esc(k==='member_age_group'?(AGES[r[k]]||r[k]):r[k])||'<span style="color:var(--fg-3)">none</span>'}</dd>`).join('')}</dl>
+    </details>
+  </article>`;
+  if(state.panel&&state.panel.id===r.id) openPanel(state.panel.kind,false);
+  if(state.shownId!==null&&state.shownId!==r.id){
+    $('#announce').textContent=`Case ${r.id}, ${state.i+1} of ${state.list.length} shown`;
+    if(document.activeElement?.tagName!=='SELECT'){ window.scrollTo({top:0}); $('#cid').focus({preventScroll:true}); }
+  } else if(hadFocus){ $('#cid').focus({preventScroll:true}); }
+  state.shownId=r.id;
+}
+
+function renderSummary(head){
+  const t=tally(), inSet=state.rows.filter(r=>r.verdict==='keep'||r.verdict==='edit');
+  const drafted={},after={};
+  OUTCOMES.forEach(o=>{drafted[o]=state.rows.filter(r=>r.intended_outcome===o).length; after[o]=inSet.filter(r=>eff(r,'intended_outcome')===o).length;});
+  const flips=state.rows.filter(r=>r.verdict==='edit'&&isChanged(r,'intended_outcome'));
+  const rejected=state.rows.filter(r=>r.verdict==='reject');
+  $('#card').innerHTML=`<div class="card">
+    <h2>${esc(head||'Summary')}</h2>
+    <p class="notes" style="margin:0 0 16px">${t.done} of ${t.n} reviewed. ${t.keep+t.edit} cases stay in the set.</p>
+    <div class="sumgrid">
+      <div class="tablewrap"><table class="sum"><thead><tr><th>Verdict</th><th class="n">Cases</th></tr></thead><tbody>
+        <tr><td>Kept</td><td class="n">${t.keep}</td></tr><tr><td>Edited</td><td class="n">${t.edit}</td></tr>
+        <tr><td>Rejected</td><td class="n">${t.reject}</td></tr><tr><td>Not reviewed</td><td class="n">${t.n-t.done}</td></tr></tbody></table></div>
+      <div class="tablewrap"><table class="sum"><thead><tr><th>Intended verdict</th><th class="n">Drafted</th><th class="n">After review</th></tr></thead><tbody>
+        ${OUTCOMES.map(o=>`<tr><td>${esc(PHRASE[o])}</td><td class="n">${drafted[o]}</td><td class="n">${after[o]}</td></tr>`).join('')}
+      </tbody></table><p class="pos">After review counts kept and edited cases, with edits applied.</p></div>
+    </div>
+    ${flips.length?`<div class="lbl" style="margin-top:18px">Verdict changed</div><p class="notes">${flips.map(r=>`${esc(r.id)}: ${esc(r.intended_outcome)} to ${esc(eff(r,'intended_outcome'))}`).join('<br>')}</p>`:''}
+    ${rejected.length?`<div class="lbl" style="margin-top:18px">Rejected</div><p class="notes">${rejected.map(r=>`${esc(r.id)}: ${esc(r.edit_note||'no reason given')}`).join('<br>')}</p>`:''}
+  </div>`;
+}
+
+function openPanel(kind,focus=true){
+  const r=state.list[state.i]; if(!r) return;
+  state.panel={kind,id:r.id};
+  const slot=$('#panel-slot'); if(!slot) return;
+  if(kind==='edit'){
+    const v=f=>esc(eff(r,f)??'');
+    slot.innerHTML=`<section class="panel" aria-labelledby="ph"><h2 id="ph">Edit ${esc(r.id)}</h2>
+      <div class="form">
+        <div><label for="ed-outcome">Intended verdict</label><select id="ed-outcome">${OUTCOMES.map(o=>`<option value="${o}" ${eff(r,'intended_outcome')===o?'selected':''}>${esc(PHRASE[o])}</option>`).join('')}</select></div>
+        <div><label for="ed-page">Hinge page <span class="hint">(page-file number)</span></label><input type="text" inputmode="numeric" id="ed-page" value="${v('hinge_page')}"></div>
+        <div class="full"><label for="ed-quote">Hinge quote <span class="hint">(exact sentence from the page)</span></label><textarea id="ed-quote">${v('hinge_quote')}</textarea></div>
+        <div class="full"><label for="ed-reason">Stated reason <span class="hint">(as the letter says it)</span></label><textarea id="ed-reason">${v('denial_reason')}</textarea></div>
+        <div class="full"><label for="ed-notes">Notes</label><textarea id="ed-notes">${v('notes')}</textarea></div>
+        <div class="full"><label for="ed-note">What to change and why <span class="hint">(also for changes to the letter text)</span></label><textarea id="ed-note">${esc(r.verdict==='edit'?r.edit_note||'':'')}</textarea></div>
+      </div>
+      <div class="actions"><button class="primary" id="ed-save" type="button">Save edit</button><button class="ghost" id="ed-cancel" type="button">Cancel</button><span class="err" id="ed-err" role="alert"></span></div>
+    </section>`;
+    $('#ed-save').addEventListener('click',saveEdit);
+    $('#ed-cancel').addEventListener('click',closePanel);
+    if(focus){ slot.scrollIntoView({block:'start'}); $('#ed-outcome').focus(); }
+  } else {
+    slot.innerHTML=`<section class="panel rej" aria-labelledby="ph"><h2 id="ph">Reject ${esc(r.id)}</h2>
+      <label for="rj-note" style="display:block;font-weight:600;margin-bottom:6px">Why drop this case? One line.</label>
+      <input type="text" id="rj-note" value="${esc(r.verdict==='reject'?r.edit_note||'':'')}" autocomplete="off">
+      <div class="actions"><button class="primary" id="rj-save" type="button">Reject case</button><button class="ghost" id="rj-cancel" type="button">Cancel</button><span class="err" id="rj-err" role="alert"></span></div>
+    </section>`;
+    $('#rj-save').addEventListener('click',saveReject);
+    $('#rj-cancel').addEventListener('click',closePanel);
+    $('#rj-note').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveReject();}});
+    if(focus){ slot.scrollIntoView({block:'start'}); $('#rj-note').focus(); }
+  }
+}
+function closePanel(){ state.panel=null; const s=$('#panel-slot'); if(s) s.innerHTML=''; }
+
+// Build the document body: the row as loaded (seed fields included), with the review fields replaced.
+function body(r,patch){
+  const b={...r};
+  delete b.edit; delete b.edit_note;
+  Object.assign(b,patch,{reviewed_at:new Date().toISOString()});
+  b.id=r.id;
+  return b;
+}
+// Returns "" on success, or the message to show where the viewer acted.
+async function write(r,data){
+  if(!state.db||!state.canWrite) return `Not saved: this view cannot save verdicts.`;
+  state.saving=true;
+  try{
+    await state.db.collection(COLLECTION).doc(r.id).set(data);
+    if(state.saveErr){ state.saveErr=false; notice(''); }
+    toast(`${r.id} saved: ${VLABEL[data.verdict].toLowerCase()}`); return '';
+  }catch(e){
+    console.error('save failed',e);
+    if(e&&e.code==='invalid_argument'){ state.canWrite=false; setButtons(state.list[state.i]); notice('This view can read the cases but not save verdicts. Ask Alvaro for edit access.'); return `Not saved: this view cannot save verdicts. Nothing was recorded for ${r.id}.`; }
+    return `Could not save ${r.id}. Nothing was recorded. Try again.`;
+  } finally { state.saving=false; }
+}
+function failed(msg,errSel){
+  toast(msg);
+  const el=errSel&&$(errSel);
+  if(el){ el.textContent=msg; }
+  else if(state.canWrite){ state.saveErr=true; notice(msg); }
+}
+function applyLocal(r,data){
+  const k=state.rows.findIndex(x=>x.id===r.id); if(k>=0) state.rows[k]=data;
+}
+function advance(){
+  closePanel();
+  if($('#f-status').value==='todo'){ render(); } else { state.i=Math.min(state.i+1,Math.max(0,filtered().length-1)); render(); }
+}
+async function keep(){
+  const r=state.list[state.i]; if(!r||state.saving) return;
+  const data=body(r,{verdict:'keep'});
+  const err=await write(r,data); if(err){ failed(err,null); return; }
+  applyLocal(r,data); advance();
+}
+async function saveEdit(){
+  const r=state.list[state.i]; if(!r||state.saving) return;
+  const vals={intended_outcome:$('#ed-outcome').value,hinge_page:$('#ed-page').value.trim(),hinge_quote:$('#ed-quote').value.trim(),denial_reason:$('#ed-reason').value.trim(),notes:$('#ed-notes').value.trim()};
+  const note=$('#ed-note').value.trim();
+  const edit={};
+  EDITABLE.forEach(f=>{ if(vals[f]!==String(r[f]??'').trim()) edit[f]=vals[f]; });
+  if(edit.hinge_page!==undefined&&!/^\d+$/.test(edit.hinge_page)){ $('#ed-err').textContent='Hinge page must be a whole number.'; $('#ed-page').focus(); return; }
+  if(!Object.keys(edit).length&&!note){ $('#ed-err').textContent='Change a field or say what to change.'; return; }
+  const data=body(r,{verdict:'edit',edit,edit_note:note});
+  $('#ed-err').textContent='';
+  const err=await write(r,data); if(err){ failed(err,'#ed-err'); return; }
+  applyLocal(r,data); advance();
+}
+async function saveReject(){
+  const r=state.list[state.i]; if(!r||state.saving) return;
+  const note=$('#rj-note').value.trim();
+  if(!note){ $('#rj-err').textContent='Write one line on why.'; $('#rj-note').focus(); return; }
+  const data=body(r,{verdict:'reject',edit_note:note});
+  $('#rj-err').textContent='';
+  const err=await write(r,data); if(err){ failed(err,'#rj-err'); return; }
+  applyLocal(r,data); advance();
+}
+function verdict(v){
+  if(state.summary||!state.list[state.i]||!state.canWrite||!state.db) return;
+  if(v==='keep') keep(); else openPanel(v);
+}
+
+$('#b-keep').addEventListener('click',()=>verdict('keep'));
+$('#b-edit').addEventListener('click',()=>verdict('edit'));
+$('#b-reject').addEventListener('click',()=>verdict('reject'));
+$('#prev').addEventListener('click',()=>{ if(state.i>0){closePanel();state.i--;render();} });
+$('#next').addEventListener('click',()=>{ if(state.i<state.list.length-1){closePanel();state.i++;render();} });
+$('#jump').addEventListener('click',()=>{ closePanel(); state.summary=false; $('#sumbtn').setAttribute('aria-pressed','false'); $('#f-status').value='todo'; state.i=0; render(); });
+$('#sumbtn').addEventListener('click',()=>{ closePanel(); state.summary=!state.summary; $('#sumbtn').setAttribute('aria-pressed',String(state.summary)); render(); });
+$('#f-status').addEventListener('change',()=>{ closePanel(); state.i=0; try{localStorage.setItem('case-review-status',$('#f-status').value);}catch(_){} render(); });
+document.addEventListener('keydown',e=>{
+  const tag=e.target.tagName;
+  if(tag==='TEXTAREA'||tag==='INPUT'||tag==='SELECT'){
+    if(e.key==='Escape'){ e.preventDefault(); closePanel(); }
+    else if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&state.panel?.kind==='edit'){ e.preventDefault(); saveEdit(); }
+    return;
+  }
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  const k=e.key.toLowerCase();
+  if(k==='k') verdict('keep'); else if(k==='e'){ e.preventDefault(); verdict('edit'); } else if(k==='r'){ e.preventDefault(); verdict('reject'); }
+  else if(e.key==='Escape') closePanel();
+  else if(e.key==='ArrowLeft') $('#prev').click(); else if(e.key==='ArrowRight') $('#next').click();
+});
+try{ const t=localStorage.getItem('case-review-status'); if(t&&[...$('#f-status').options].some(o=>o.value===t)) $('#f-status').value=t; }catch(_){}
+setButtons(null);
+
+(async()=>{
+  const db=window.claude?.use?await window.claude.use('db'):null;
+  if(!db){
+    state.canWrite=false;
+    $('#counter').textContent='No database in this view';
+    notice('The cases live in this page\'s database, which is not available here. Open the page on claude.ai while signed in.');
+    $('#card').innerHTML='<div class="card"><div class="empty">No database connection, so there are no cases to show.</div></div>';
+    return;
+  }
+  state.db=db;
+  const user=await window.claude.use('user');
+  if(user){ const w=await user.can('data.write'); if(w===false){ state.canWrite=false; notice('This view can read the cases but not save verdicts.'); } }
+  db.collection(COLLECTION).onSnapshot(s=>{
+    const cur=state.list[state.i]?.id;
+    state.rows=s.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>a.id.localeCompare(b.id));
+    const first=!state.loaded; state.loaded=true;
+    // Leave an open form alone; the next render picks up the change.
+    if(state.panel&&!first){ counts(); return; }
+    state.list=filtered();
+    if(first){ const k=state.list.findIndex(r=>!r.verdict); state.i=k>=0?k:0; }
+    else if(cur&&$('#f-status').value!=='todo'){ const k=state.list.findIndex(r=>r.id===cur); if(k>=0) state.i=k; }
+    render();
+  },e=>{ console.error('db',e); notice('Lost the connection to the database. Reload the page.'); });
+})();
+</script>
