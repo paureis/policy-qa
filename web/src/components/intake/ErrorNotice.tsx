@@ -11,7 +11,7 @@ export interface ErrorActions {
 }
 
 const PRIMARY =
-  "inline-flex min-h-12 w-full items-center justify-center rounded-sm bg-federal px-5 text-[18px] font-semibold text-white sm:w-auto";
+  "inline-flex min-h-12 w-full items-center justify-center rounded-sm bg-ink px-5 text-[18px] font-semibold text-bond sm:w-auto";
 const SECONDARY =
   "inline-flex min-h-12 w-full items-center justify-center rounded-sm border border-ink bg-bond px-5 text-[18px] font-semibold text-ink sm:w-auto";
 

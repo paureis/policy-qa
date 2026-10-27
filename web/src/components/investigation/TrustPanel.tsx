@@ -84,7 +84,7 @@ export function TrustPanel({
   return (
     <section
       aria-labelledby="trust-heading"
-      className={`land mt-10 border-t-4 border-ink bg-paper px-4 pt-4 pb-5 sm:px-6 ${annotated ? `${APPENDIX} lg:bg-transparent lg:px-0 lg:pb-0` : ""}`}
+      className={`land mt-10 border-t-4 border-ink bg-bond px-4 pt-4 pb-5 sm:px-6 ${annotated ? `${APPENDIX} lg:bg-transparent lg:px-0 lg:pb-0` : ""}`}
       data-trust="true"
     >
       <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Trust</p>

@@ -27,7 +27,7 @@ export function ProgressStages({ stage, onCancel }: { stage: number; onCancel: (
             >
               <span
                 aria-hidden="true"
-                className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold ${
+                className={`inline-flex h-6 w-6 shrink-0 items-center justify-center border text-[13px] font-bold ${
                   now ? "border-ink bg-ink text-bond" : done ? "border-ink text-ink" : "border-hairline text-muted"
                 }`}
               >

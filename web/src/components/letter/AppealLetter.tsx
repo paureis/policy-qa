@@ -15,6 +15,7 @@ import {
 } from "@/lib/case";
 import { InlineReferenceChip, QuoteFigure, groupCitations, pageFolio, shortDocName, type ChipCitation } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
+import { Mark } from "@/components/investigation/Marks";
 import { MarginPageViewer, usePageViewer, viewerPanelId } from "@/components/investigation/PageViewer";
 
 const ACTION =
@@ -110,7 +111,7 @@ export function AppealLetter({
   const actions = (
     <>
       <div className={desk ? "flex flex-wrap gap-3" : "mt-4 flex flex-col gap-3 sm:flex-row"}>
-        <button type="button" onClick={onCopy} className={`${ACTION} bg-federal text-white`} data-copy="true">
+        <button type="button" onClick={onCopy} className={`${ACTION} bg-ink text-bond`} data-copy="true">
           Copy the letter
         </button>
         {liveDownload ? (
@@ -623,8 +624,8 @@ const NOTE_LINK =
 /*
   A margin note, set as a sidenote: its number, the short document name and
   the folio, the full quote, then its verification state as words: "Found on
-  page 5" with a small stamp-blue tick, "page 5" being the link that opens
-  the cited page over the margin (the page image with the gold box and the
+  page 5" with a tick mark, "page 5" being the link that opens
+  the cited page over the margin (the page image with the red highlight and the
   vision line); a struck citation carries "Could not verify" instead. The
   footnote number in the letter opens the expanded quote (the full title and
   the quote) over the margin below the note. Overlays are absolute, so the
@@ -675,9 +676,7 @@ function MarginNote({
         </p>
       ) : (
         <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-[15px] leading-6 text-ink tabular-nums" data-note-found="true">
-          <svg viewBox="0 0 16 16" aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-stamp">
-            <path d="M3 8.5l3 3 7-7.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="square" />
-          </svg>
+          <Mark kind="tick" className="h-4 w-4" />
           <span>Found on</span>
           {viewer ? (
             <button
@@ -708,7 +707,7 @@ function MarginNote({
           data-note-region="true"
         >
           {citations.map((c, k) => (
-            <blockquote key={k} className={`${k > 0 ? "mt-3" : ""} border-l-4 border-federal pl-4 text-[17px] leading-relaxed text-ink`}>
+            <blockquote key={k} className={`${k > 0 ? "mt-3" : ""} border-l-2 border-ink pl-4 text-[17px] leading-relaxed text-ink`}>
               “{c.quote}”
             </blockquote>
           ))}
@@ -726,7 +725,7 @@ function MarginNote({
 }
 
 /*
-  The letter block: bond in a hairline frame, To and Re, then the paragraphs.
+  The letter block: a bond sheet with a 1 px ink edge, To and Re, then the paragraphs.
   The final letter on the phone and the read-only first draft share it, so
   they read alike.
 */
@@ -749,7 +748,7 @@ export function LetterFrame({
     <article
       id={id}
       aria-label={label}
-      className="border border-hairline bg-bond px-4 py-5 shadow-[0_1px_0_var(--hairline)] sm:px-7 sm:py-7"
+      className="border border-ink bg-bond px-4 py-5 sm:px-7 sm:py-7"
       data-letter={kind === "final" ? "true" : undefined}
       data-draft={kind === "draft" ? "true" : undefined}
       /* Printing from a narrow window (or the browser's print layout, narrower than 1,024 px) prints this letter alone too. */

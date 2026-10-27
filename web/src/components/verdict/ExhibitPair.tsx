@@ -15,15 +15,18 @@ import {
 } from "@/lib/case";
 import { pageFolio, shortDocName } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
+import { Mark, PaperClip, type MarkKind } from "@/components/investigation/Marks";
 import { cleanError, visionLine, type Vision } from "@/components/investigation/PageViewer";
 
 /*
   The exhibit pair, the proof in the first screen at 1024 px and up: two
-  facing documents on bond with a 1 px ink edge, no shadow. Left, the
-  payer's stated reason verbatim with its source line. Right, a crop of the
-  real policy page showing only the highlighted lines, large enough to read,
-  with the gold box drawn over them, the folio, and the vision check as the
-  caption. The policy side is the wider one: the crop must be legible at the
+  facing documents clipped to the top sheet, each bond with a 1 px ink edge
+  and a drawn paper clip over its top edge, no shadow. Left, the payer's
+  stated reason verbatim with its source line. Right, a crop of the real
+  policy page showing only the highlighted lines, large enough to read,
+  with the red highlight drawn over them, the folio, and the vision check
+  as the caption with its mark (tick: the highlight matches the quote;
+  strike: it does not; open ring: not checked yet or not available). The policy side is the wider one: the crop must be legible at the
   page's own line length (a cited line runs about 630 page pixels), and the
   reason reflows at any width.
 
@@ -44,18 +47,20 @@ function pct(n: number): string {
   return `${(n * 100).toFixed(4)}%`;
 }
 
-const OVERLINE = "text-[14px] font-semibold tracking-wide text-muted uppercase";
-const EXHIBIT = "flex min-w-0 flex-col border border-ink bg-bond px-6 pt-5 pb-6";
+/* The exhibit's title, set as a heading face, not an overline. */
+const TITLE = "text-[21px] leading-tight font-semibold tracking-[-0.01em] text-ink";
+const EXHIBIT = "relative flex min-w-0 flex-col border border-ink bg-bond px-7 pt-6 pb-5";
 
 export function ExhibitPair({ card, citation, unsupported }: { card: CaseCard; citation: CitationRef | null; unsupported: boolean }) {
   const payer = card.payer_name.value ? String(card.payer_name.value) : null;
   const dated = card.letter_date.value ? displayValue("letter_date", card.letter_date.value) : null;
   const source = [payer, dated ? `letter dated ${dated}` : null].filter(Boolean).join(", ");
   return (
-    <div className="mt-2 hidden lg:clear-both lg:grid lg:grid-cols-[minmax(0,380fr)_minmax(0,660fr)] lg:gap-x-12" data-exhibits="true">
+    <div className="mt-2 hidden lg:clear-both lg:grid lg:grid-cols-2 lg:gap-x-10 lg:pt-6" data-exhibits="true">
       <figure className={EXHIBIT} data-exhibit="letter">
-        <p className={OVERLINE}>The letter says</p>
-        <blockquote className="mt-3 text-[22px] leading-[1.4] text-ink">“{displayValue("denial_reason", card.denial_reason.value)}”</blockquote>
+        <PaperClip className="-top-[22px] left-8" />
+        <p className={TITLE}>The letter says</p>
+        <blockquote className="mt-3 text-[19px] leading-[1.45] text-ink">“{displayValue("denial_reason", card.denial_reason.value)}”</blockquote>
         {source ? <figcaption className="mt-auto pt-4 text-[14px] leading-snug text-muted">{source}</figcaption> : null}
       </figure>
       {citation ? <PolicyExhibit citation={citation} unsupported={unsupported} /> : <div aria-hidden="true" />}
@@ -100,7 +105,7 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
   }, [citation, unsupported]);
 
   const folio = (
-    <p className="mt-4 text-[15px] leading-snug font-semibold text-ink tabular-nums" data-exhibit-folio="true">
+    <p className="mt-4 font-mono text-[14px] leading-snug text-ink" data-exhibit-folio="true">
       {shortDocName(citation)}, {pageFolio(citation)}
     </p>
   );
@@ -109,12 +114,22 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
   const located = h !== null && h.found && h.boxes_px.length > 0;
   let body: React.ReactNode;
   let caption: string;
+  let mark: MarkKind = "ring";
   if (unsupported) {
     body = <QuoteText quote={citation.quote} struck />;
     caption = "";
   } else if (located && !imageFailed) {
-    body = <Crop highlight={h} title={title} drawn={drawn} onLoad={() => requestAnimationFrame(() => requestAnimationFrame(() => setDrawn(true)))} onError={() => setImageFailed(true)} />;
+    /* The highlighted sentence as live text, the way the sketch sets it, and the page crop under it as the proof, at the width the column allows. */
+    body = (
+      <>
+        <QuoteText quote={citation.quote} lead />
+        <div className="mt-3">
+          <Crop highlight={h} title={title} drawn={drawn} onLoad={() => requestAnimationFrame(() => requestAnimationFrame(() => setDrawn(true)))} onError={() => setImageFailed(true)} />
+        </div>
+      </>
+    );
     caption = visionLine(true, vision, true);
+    if (vision.kind === "done" && vision.vision.model !== "fixture") mark = vision.vision.agrees ? "tick" : "strike";
   } else {
     body = <QuoteText quote={citation.quote} />;
     caption =
@@ -131,25 +146,46 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
 
   return (
     <figure className={EXHIBIT} data-exhibit="policy" data-exhibit-state={unsupported ? "unsupported" : located && !imageFailed ? "crop" : load.kind === "ready" ? "text" : load.kind}>
-      <p className={OVERLINE}>The policy says</p>
+      <PaperClip className="-top-[22px] left-8" />
+      <p className={TITLE}>The policy says</p>
       {/* The crop is cut at the lines' own left and right edges and sits in the exhibit's 24 px inset, so the page text starts where the overline does. */}
       <div className="mt-3">{body}</div>
       {folio}
       {unsupported ? (
         <CouldNotVerifyTag />
       ) : (
-        <figcaption aria-live="polite" className="mt-1 min-h-6 text-[15px] leading-[1.45] text-muted" data-exhibit-vision={located ? vision.kind : load.kind}>
-          {caption}
+        <figcaption
+          aria-live="polite"
+          className="mt-1.5 flex min-h-6 items-start gap-2 text-[15px] leading-[1.45] text-muted"
+          data-exhibit-vision={located ? vision.kind : load.kind}
+        >
+          {caption ? <Mark kind={mark} className="mt-[3px] h-4 w-4" /> : null}
+          <span>{caption}</span>
         </figcaption>
       )}
     </figure>
   );
 }
 
-function QuoteText({ quote, struck = false }: { quote: string; struck?: boolean }) {
+/*
+  The crop is drawn smaller than the 110 dpi page in a half-width exhibit, so
+  it asks the API for the same page at 220 dpi (the endpoint's dpi parameter,
+  50 to 300): the geometry is in percentages, so the boxes still line up, and
+  the reduced page stays sharp. Bundled fixture pages have no dpi and pass
+  through unchanged.
+*/
+function sharpSrc(src: string): string {
+  return src.replace(/([?&]dpi=)\d+/, (_m, key: string) => key + "220");
+}
+
+function QuoteText({ quote, struck = false, lead = false }: { quote: string; struck?: boolean; lead?: boolean }) {
   return (
-    <blockquote className="border-l-4 border-federal pl-4 text-[17px] leading-relaxed text-ink" data-exhibit-quote="text">
-      {struck ? <s className="decoration-ink decoration-2">“{quote}”</s> : <>“{quote}”</>}
+    <blockquote className={`${lead ? "text-[16px] leading-[1.55]" : "text-[17px] leading-relaxed"} text-ink`} data-exhibit-quote={lead ? "lead" : "text"}>
+      {struck ? (
+        <s className="decoration-ink decoration-2">“{quote}”</s>
+      ) : (
+        <mark className="box-decoration-clone border-b-2 border-red/60 bg-red/15 py-0.5 text-ink">“{quote}”</mark>
+      )}
     </blockquote>
   );
 }
@@ -159,7 +195,8 @@ function QuoteText({ quote, struck = false }: { quote: string; struck?: boolean 
   aspect ratio of the highlighted lines plus a small margin. The image is
   sized and offset in percentages of the frame, so it scales with the
   exhibit's width (up to MAX_SCALE for a short crop) with no measuring
-  script. The gold boxes are the page viewer's, drawn left to right.
+  script. The highlight boxes are the page viewer's, red-tinted with a red
+  underline, drawn left to right.
 */
 function Crop({
   highlight: h,
@@ -188,7 +225,7 @@ function Crop({
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- the API's page PNG, cropped by CSS offsets; next/image would re-encode it and break the percentage geometry */}
       <img
-        src={pageImageSrc(h)}
+        src={sharpSrc(pageImageSrc(h))}
         alt={`Page ${h.page} of ${title}, with the cited text highlighted`}
         width={h.width_px}
         height={h.height_px}
@@ -202,7 +239,7 @@ function Crop({
         <span
           key={i}
           aria-hidden="true"
-          className="hl-box pointer-events-none absolute bg-gold/45 mix-blend-multiply"
+          className="hl-box pointer-events-none absolute border-b-2 border-red/70 bg-red/20 mix-blend-multiply"
           style={{
             left: pct((b.x0 - x0) / cw),
             top: pct((b.y0 - y0) / ch),

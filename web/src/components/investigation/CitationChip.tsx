@@ -172,7 +172,7 @@ export function QuoteFigure({ id, citation }: { id: string; citation: ChipCitati
   const pageOpen = viewer?.state.open?.key === id;
   return (
     <>
-      <figure id={id} className="mt-2 mb-2 border-l-4 border-federal pl-4">
+      <figure id={id} className="mt-2 mb-2 border-l-2 border-ink pl-4">
         <blockquote className="text-[18px] leading-relaxed lg:text-[17px]">“{citation.quote}”</blockquote>
         <figcaption className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[15px] text-muted">
           <span>

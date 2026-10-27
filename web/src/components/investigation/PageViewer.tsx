@@ -26,7 +26,7 @@ import type { ChipCitation } from "./CitationChip";
 
 /*
   "See the page": the cited PDF page as an image with the quoted lines
-  highlighted in gold, and a vision check line under it. One viewer is open
+  highlighted in red, and a vision check line under it. One viewer is open
   at a time. On the phone it is a section under the quote; at 1024px and up
   it is a sticky side panel beside the case column. The provider holds which
   quote is open; the panel holds its own requests and aborts them on close.
@@ -412,7 +412,7 @@ function PageViewerPanel({
                   <span
                     key={i}
                     aria-hidden="true"
-                    className="hl-box pointer-events-none absolute bg-gold/45 mix-blend-multiply"
+                    className="hl-box pointer-events-none absolute border-b-2 border-red/70 bg-red/20 mix-blend-multiply"
                     style={{
                       left: pct(b.x0 / h.width_px),
                       top: pct(b.y0 / h.height_px),
@@ -494,7 +494,7 @@ function ViewerError({ error, title, onRetry }: { error: PageError; title: strin
           href={error.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 inline-flex min-h-11 items-center text-[17px] font-semibold text-federal underline underline-offset-4"
+          className="mt-2 inline-flex min-h-11 items-center text-[17px] font-semibold text-ink underline underline-offset-4"
         >
           Open {title} at its source
         </a>

@@ -213,3 +213,60 @@ Also decided, same day:
 - A demo case with one struck sentence, so the verifier is seen acting: the fixture that has a struck
   sentence must render the strike at desktop; the live cases of Oct 26 had 61 of 61 verified, so a
   live struck case is not forced.
+
+## 9. Direction contract (Oct 27, 2026, after the direction round)
+
+Decided by Alvaro on Oct 27 at about 5:40 pm after a round-3 look ("better, still not it; judges will
+see a normal-looking web page") and an Impeccable direction round (seven grounded worlds, the roll
+assigned candidate 6, six catalog challengers weighed, one competitive; decision page cards with
+first-viewport sketches under `.impeccable/mocks/decision/`, gitignored). This replaces "The Notice,
+Answered" as the visual world of the whole product; the intake brief's world paragraph is superseded
+by OWN-WORLD below, and its structure and copy decisions stand.
+
+THESIS: A denial becomes a case, and the page is the open folder with the documents clipped inside
+it. It refuses the category's two arrangements: the white portal with rounded cards and a blue
+button, and the government-notice replica (federal blue band, bond, Public Sans) that round 3 wore.
+
+OWN-WORLD: manila ground #e6d3a3 is the folder; kraft tones of the same hue for the index tabs;
+bond white #ffffff sheets with a 1 px ink edge for every document (the top sheet, the exhibits, the
+letter pages, the receipt); ink #1b1b1b for all text; one red #b3261e for the rubber stamp and the
+highlight only. Archivo (variable grotesque, Google Fonts): the stamp in condensed caps (width about
+62 percent, weight 850); everything else normal width, 400 and 600; system mono for the case id,
+the folder tab, and tokens. Marks, not hues, for state: a tick for verified, a strike for struck, an
+open ring for not settled; a drawn paper clip holds a clipped sheet; a stamp is inked unevenly (SVG
+noise filter), turned about -2.6 degrees, one per sheet. No shadows beyond the 1 px edge, no
+gradients, no radius, no second accent, no illustration.
+
+STORY: a caregiver opens their case folder, reads the stamp, sees the payer's sentence and the
+policy page face to face, reads the letter inside the folder, and knows what to send and by when; a
+judge sees a case, not a web page, and the stamp is the screenshot they keep.
+
+FIRST VIEWPORT (1280 x 800): the band is the folder's top edge in manila with the tab at the left
+("CASE c_824f9b · Sample Health Plan · opened Oct 26, 2026" in mono; the opened date is created_at in the reader's local time) and the status line at the
+right; the white top sheet starts about 100 px down and runs to the fold; the stamp with the verdict
+sits at the sheet's top left, the counts as marks under it; the deadline (Appeal by Dec 6, 2026, 41
+days left) and the reference rows at the top right; the two exhibits as clipped sheets side by side
+below, the letter says and the policy says (the page crop with the red highlight, the folio, the
+Muse Spark vision check); the six index tabs down the sheet's right edge, the current one darker;
+the rule and the gap under the exhibits. The letter sheet begins in the second viewport. The
+composition the build matches is `.impeccable/mocks/decision/assigned.html` (the locked sketch);
+round 3's structure (section 8) stays underneath it: the exhibit pair, the two-page letter with
+margin notes and overlays, the checklist and filing section, the compact record, the appendix
+register, the fixture states, the phone layout's structure.
+
+FORM: The Case File, candidate 6 of 7 on the grounded list (ranked: the annotated evidence file, the
+appellate brief and record, certified mail, the auditor's ledger, the legal-aid pamphlet, the case
+file, the notice register); assigned by the roll. seed:de806ea490aaaeca. Raises from the declined
+hand: state is a mark never a hue (cutting bench); one grotesque at full scale, exhibits numbered
+like plates with corner marks (plate section); one signal color, rank by scale (cracktro queue).
+
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the
+verdict, DESIGN.md, and every shipping raster carrying its provenance.
+
+Recorded after the first evaluation of the build (Oct 27, evening): the rule and the gap sit in two
+columns under their exhibits, as the locked sketch has them (this overrides section 8's one column);
+gold stays on the Fill-in fields as the reader's own mark, the one exception to "one signal color";
+the verdict stamp is 38 px at 1280 (the sketch's 46 px wraps the longer phrasings); the status line
+sits in the band's right; every section at tabs sizes (1280 px wide and 760 px tall and up) is a
+bond sheet whose head carries its title while the index tabs carry the numbers, and the receipt stays
+a slip; under 1024 px the structure of round 3 stands as it is.

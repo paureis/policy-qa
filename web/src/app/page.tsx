@@ -19,7 +19,7 @@ export default function Home() {
         </p>
         <Link
           href="/case/new"
-          className="mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-sm bg-federal px-6 text-[18px] font-semibold text-white sm:w-auto"
+          className="mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-sm bg-ink px-6 text-[18px] font-semibold text-bond sm:w-auto"
         >
           Start with your letter
         </Link>

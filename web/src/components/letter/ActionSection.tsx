@@ -1,7 +1,7 @@
 "use client";
 
 import { dayCountLabel, daysUntil, formatShortDate, type Critique, type Letter, type Verdict } from "@/lib/case";
-import { OPENING, OPENING_H2, SectionTitle } from "@/components/investigation/SectionTitle";
+import { IN_SHEET, OPENING, OPENING_H2, SHEET, SHEET_HEAD, SectionTitle } from "@/components/investigation/SectionTitle";
 import { AppealLetter } from "./AppealLetter";
 import { DeadlineFiling } from "./DeadlineFiling";
 import { EvidenceChecklist } from "./EvidenceChecklist";
@@ -107,15 +107,17 @@ export function ActionSection({
           column, the deadline (date, day count, its citation) and the filing
           path in the margin column beside it.
         */
-        <section aria-labelledby="send-heading" className={`land mt-10 border-t-4 border-ink pt-4 ${OPENING}`} data-send="true">
-          <h2 id="send-heading" className={`mt-1 text-[22px] leading-tight font-bold ${OPENING_H2}`}>
-            <SectionTitle title="What to send and where to file" short="What to send and where to file" n={n?.send ?? null} />
-          </h2>
-          <div className="mt-8 grid desk-cols items-start">
-            <EvidenceChecklist items={letter.evidence_checklist ?? []} register />
-            <DeadlineFiling letter={letter} today={today} register />
-          </div>
-        </section>
+        <div className={`land mt-10 ${SHEET}`} data-sheet-section="send">
+          <section aria-labelledby="send-heading" className={`border-t-4 border-ink pt-4 lg:pt-4 ${IN_SHEET}`} data-send="true">
+            <h2 id="send-heading" className={`mt-1 text-[22px] leading-tight font-bold ${OPENING_H2} ${SHEET_HEAD}`}>
+              <SectionTitle title="What to send and where to file" short="What to send and where to file" n={n?.send ?? null} />
+            </h2>
+            <div className="mt-8 grid desk-cols items-start">
+              <EvidenceChecklist items={letter.evidence_checklist ?? []} register />
+              <DeadlineFiling letter={letter} today={today} register />
+            </div>
+          </section>
+        </div>
       ) : (
         <>
           <SelfCheck critique={critique} letter={letter} failedReason={critiqueFailure} />

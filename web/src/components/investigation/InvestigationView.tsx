@@ -15,6 +15,8 @@ import {
 } from "@/lib/case";
 import { Band } from "@/components/intake/Band";
 import { CaseHeader } from "./CaseHeader";
+import { IndexTabs, type IndexTab } from "./IndexTabs";
+import { SHEET } from "./SectionTitle";
 import { FindingsList } from "./FindingsList";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { RouteLine } from "./RouteLine";
@@ -50,9 +52,16 @@ const FAILURE_COPY = {
 } as const;
 
 const SECONDARY =
-  "inline-flex min-h-12 w-full items-center justify-center rounded-sm border border-ink bg-bond px-5 text-[18px] font-semibold text-ink sm:w-auto";
+  "inline-flex min-h-12 w-full items-center justify-center border border-ink bg-bond px-5 text-[18px] font-semibold text-ink sm:w-auto";
 const PRIMARY =
-  "inline-flex min-h-12 w-full items-center justify-center rounded-sm bg-federal px-5 text-[18px] font-semibold text-white sm:w-auto";
+  "inline-flex min-h-12 w-full items-center justify-center bg-ink px-5 text-[18px] font-semibold text-bond sm:w-auto";
+
+/* The folder tab's "opened" date: the day the case was created, in the reader's own time zone. */
+function openedDate(iso: string | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
 /*
   The case's home. Loads the case by id, polls GET /case/{id} every 1.5 s
@@ -145,11 +154,12 @@ export function InvestigationView({ caseId }: { caseId: string }) {
   const proof = done && investigation && verdictDone ? verificationLines(investigation, letterDone ? letter : null) : [];
   /*
     The finished case with a letter (drafted, reviewing, reviewed) reads as the
-    Annotated Letter at 1024px and up: the desk (--desk, a step darker than
-    paper), a 1,120 px frame (1,088 px of content: the 620 px sheet, the 48 px
-    gutter, the 420 px margin), the header as the notice register floated at
-    the top right with the page's one postmark, then numbered sections:
-    1 Verdict (headline, counts, the exhibit pair), 2 Appeal letter (US Letter
+    Case File at 1024px and up: the manila folder as the ground, a 1,120 px
+    frame (1,088 px of content: the 620 px sheet, the 48 px gutter, the 420 px
+    margin), the top sheet (bond, 1 px ink edge) holding the header's
+    reference block at its top right, the status line and section 1, then
+    numbered sections: 1 Verdict (the stamp, the counts as marks, the exhibit
+    pair as clipped sheets), 2 Appeal letter (US Letter
     pages with sidenotes), 3 What to send and where to file, each opened by a
     4 px ink rule; then 4 Investigation record, 5 Self-check, 6 Receipt in the
     appendix register (a 1 px rule, 20 px titles). The numbers are passed as
@@ -158,7 +168,8 @@ export function InvestigationView({ caseId }: { caseId: string }) {
     the letter lands; desk (the same at desktop width, from the script) adds
     section 3 under the sheet and moves the self-check after the record, where
     DOM order must change with the visual order. Under 1024px the page is the
-    phone column.
+    phone column. At 1280 px and up the folder's index tabs repeat the
+    numbered sections down the folder's right edge.
   */
   const annotated = letterDone && letter.applicable;
   const desk = annotated && desktop;
@@ -175,53 +186,104 @@ export function InvestigationView({ caseId }: { caseId: string }) {
       ? "max-w-[640px] lg:max-w-[1120px]"
       : "max-w-[640px]";
 
-  const outcome =
-    record && (verdictDone || letterDone) ? (
+  /*
+    The folder's index tabs at 1280 px and up, one per numbered section, each
+    linking to its heading; an absent self-check leaves no tab and no gap.
+  */
+  const tabs: IndexTab[] = numbers
+    ? [
+        { n: numbers.verdict, label: "Verdict", target: "verdict-heading" },
+        { n: numbers.letter, label: "Appeal letter", target: "action-heading" },
+        { n: numbers.send, label: "What to send and where to file", target: "send-heading" },
+        { n: numbers.record, label: "Investigation record", target: "findings-heading" },
+        ...(numbers.selfCheck !== null ? [{ n: numbers.selfCheck, label: "Self-check", target: "selfcheck-heading" }] : []),
+        { n: numbers.receipt, label: "Receipt", target: "trust-heading" },
+      ]
+    : [];
+  const payerName = record?.card.payer_name.value ? String(record.card.payer_name.value) : null;
+  const opened = openedDate(record?.created_at);
+  /*
+    The top sheet: the case header, the status line and the verdict on one
+    bond sheet with a 1 px ink edge on the manila folder (the finished case
+    with a letter, 1024 px and up). Always the same wrapper, so nothing
+    remounts when the letter lands; under 1024 px it is a plain block.
+  */
+  const topSheet = annotated ? "lg:flow-root lg:border lg:border-ink lg:bg-bond lg:px-10 lg:pt-8 lg:pb-10" : "";
+
+  const verdictBlock =
+    record && verdictDone ? (
       <div className={dual ? "lg:max-w-[640px]" : ""}>
-        {verdictDone ? (
-          <VerdictSection
-            verdict={verdict}
-            changeShownBelow={letterDone && !letter.applicable && verdict.outcome === "consistent"}
-            proof={proof}
-            first={outcomeFirst}
-            annotated={annotated}
-            n={numbers?.verdict ?? null}
-            card={record.card}
-          />
-        ) : null}
-        {letterDone ? (
-          <ActionSection
-            letter={letter}
-            verdict={verdictDone ? verdict : null}
-            caseId={record.case_id}
-            today={today}
-            critique={critique}
-            critiqueFailure={selfCheckFailed ? critique?.error?.trim() || "The service reported an error and gave no reason." : null}
-            annotated={annotated}
-            desk={desk}
-            n={numbers ? { letter: numbers.letter, send: numbers.send } : null}
-          />
-        ) : null}
+        <VerdictSection
+          verdict={verdict}
+          changeShownBelow={letterDone && !letter.applicable && verdict.outcome === "consistent"}
+          proof={proof}
+          first={outcomeFirst}
+          annotated={annotated}
+          n={numbers?.verdict ?? null}
+          card={record.card}
+        />
+      </div>
+    ) : null;
+
+  const outcome =
+    record && letterDone ? (
+      <div className={dual ? "lg:max-w-[640px]" : ""}>
+        <ActionSection
+          letter={letter}
+          verdict={verdictDone ? verdict : null}
+          caseId={record.case_id}
+          today={today}
+          critique={critique}
+          critiqueFailure={selfCheckFailed ? critique?.error?.trim() || "The service reported an error and gave no reason." : null}
+          annotated={annotated}
+          desk={desk}
+          n={numbers ? { letter: numbers.letter, send: numbers.send } : null}
+        />
       </div>
     ) : null;
 
   return (
     <PageViewerProvider>
-      <div className={`flex min-h-full flex-col ${annotated ? "lg:bg-desk" : ""}`} data-layout={annotated ? "annotated" : "column"}>
-        <Band sample={sample} widthClass={width}>
-          {annotated && record ? (
-            <span className="hidden font-mono text-[15px] lg:inline" data-band-case={record.case_id}>
-              <span className="sr-only">Case </span>
-              {record.case_id}
-            </span>
+      <div className="flex min-h-full flex-col" data-layout={annotated ? "annotated" : "column"}>
+        <Band
+          sample={sample}
+          widthClass={width}
+          tab={
+            record ? (
+              <>
+                CASE <span className="font-semibold">{record.case_id}</span>
+                {/* The payer and the opened date need the folder's full width: the finished case at 1024 px and up. */}
+                {annotated && (payerName || opened) ? (
+                  <span className="hidden lg:inline">
+                    {payerName ? ` · ${payerName}` : ""}
+                    {opened ? ` · opened ${opened}` : ""}
+                  </span>
+                ) : null}
+              </>
+            ) : null
+          }
+        >
+          {/*
+            The status line in the band's right at desktop on the finished case, where the folder's
+            edge carries it; on the phone and during the live run it stays in the page.
+          */}
+          {desk && record ? (
+            <div
+              className="hidden min-w-0 flex-wrap items-baseline justify-end gap-x-2 text-right lg:flex [&_div]:mt-0 [&_p]:mt-0 [&_p]:text-[15px] [&_p]:leading-snug [&_p]:font-normal"
+              data-band-status="true"
+            >
+              <InvestigationProgress investigation={investigation} compact />
+              <StageLine record={record} letterHref={letterHref} inRow compact />
+            </div>
           ) : null}
-          <Link href="/case/new" className="min-h-11 rounded-sm px-2 py-2 text-[15px] font-semibold underline underline-offset-4 focus-visible:outline-white">
+          <Link href="/case/new" className="inline-flex min-h-11 shrink-0 items-center px-2 text-[15px] font-semibold whitespace-nowrap underline underline-offset-4">
             New case
           </Link>
         </Band>
+        {desk && tabs.length > 0 ? <IndexTabs tabs={tabs} /> : null}
 
         <PageViewerFrame>
-          <main className={`mx-auto w-full min-w-0 flex-1 px-4 pt-6 pb-16 ${width}`}>
+          <main className={`mx-auto w-full min-w-0 flex-1 px-4 pt-6 pb-16 ${annotated ? "lg:pt-9" : ""} ${width}`}>
             {view.kind === "loading" ? (
               <p className="text-[18px] lg:text-[17px]" aria-live="polite" data-view="loading">
                 Loading case <span className="font-mono">{caseId}</span>…
@@ -267,6 +329,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
 
             {record ? (
               <div data-view={record.status}>
+                <div className={topSheet} data-top-sheet={annotated ? "true" : undefined}>
                 <CaseHeader
                   record={record}
                   today={today}
@@ -309,12 +372,26 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                     >
                       {outcomeFirst ? null : <RouteLine route={record.route} lead />}
                       {/* One status row at tablet and up once the outcome leads, so the verdict reaches the first screen. */}
-                      <div className={outcomeFirst ? "*:mt-0 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-2" : ""}>
-                        <InvestigationProgress investigation={investigation} compact={annotated} />
-                        <StageLine record={record} letterHref={letterHref} inRow={outcomeFirst} compact={annotated} />
-                      </div>
+                      {desk ? null : (
+                        <div className={outcomeFirst ? "*:mt-0 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-2" : ""}>
+                          <InvestigationProgress investigation={investigation} compact={annotated} />
+                          <StageLine record={record} letterHref={letterHref} inRow={outcomeFirst} compact={annotated} />
+                        </div>
+                      )}
                     </div>
+                    {verdictBlock}
+                  </>
+                )}
+                </div>
+                {record.status === "intake" ? null : (
+                  <>
                     {outcome}
+                    {/*
+                      The investigation record and, at desktop, the self-check after it share one
+                      bond sheet on the finished case at 1024 px and up. The wrapper is always
+                      there (classes only), so no finding remounts when the letter lands.
+                    */}
+                    <div className={annotated ? `land mt-10 ${SHEET}` : ""} data-sheet-section={annotated ? "record" : undefined}>
                     <FindingsList
                       findings={findings}
                       route={record.route}
@@ -334,6 +411,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                         n={numbers?.selfCheck ?? null}
                       />
                     ) : null}
+                    </div>
 
                     {failed && failure ? (
                       <section role="alert" aria-labelledby="failed-heading" className="mt-8 border-t-4 border-ink pt-4" data-view="failed" data-failed-step={failedStep}>

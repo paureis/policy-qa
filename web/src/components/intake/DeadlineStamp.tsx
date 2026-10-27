@@ -1,9 +1,16 @@
 import { dayCountLabel, daysUntil, formatShortDate } from "@/lib/case";
 
 /*
-  The signature element: the appeal deadline as a round postmark in blue
-  ink. It never turns red. A missing deadline reads "No deadline found".
-  "landed" is the confirmed state; the change steps, it does not fade.
+  The appeal deadline as a rubber stamp, where it is the only stamp on the
+  sheet (the intake's case card, and the case page's header before the
+  verdict exists): red ink, Archivo condensed caps, a heavy frame with a
+  hairline frame inside, turned -2.6 degrees, inked unevenly (.stamp's
+  filter). Once the verdict is reached the verdict is the sheet's one stamp
+  and the deadline is set as type with a mark (DeadlineLine below).
+
+  "landed" is the confirmed state: the inner frame goes from dashed to solid
+  and the stamp turns to its full angle; the change steps, it does not fade.
+  A missing deadline reads "No deadline found".
 */
 export function DeadlineStamp({
   deadlineIso,
@@ -12,8 +19,6 @@ export function DeadlineStamp({
   className = "",
   daysLeft,
   bottomText,
-  countClass = "text-[13px]",
-  dateWeight = "font-bold",
 }: {
   deadlineIso: string | null;
   today: Date;
@@ -21,12 +26,8 @@ export function DeadlineStamp({
   className?: string;
   /* The day count the API computed; when given it wins over today's math. */
   daysLeft?: number | null;
-  /* The lower arc; CASE OPENED everywhere (one stamp, one ring text), before and after it lands. */
+  /* The foot line; CASE OPENED everywhere (one stamp, one foot line), before and after it lands. */
   bottomText?: string;
-  /* The day count's size; the desktop register sets it at 14 px, the type scale's floor. */
-  countClass?: string;
-  /* The date's weight; the desktop register sets 600, since 700 is kept for the verdict and the h2s. */
-  dateWeight?: string;
 }) {
   const days = deadlineIso ? (typeof daysLeft === "number" ? daysLeft : daysUntil(deadlineIso, today)) : null;
   const missing = deadlineIso === null || days === null;
@@ -36,66 +37,96 @@ export function DeadlineStamp({
     ? "Appeal deadline: no deadline found in the letter"
     : `Appeal deadline ${dateText}, ${countText}${landed && bottomText === undefined ? ". Case opened." : ""}`;
 
+  /*
+    The frames and the date carry the red and the uneven ink; the small lines
+    (Appeal by, the day count, Case opened) are filled in ink at 14 px, as a
+    dater stamp's band is, because red at 14 px measured under 4.5:1 once
+    antialiased on a turned stamp. The date stays the red, inked face.
+  */
+  const INKED = "[filter:url(#ink-stamp)]";
+  const SMALL = "text-[14px] leading-none font-semibold text-ink tabular-nums";
   return (
     <div
       role="img"
       aria-label={label}
-      className={`relative aspect-square w-[148px] shrink-0 select-none text-stamp ${landed ? "rotate-[-7deg]" : "rotate-[-3deg]"} ${className}`}
+      className={`relative w-[156px] shrink-0 select-none text-red ${landed ? "rotate-[-2.6deg]" : "rotate-[-1.4deg]"} ${className}`}
       data-landed={landed ? "true" : "false"}
+      data-stamp="deadline"
     >
-      <svg viewBox="0 0 148 148" className="absolute inset-0 h-full w-full" aria-hidden="true">
-        <defs>
-          <path id="stamp-arc-top" d="M 20 74 A 54 54 0 0 1 128 74" />
-          <path id="stamp-arc-bottom" d="M 20 74 A 54 54 0 0 0 128 74" />
-        </defs>
-        <circle cx="74" cy="74" r="70" fill="none" stroke="currentColor" strokeWidth={landed ? 3.5 : 2.5} />
-        <circle
-          cx="74"
-          cy="74"
-          r="63"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.25"
-          strokeDasharray={landed ? "none" : "2 3"}
-        />
-        {landed ? <circle cx="74" cy="74" r="48" fill="none" stroke="currentColor" strokeWidth="1" /> : null}
-        <text
-          fontSize="10.5"
-          fontWeight="700"
-          letterSpacing="2.2"
-          fill="currentColor"
-          fontFamily="var(--font-public-sans), 'Public Sans', system-ui, sans-serif"
-        >
-          <textPath href="#stamp-arc-top" startOffset="50%" textAnchor="middle">
-            APPEAL BY
-          </textPath>
-        </text>
-        <text
-          fontSize="9"
-          fontWeight="600"
-          letterSpacing="2"
-          fill="currentColor"
-          fontFamily="var(--font-public-sans), 'Public Sans', system-ui, sans-serif"
-        >
-          <textPath href="#stamp-arc-bottom" startOffset="50%" textAnchor="middle">
-            {bottomText ?? "CASE OPENED"}
-          </textPath>
-        </text>
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-5 text-center leading-tight">
+      <span aria-hidden="true" className={`absolute inset-0 border-[3px] border-current ${INKED}`} />
+      <span
+        aria-hidden="true"
+        className={`absolute inset-[6px] border border-current ${landed ? "border-solid" : "border-dashed"} ${INKED}`}
+      />
+      <div className="relative flex flex-col items-center px-3 pt-3 pb-2.5 text-center uppercase [font-stretch:62%]">
+        <span className={`${SMALL} tracking-[0.12em]`}>Appeal by</span>
         {missing ? (
-          <span className={`text-[15px] ${dateWeight} uppercase tracking-wide`}>
+          <span className={`mt-1.5 mb-1 text-[20px] leading-[0.95] font-[850] ${INKED}`}>
             No deadline
             <br />
             found
           </span>
         ) : (
           <>
-            <span className={`text-[17px] ${dateWeight} uppercase tracking-wide`}>{dateText}</span>
-            <span className={`mt-1 ${countClass} font-semibold`}>{countText}</span>
+            <span className={`mt-1 text-[25px] leading-none font-[850] tabular-nums whitespace-nowrap sm:text-[28px] ${INKED}`}>{dateText}</span>
+            <span className={`mt-1 ${SMALL} tracking-[0.05em]`}>{countText}</span>
           </>
         )}
+        <span aria-hidden="true" className="mt-1.5 block w-full border-t border-red" />
+        <span className={`mt-1.5 ${SMALL} tracking-[0.12em]`}>{bottomText ?? "Case opened"}</span>
       </div>
     </div>
+  );
+}
+
+/*
+  The deadline set as type with a mark, where the verdict is the sheet's
+  stamp: "Appeal by Dec 6, 2026" with the day count under it, or "Deadline
+  not stated". size "lead" is the top sheet's register at desktop; "line" is
+  the phone header's line.
+*/
+export function DeadlineLine({
+  deadlineIso,
+  today,
+  daysLeft,
+  size = "lead",
+  className = "",
+}: {
+  deadlineIso: string | null;
+  today: Date;
+  daysLeft?: number | null;
+  size?: "lead" | "line";
+  className?: string;
+}) {
+  const days = deadlineIso ? (typeof daysLeft === "number" ? daysLeft : daysUntil(deadlineIso, today)) : null;
+  const missing = deadlineIso === null || days === null;
+  const lead = size === "lead";
+  return (
+    <p
+      className={`flex items-start gap-3 tabular-nums ${lead ? "text-[30px] leading-[1.12] font-semibold tracking-[-0.015em]" : "text-[20px] leading-tight font-semibold"} ${className}`}
+      data-deadline-line={missing ? "missing" : "date"}
+    >
+      <DateMark className={lead ? "mt-[7px] h-6 w-6" : "mt-[3px] h-[18px] w-[18px]"} />
+      <span>
+        {missing ? (
+          "Deadline not stated"
+        ) : (
+          <>
+            Appeal by {formatShortDate(deadlineIso)}
+            <span className={`block font-normal ${lead ? "" : "text-[18px]"}`}>{dayCountLabel(days)}</span>
+          </>
+        )}
+      </span>
+    </p>
+  );
+}
+
+/* The deadline's mark: a drawn calendar leaf in ink, the marks' stroke. */
+function DateMark({ className }: { className: string }) {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" className={`shrink-0 text-ink ${className}`} data-mark="date">
+      <rect x="2" y="3.5" width="12" height="10.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M2 7h12M5.5 1.5v3.5M10.5 1.5v3.5" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
   );
 }

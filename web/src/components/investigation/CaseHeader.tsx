@@ -3,27 +3,29 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { FIELD_LABELS, PROGRAM_LABELS, displayValue, type CaseRecord, type Program } from "@/lib/case";
 import { CaseCard } from "@/components/intake/CaseCard";
-import { DeadlineStamp } from "@/components/intake/DeadlineStamp";
+import { DeadlineLine, DeadlineStamp } from "@/components/intake/DeadlineStamp";
 
 const NO_FLAGS = new Set<never>();
 const noop = () => {};
 
 /*
   The locked case card, compact: payer, case id, the service and the
-  letter's reason, with the landed postmark. The ten rows wait behind
-  "Show the full case card" and render through the read-only CaseCard.
+  letter's reason, with the deadline. The ten rows wait behind "Show the
+  full case card" and render through the read-only CaseCard.
 
   titled: false once the verdict exists. The verdict headline is then the
-  page's h1 (it names the outcome), and the payer's name is a plain line.
+  page's h1 (it names the outcome) and the sheet's one rubber stamp, so the
+  deadline is no longer a stamp here: it is set as type with a mark. Before
+  the verdict the deadline is the stamp.
 
   register: the finished case with a letter. At 1024 px and up the header is
-  the notice's reference box, floated to the top right of the outcome block:
-  a ruled, tabular register of label and value (Member, Plan, Letter dated,
-  Service and code, Amount, Case), the page's one postmark overlapping its
-  lower right corner (the only carrier of the day count up there), and the
-  disclosure under it. The phone's lines stay in the DOM, display: none at
-  desktop; the register is display: none under 1024 px. Classes only, so
-  nothing remounts when the letter lands.
+  the top sheet's reference block, floated to its top right: the deadline
+  as type with its mark (date, day count), then the reference rows, label
+  and value under a rule (Member, Plan, Letter dated, Service and code,
+  Amount; the case id is on the folder tab), and the disclosure under it.
+  The phone's lines stay in the DOM, display: none at desktop; the register
+  is display: none under 1024 px. Classes only, so nothing remounts when the
+  letter lands.
 */
 export function CaseHeader({
   record,
@@ -36,7 +38,7 @@ export function CaseHeader({
   today: Date;
   register?: boolean;
   titled?: boolean;
-  /* The letter's deadline (date and the API's day count) for the register's postmark. */
+  /* The letter's deadline (date and the API's day count) for the register's deadline line. */
   deadline?: { iso: string | null; daysLeft: number | null } | null;
 }) {
   const [open, setOpen] = useState(false);
@@ -63,8 +65,11 @@ export function CaseHeader({
   return (
     <section
       aria-labelledby="case-heading"
-      className={`border-t-4 border-ink pt-4 ${
-        register ? "lg:relative lg:z-30 lg:float-right lg:mb-6 lg:ml-12 lg:w-[calc((100%-48px)*420/1040)] lg:border-t-0 lg:pt-0" : ""
+      className={`${
+        /* Before the verdict the deadline is this sheet's one stamp, so the header is a bond sheet and the stamp sits on bond. */
+        titled ? "border border-ink bg-bond px-4 pt-4 pb-2 sm:px-6" : "border-t-4 border-ink pt-4"
+      } ${
+        register ? "lg:relative lg:z-30 lg:float-right lg:mb-0 lg:ml-10 lg:w-[340px] lg:border-t-0 lg:pt-1 xl:w-[440px]" : ""
       }`}
       data-case={record.case_id}
       data-register={register ? "true" : undefined}
@@ -79,8 +84,17 @@ export function CaseHeader({
             Case <span className="font-mono text-ink">{record.case_id}</span>
           </p>
         </div>
-        <DeadlineStamp deadlineIso={deadlineIso} today={today} landed className="w-[120px] sm:w-[148px]" />
+        {titled ? <DeadlineStamp deadlineIso={deadlineIso} today={today} landed className="mt-1 mr-1" /> : null}
       </div>
+      {titled ? null : (
+        <DeadlineLine
+          deadlineIso={deadline?.iso ?? deadlineIso}
+          daysLeft={deadline?.daysLeft ?? null}
+          today={today}
+          size="line"
+          className={`mt-4 ${register ? "lg:hidden" : ""}`}
+        />
+      )}
 
       <dl className={`mt-4 divide-y divide-hairline border-y border-hairline ${register ? "lg:hidden" : ""}`}>
         {(["service", "denial_reason", "program"] as const).map((key) => (
@@ -100,7 +114,7 @@ export function CaseHeader({
         aria-controls={open ? fullId : undefined}
         onClick={() => setOpen((o) => !o)}
         className={`mt-3 inline-flex min-h-11 items-center rounded-sm px-1 text-[16px] font-semibold text-ink underline underline-offset-4 ${
-          register ? "lg:mt-2 lg:-ml-1 lg:text-[15px]" : ""
+          register ? "lg:mt-2 lg:-ml-1 lg:text-[15px] xl:absolute xl:right-0 xl:-bottom-3 xl:mt-0 xl:ml-0" : ""
         }`}
         data-case-card-toggle="true"
       >
@@ -132,11 +146,9 @@ export function CaseHeader({
 }
 
 /*
-  The notice register: label and value on a bond box with a 1 px ink edge,
-  rows ruled in hairline, labels in muted 14 px, values in ink 15 px with
-  tabular numerals, the case id in mono. The postmark sits over the box's
-  lower right corner, where the shortest values (the amount, the case id)
-  leave room; it stays inside the frame at 1024 px.
+  The reference block on the top sheet: the deadline as the lead (type and
+  its mark, never a second stamp), then a rule and the rows, labels in
+  muted 14 px, values in ink 15 px with tabular numerals.
 */
 function Register({
   record,
@@ -159,22 +171,18 @@ function Register({
     { key: "dated", label: "Letter dated", value: displayValue("letter_date", card.letter_date.value) },
     { key: "service", label: "Service and code", value: code ? `${service} (${code})` : service },
     { key: "amount", label: "Amount", value: displayValue("amount_billed", card.amount_billed.value) },
-    { key: "case", label: "Case", value: <span className="font-mono text-[15px]">{record.case_id}</span> },
   ];
   return (
-    <div className="relative hidden lg:block" data-notice-register="true">
-      <dl className="divide-y divide-hairline border border-ink bg-bond tabular-nums">
+    <div className="hidden lg:block" data-notice-register="true">
+      <DeadlineLine deadlineIso={deadline.iso} daysLeft={deadline.daysLeft} today={today} size="lead" />
+      <dl className="mt-5 grid grid-cols-[120px_minmax(0,1fr)] gap-x-3 gap-y-1.5 border-t border-ink/25 pt-4 tabular-nums">
         {rows.map((r) => (
-          <div key={r.key} className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)] gap-x-3 px-4 py-[7px]" data-register-row={r.key}>
-            <dt className="pt-px text-[14px] leading-5 font-semibold text-muted">{r.label}</dt>
+          <div key={r.key} className="contents" data-register-row={r.key}>
+            <dt className="pt-px text-[14px] leading-5 text-muted">{r.label}</dt>
             <dd className="text-[15px] leading-5 text-ink">{r.value}</dd>
           </div>
         ))}
       </dl>
-      {/* right-2: the stamp is turned 7 degrees, so its corners reach 8 px past its box; this keeps them inside the frame. */}
-      <div className="pointer-events-none absolute right-2 -bottom-14" data-register-stamp="true">
-        <DeadlineStamp deadlineIso={deadline.iso} daysLeft={deadline.daysLeft} today={today} landed countClass="text-[14px]" dateWeight="font-semibold" />
-      </div>
     </div>
   );
 }

@@ -233,7 +233,7 @@ export function IntakeFlow() {
           <button
             type="button"
             onClick={startOver}
-            className="min-h-11 rounded-sm px-2 text-[15px] font-semibold underline underline-offset-4 focus-visible:outline-white"
+            className="min-h-11 rounded-sm px-2 text-[15px] font-semibold underline underline-offset-4"
           >
             Start over
           </button>
@@ -327,7 +327,7 @@ export function IntakeFlow() {
                     onClick={confirm}
                     disabled={flagged.size > 0 || phase === "confirming"}
                     aria-describedby="confirm-help"
-                    className="inline-flex min-h-12 w-full items-center justify-center rounded-sm bg-federal px-5 text-[18px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-hairline disabled:text-muted"
+                    className="inline-flex min-h-12 w-full items-center justify-center rounded-sm bg-ink px-5 text-[18px] font-semibold text-bond disabled:cursor-not-allowed disabled:bg-hairline disabled:text-muted"
                   >
                     {phase === "confirming" ? "Opening the case…" : "Confirm"}
                   </button>

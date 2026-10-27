@@ -10,8 +10,8 @@ const SOURCE_LINE: Record<Letter["deadline"]["source"], string> = {
 };
 
 /*
-  The deadline as text (the date and the day count; the postmark stays in the
-  case header, the page's one stamp), the source and note, then the filing
+  The deadline as text (the date and the day count; the top sheet carries it
+  too, as type with a mark), the source and note, then the filing
   path. The citations behind the deadline and the path follow as one list, one
   chip per document and page. The heading changes when no letter applies: the
   person may still choose to appeal, so the date and the path stay visible.

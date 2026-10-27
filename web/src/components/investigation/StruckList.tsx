@@ -13,7 +13,7 @@ export function StruckList({ struck, className = "" }: { struck: StruckCitation[
       <p className="text-[15px] font-semibold text-ink">{n === 1 ? "1 citation was struck:" : `${n} citations were struck:`}</p>
       <ul className="mt-2 space-y-3" aria-label="Citations the verifier struck">
         {struck.map((s, i) => (
-          <li key={`${s.doc_id ?? "none"}-${s.page ?? "none"}-${i}`} className="border-l-4 border-hairline pl-4">
+          <li key={`${s.doc_id ?? "none"}-${s.page ?? "none"}-${i}`} className="border-l border-ink/40 pl-4">
             <p className="text-[16px] leading-relaxed">
               <s className="decoration-ink decoration-2">“{s.quote}”</s>
             </p>

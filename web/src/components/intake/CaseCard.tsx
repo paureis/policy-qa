@@ -14,14 +14,14 @@ export interface CaseCardProps {
   caseId?: string;
   /* h1 on the intake screen; h2 where the page already has its heading. */
   headingTag?: "h1" | "h2";
-  /* false where the page already shows the postmark (the case page): one stamp per page. */
+  /* false where the page already shows the deadline (the case page): one stamp per sheet. */
   stamp?: boolean;
   onChange: (key: FieldKey, value: FieldValue) => void;
   onLooksRight: (key: FieldKey) => void;
 }
 
 /*
-  The case card: one plain-language reading of the letter, the postmark,
+  The case card: one plain-language reading of the letter, the deadline stamp,
   then the ten contract fields in contract order.
 */
 export function CaseCard({

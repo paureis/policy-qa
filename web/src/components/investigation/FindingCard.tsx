@@ -11,6 +11,7 @@ import {
 } from "@/lib/case";
 import { CitationChips } from "./CitationChip";
 import { CouldNotVerifyTag } from "./CouldNotVerifyTag";
+import { Mark } from "./Marks";
 import { StruckList } from "./StruckList";
 
 /* The answer's first sentence and the rest, split at the first sentence end followed by a capital. */
@@ -92,7 +93,11 @@ export function FindingCard({ finding, level = 3, record = false }: { finding: F
 
         {status === "not_settled" ? (
           <div className={`mt-3 ${record ? "lg:mt-1" : ""}`}>
-            <p className="text-[18px] leading-relaxed font-semibold lg:text-[17px]">{NOT_SETTLED_LABEL}.</p>
+            {/* Not settled is an outcome in ink with its open-ring mark, never gray: it must not read as disabled. */}
+            <p className="flex items-center gap-2 text-[18px] leading-relaxed font-semibold lg:text-[17px]">
+              <Mark kind="ring" />
+              {NOT_SETTLED_LABEL}.
+            </p>
             <p className={`mt-1 text-[16px] text-muted ${more}`}>
               The documents in the corpus do not answer this question, so no answer is given. That is recorded, not guessed.
             </p>

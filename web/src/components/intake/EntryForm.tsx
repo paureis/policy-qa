@@ -104,7 +104,7 @@ export function EntryForm({
             <button
               type="submit"
               disabled={!inRange}
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-sm bg-federal px-5 text-[18px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-hairline disabled:text-muted"
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-sm bg-ink px-5 text-[18px] font-semibold text-bond disabled:cursor-not-allowed disabled:bg-hairline disabled:text-muted"
             >
               Read this letter
             </button>
