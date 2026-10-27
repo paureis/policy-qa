@@ -62,6 +62,7 @@ export function CaseHeader({ record, today }: { record: CaseRecord; today: Date 
             flagged={NO_FLAGS}
             locked
             landed
+            stamp={false}
             today={today}
             caseId={record.case_id}
             headingTag="h2"

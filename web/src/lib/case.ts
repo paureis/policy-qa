@@ -1056,10 +1056,60 @@ async function fixtureGetCase(caseId: string, signal?: AbortSignal): Promise<Cas
 }
 
 async function liveGetCase(caseId: string, signal?: AbortSignal): Promise<CaseRecord> {
-  const res = await liveFetch(`/case/${encodeURIComponent(caseId)}`, { method: "GET" }, signal);
-  if (res.status === 404) throw new IntakeError("not_found");
-  if (!res.ok) throw await readError(res);
-  return (await res.json()) as CaseRecord;
+  return liveRequest(`/case/${encodeURIComponent(caseId)}`, { method: "GET" }, signal, async (res) => {
+    if (res.status === 404) throw new IntakeError("not_found");
+    if (!res.ok) throw await readCaseError(res);
+    return (await res.json()) as CaseRecord;
+  });
+}
+
+/*
+  A request whose timeout also covers reading the body: the timer is cleared
+  only after read() finishes, so a response whose headers arrive but whose
+  body stalls still ends at TIMEOUT_MS with IntakeError("timeout").
+*/
+async function liveRequest<T>(path: string, init: RequestInit, outer: AbortSignal | undefined, read: (res: Response) => Promise<T>): Promise<T> {
+  const { signal, clear } = withTimeout(outer);
+  const failure = (): Error => {
+    if (signal.aborted && signal.reason instanceof IntakeError) return signal.reason;
+    if (outer?.aborted) return abortError();
+    return new IntakeError("unreachable");
+  };
+  try {
+    let res: Response;
+    try {
+      res = await fetch(`${API_URL}${path}`, { ...init, signal });
+    } catch {
+      throw failure();
+    }
+    try {
+      return await read(res);
+    } catch (err) {
+      if (err instanceof IntakeError) throw err;
+      throw failure();
+    }
+  } finally {
+    clear();
+  }
+}
+
+/*
+  Any other non-2xx from GET /case/{id}: keep the API's own message (5xx
+  included) so the case page can show it, instead of the generic copy. A
+  response with no readable message says which status came back.
+*/
+async function readCaseError(res: Response): Promise<IntakeError> {
+  let detail: { code?: string; message?: string } | string | undefined;
+  try {
+    detail = ((await res.json()) as { detail?: { code?: string; message?: string } | string }).detail;
+  } catch {
+    detail = undefined;
+  }
+  const obj = typeof detail === "object" && detail ? detail : undefined;
+  const message = obj?.message?.trim() || (typeof detail === "string" ? detail.trim() : "") || `The service answered ${res.status}.`;
+  const code: ErrorCode =
+    obj?.code && (ERROR_CODES as readonly string[]).includes(obj.code) ? (obj.code as ErrorCode) : res.status >= 500 ? "unreachable" : "rejected";
+  return new IntakeError(code, message);
 }
 
 /* GET /case/{id}. Throws IntakeError("not_found") on 404. */

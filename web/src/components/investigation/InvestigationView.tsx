@@ -17,11 +17,11 @@ import { CaseHeader } from "./CaseHeader";
 import { FindingsList } from "./FindingsList";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { RouteLine } from "./RouteLine";
-import { TrustPanel } from "./TrustPanel";
+import { TrustPanel, verificationLines } from "./TrustPanel";
 import { PageViewerFrame, PageViewerProvider } from "./PageViewer";
 import { StageLine } from "@/components/verdict/StageLine";
 import { VerdictSection } from "@/components/verdict/VerdictSection";
-import { ActionSection } from "@/components/letter/ActionSection";
+import { APPEAL_LETTER_ID, ActionSection } from "@/components/letter/ActionSection";
 
 type View =
   | { kind: "loading" }
@@ -125,18 +125,57 @@ export function InvestigationView({ caseId }: { caseId: string }) {
   const failureReason =
     (failedStep === "letter" ? letter?.error : failedStep === "verdict" ? verdict?.error : investigation?.error)?.trim() ||
     "The service reported an error and gave no reason.";
+  /* The API's own words for a non-2xx answer (any status); the generic copy only when it sent none or the network failed. */
+  const apiMessage =
+    view.kind === "error" && view.error.message.trim() !== "" && view.error.message !== ERROR_COPY[view.error.code].body ? view.error.message : null;
+  /*
+    Outcome first from the moment the verdict exists: decided, drafting, drafted,
+    reviewing, reviewed, and a failure after the verdict (a later step failed, the
+    verdict stands). Before it the live run is the show, so the page stays
+    chronological. The switch happens once, when the verdict first renders, and the
+    reorder is real DOM order, so screen readers meet the outcome first too.
+  */
+  const outcomeFirst = record !== null && verdictDone;
+  const letterHref = letterDone && letter.applicable ? `#${APPEAL_LETTER_ID}` : null;
+  const proof = done && investigation && verdictDone ? verificationLines(investigation, letterDone ? letter : null) : [];
+  /* The band and the page share one width, so the wordmark and the content share an edge. */
+  const width = dual ? "max-w-[640px] lg:max-w-[1120px]" : "max-w-[640px]";
+
+  const outcome =
+    record && (verdictDone || letterDone) ? (
+      <div className={dual ? "lg:max-w-[640px]" : ""}>
+        {verdictDone ? (
+          <VerdictSection
+            verdict={verdict}
+            changeShownBelow={letterDone && !letter.applicable && verdict.outcome === "consistent"}
+            proof={proof}
+            first={outcomeFirst}
+          />
+        ) : null}
+        {letterDone ? (
+          <ActionSection
+            letter={letter}
+            verdict={verdictDone ? verdict : null}
+            caseId={record.case_id}
+            today={today}
+            critique={critique}
+            critiqueFailure={selfCheckFailed ? critique?.error?.trim() || "The service reported an error and gave no reason." : null}
+          />
+        ) : null}
+      </div>
+    ) : null;
 
   return (
     <PageViewerProvider>
       <div className="flex min-h-full flex-col">
-        <Band sample={sample}>
+        <Band sample={sample} widthClass={width}>
           <Link href="/case/new" className="min-h-11 rounded-sm px-2 py-2 text-[15px] font-semibold underline underline-offset-4 focus-visible:outline-white">
             New case
           </Link>
         </Band>
 
         <PageViewerFrame>
-          <main className={`mx-auto w-full min-w-0 flex-1 px-4 pt-6 pb-16 ${dual ? "max-w-[640px] lg:max-w-[1120px]" : "max-w-[640px]"}`}>
+          <main className={`mx-auto w-full min-w-0 flex-1 px-4 pt-6 pb-16 ${width}`}>
             {view.kind === "loading" ? (
               <p className="text-[18px] lg:text-[17px]" aria-live="polite" data-view="loading">
                 Loading case <span className="font-mono">{caseId}</span>…
@@ -149,7 +188,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                   {ERROR_COPY.not_found.title}
                 </h1>
                 <p className="mt-4 text-[18px] leading-relaxed lg:text-[17px]" role="alert">
-                  There is no case <span className="font-mono">{caseId}</span>. {ERROR_COPY.not_found.body}
+                  No case <span className="font-mono">{caseId}</span> on this server. The service may have restarted; start a new case.
                 </p>
                 <Link href="/case/new" className={`${PRIMARY} mt-5`}>
                   Start a new case
@@ -161,12 +200,13 @@ export function InvestigationView({ caseId }: { caseId: string }) {
               <section role="alert" aria-labelledby="load-error-heading" className="border-t-4 border-ink pt-4" data-view="error">
                 <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Could not load the case</p>
                 <h1 id="load-error-heading" className="mt-1 text-[26px] leading-tight font-bold">
-                  {ERROR_COPY[view.error.code].title}
+                  {apiMessage && view.error.code === "unreachable" ? "The service reported an error" : ERROR_COPY[view.error.code].title}
                 </h1>
-                <p className="mt-4 text-[18px] leading-relaxed lg:text-[17px]">
-                  {view.error.code === "unreachable" || view.error.code === "timeout"
-                    ? "Check your connection and try again. The case is kept on the service."
-                    : view.error.message}
+                <p className="mt-4 text-[18px] leading-relaxed lg:text-[17px]" data-api-message={apiMessage ? "true" : "false"}>
+                  {apiMessage ??
+                    (view.error.code === "unreachable" || view.error.code === "timeout"
+                      ? "Check your connection and try again. The case is kept on the service."
+                      : view.error.message)}
                 </p>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                   <button type="button" className={PRIMARY} onClick={reload}>
@@ -197,31 +237,28 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                   </section>
                 ) : (
                   <>
-                    <RouteLine route={record.route} />
-                    <InvestigationProgress investigation={investigation} />
-                    <StageLine record={record} />
-                    <FindingsList findings={findings} route={record.route} />
-
-                    <div className={dual ? "lg:max-w-[640px]" : ""}>
-                      {verdictDone ? (
-                        <VerdictSection
-                          verdict={verdict}
-                          changeShownBelow={letterDone && !letter.applicable && verdict.outcome === "consistent"}
-                        />
-                      ) : null}
-                      {letterDone ? (
-                        <ActionSection
-                          letter={letter}
-                          verdict={verdictDone ? verdict : null}
-                          caseId={record.case_id}
-                          today={today}
-                          critique={critique}
-                          critiqueFailure={
-                            selfCheckFailed ? critique?.error?.trim() || "The service reported an error and gave no reason." : null
-                          }
-                        />
-                      ) : null}
+                    {/*
+                      One tree for both orders, so nothing remounts when the verdict lands: the
+                      status block and the findings are the same elements throughout (open chips,
+                      focus, and the live regions survive), and the outcome slot sits before the
+                      findings but is empty until the verdict exists. Chronological while the case
+                      works itself; outcome first once the verdict is reached.
+                    */}
+                    <div className="mt-4 border-t border-hairline pt-4" data-order={outcomeFirst ? "outcome-first" : "chronological"}>
+                      {outcomeFirst ? null : <RouteLine route={record.route} lead />}
+                      {/* One status row at tablet and up once the outcome leads, so the verdict reaches the first screen. */}
+                      <div className={outcomeFirst ? "*:mt-0 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-2" : ""}>
+                        <InvestigationProgress investigation={investigation} />
+                        <StageLine record={record} letterHref={letterHref} inRow={outcomeFirst} />
+                      </div>
                     </div>
+                    {outcome}
+                    <FindingsList
+                      findings={findings}
+                      route={record.route}
+                      appendix={outcomeFirst}
+                      lead={outcomeFirst ? <RouteLine route={record.route} lead /> : null}
+                    />
 
                     {failed && failure ? (
                       <section role="alert" aria-labelledby="failed-heading" className="mt-8 border-t-4 border-ink pt-4" data-view="failed" data-failed-step={failedStep}>

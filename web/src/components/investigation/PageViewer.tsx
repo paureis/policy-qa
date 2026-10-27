@@ -68,10 +68,10 @@ function useDesktop(): boolean {
   );
 }
 
-/* The chip that opened this quote: it carries aria-controls={the quote's id}. */
+/* The chip that opened this quote: its aria-controls lists the quote's id (a deduped chip lists several). */
 function chipFor(key: string): HTMLElement | null {
   if (typeof document === "undefined") return null;
-  return document.querySelector<HTMLElement>(`[aria-controls="${CSS.escape(key)}"]`);
+  return document.querySelector<HTMLElement>(`[aria-controls~="${CSS.escape(key)}"]`);
 }
 
 export function PageViewerProvider({ children }: { children: ReactNode }) {

@@ -12,35 +12,127 @@ export interface ChipCitation {
 }
 
 /*
-  A verified citation: the document title and page on a button, the quoted
-  excerpt inline underneath when tapped. Never a bare footnote number.
-  aria-controls is set only while the excerpt is in the DOM.
+  The short name a chip shows, set like a legal cite: the rule number, the
+  manual and chapter, the contract exhibit, the MLN number. The full title
+  stays in the quote's caption and in the chip's tooltip.
 */
-export function CitationChip({ citation }: { citation: ChipCitation }) {
+export function shortDocName(c: { title: string | null; doc_id: string }): string {
+  const t = c.title?.trim();
+  if (!t) return c.doc_id;
+  let m = t.match(/\((Pub \d+-\d+)\),\s*Chapter (\d+)/i);
+  if (m) return `${m[1]}, ch. ${m[2]}`;
+  m = t.match(/\((Rule [^()]+)\)\s*$/);
+  if (m) return m[1];
+  m = t.match(/^SMMC Model Health Plan Contract,\s*([^:]+)/);
+  if (m) return `SMMC Contract, ${m[1].trim()}`;
+  m = t.match(/\(((?:MLN|CMS Product No\.)[^()]*\d[^()]*)\)\s*$/);
+  if (m) return m[1].replace("CMS Product No.", "CMS No.");
+  m = t.match(/^(.*\bManual),\s*Chapter (\d+)/);
+  if (m) return `${m[1]}, ch. ${m[2]}`;
+  const colon = t.indexOf(":");
+  if (colon > 0 && colon <= 32) return t.slice(0, colon);
+  return t;
+}
+
+/*
+  Identical (document, page) pairs collapse into one chip; its distinct
+  quotes all open under it. Order is first appearance.
+*/
+export function groupCitations(citations: ChipCitation[]): ChipCitation[][] {
+  const groups = new Map<string, ChipCitation[]>();
+  for (const c of citations) {
+    const key = `${c.doc_id}|${c.page}`;
+    const group = groups.get(key);
+    if (!group) groups.set(key, [c]);
+    else if (!group.some((x) => x.quote === c.quote)) group.push(c);
+  }
+  return [...groups.values()];
+}
+
+/* The chip's face: a short name and a page folio, read as a reference, not a control. */
+function ChipFace({ citation, open, quotes = 1 }: { citation: ChipCitation; open: boolean; quotes?: number }) {
+  return (
+    <>
+      <span aria-hidden="true" className="mr-1.5 shrink-0 text-muted">
+        {open ? "–" : "+"}
+      </span>
+      <span className="min-w-0 truncate font-semibold">{shortDocName(citation)}</span>
+      <span aria-hidden="true" className="mx-1.5 shrink-0 text-muted">
+        ·
+      </span>
+      <span className="shrink-0 whitespace-nowrap tabular-nums">
+        <span aria-hidden="true">p.&nbsp;</span>
+        <span className="sr-only">page </span>
+        {citation.page}
+      </span>
+      {quotes > 1 ? <span className="ml-1.5 shrink-0 whitespace-nowrap text-muted">({quotes} quotes)</span> : null}
+    </>
+  );
+}
+
+const FACE = (open: boolean) =>
+  `relative inline-flex max-w-full items-baseline border-b text-left text-ink tabular-nums before:absolute before:inset-x-0 before:content-[''] ${
+    open ? "border-ink bg-hairline" : "border-edge bg-paper"
+  }`;
+
+/*
+  A verified citation: a short document name and page on a paper-tint
+  reference, the quoted excerpt inline underneath when tapped. Never a bare
+  footnote number. The visible face is short; a transparent extension makes
+  the hit area 46px tall. aria-controls is set only while the excerpt is in
+  the DOM.
+*/
+export function CitationChip({ citations }: { citations: ChipCitation[] }) {
   const [open, setOpen] = useState(false);
   const id = useId();
-  const title = citation.title?.trim() || citation.doc_id;
+  const first = citations[0];
+  const ids = citations.map((_, k) => `${id}-${k}`);
   return (
-    <li className="list-none">
+    <li className={`list-none ${open ? "basis-full" : ""}`}>
       <button
         type="button"
         aria-expanded={open}
-        aria-controls={open ? id : undefined}
+        aria-controls={open ? ids.join(" ") : undefined}
         onClick={() => setOpen((o) => !o)}
-        className={`inline-flex min-h-11 w-full items-start gap-2 rounded-sm border px-3 py-2 text-left text-[16px] leading-snug sm:w-auto ${
-          open ? "border-ink bg-paper text-ink" : "border-ink bg-bond text-ink"
-        }`}
+        title={first.title?.trim() || undefined}
+        className={`${FACE(open)} px-2 py-0.5 text-[16px] leading-6 before:-inset-y-[9px]`}
+        data-chip="reference"
       >
-        <span aria-hidden="true" className="mt-[2px] shrink-0 font-bold">
-          {open ? "–" : "+"}
-        </span>
-        <span>
-          <span className="font-semibold">{title}</span>
-          <span className="text-muted">, page {citation.page}</span>
-        </span>
+        <ChipFace citation={first} open={open} quotes={citations.length} />
       </button>
-      {open ? <QuoteFigure id={id} citation={citation} /> : null}
+      {open ? citations.map((c, k) => <QuoteFigure key={ids[k]} id={ids[k]} citation={c} />) : null}
     </li>
+  );
+}
+
+/*
+  A chip inside a line of the letter. It keeps the line's rhythm: a 24px face
+  inside a taller line, no box; a transparent extension makes the hit area
+  44px tall.
+*/
+export function InlineReferenceChip({
+  citation,
+  open,
+  controls,
+  onToggle,
+}: {
+  citation: ChipCitation;
+  open: boolean;
+  controls: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      aria-controls={open ? controls : undefined}
+      onClick={onToggle}
+      title={citation.title?.trim() || undefined}
+      className={`${FACE(open)} px-1.5 align-baseline text-[15px] leading-6 before:-inset-y-[10px]`}
+      data-chip="letter"
+    >
+      <ChipFace citation={citation} open={open} />
+    </button>
   );
 }
 
@@ -88,13 +180,14 @@ export function QuoteFigure({ id, citation }: { id: string; citation: ChipCitati
   );
 }
 
-/* A list of chips, or nothing when there are none. */
+/* A list of chips, one per (document, page), or nothing when there are none. */
 export function CitationChips({ citations, label = "Verified citations" }: { citations: ChipCitation[]; label?: string }) {
   if (!citations || citations.length === 0) return null;
+  const groups = groupCitations(citations);
   return (
-    <ul className="mt-3 flex flex-col gap-2" aria-label={label}>
-      {citations.map((c, i) => (
-        <CitationChip key={`${c.doc_id}-${c.page}-${i}`} citation={c} />
+    <ul className="mt-4 flex flex-wrap items-start gap-x-3 gap-y-[18px]" aria-label={label}>
+      {groups.map((g) => (
+        <CitationChip key={`${g[0].doc_id}-${g[0].page}`} citations={g} />
       ))}
     </ul>
   );

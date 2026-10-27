@@ -2,7 +2,6 @@
 
 import { useId, useState } from "react";
 import {
-  COULD_NOT_VERIFY_LABEL,
   acceptedRounds,
   asClause,
   critiqueError,
@@ -18,6 +17,7 @@ import {
   type SentenceChange,
 } from "@/lib/case";
 import { QuoteFigure } from "@/components/investigation/CitationChip";
+import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
 import { InlineChip, LetterFrame } from "./AppealLetter";
 
 /*
@@ -123,11 +123,8 @@ function IssueRow({ issue, round }: { issue: CritiqueIssue; round: CritiqueRound
     <li className="py-3" data-issue={issue.kind} data-fixed={fixed ? "true" : "false"}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="text-[18px] leading-snug font-bold lg:text-[17px]">{issueKindLabel(issue.kind)}</p>
-        <p
-          className={`border border-ink px-2 text-[14px] leading-6 font-bold tracking-wide uppercase ${fixed ? "bg-ink text-white" : "bg-bond text-ink"}`}
-        >
-          {fixed ? "Fixed" : "Not fixed"}
-        </p>
+        {/* Plain words, no box or fill: the filled ink tag belongs to "Could not verify" only. */}
+        <p className="text-[16px] leading-6 font-semibold text-ink">{fixed ? "Fixed" : "Not fixed"}</p>
       </div>
       <p className="mt-1 text-[15px] font-semibold text-ink">{severityLabel(issue.severity)}</p>
       <p className="mt-1 text-[17px] leading-relaxed">{issue.note}</p>
@@ -166,10 +163,7 @@ function ChangePair({ change, order, round }: { change: SentenceChange & { round
           <span className="sr-only">After: </span>
           {afterStruck ? (
             <>
-              <s className="decoration-ink decoration-2">{after.text}</s>{" "}
-              <span className="inline-block border border-ink px-1.5 align-baseline text-[13px] leading-5 font-bold tracking-wide text-ink uppercase">
-                {COULD_NOT_VERIFY_LABEL}
-              </span>
+              <s className="decoration-ink decoration-2">{after.text}</s> <CouldNotVerifyTag inline />
             </>
           ) : (
             after.text

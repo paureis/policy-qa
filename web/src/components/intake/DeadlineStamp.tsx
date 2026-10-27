@@ -19,7 +19,7 @@ export function DeadlineStamp({
   className?: string;
   /* The day count the API computed; when given it wins over today's math. */
   daysLeft?: number | null;
-  /* The lower arc; defaults to CASE OPENED when landed, RECOURSE otherwise. */
+  /* The lower arc; CASE OPENED everywhere (one stamp, one ring text), before and after it lands. */
   bottomText?: string;
 }) {
   const days = deadlineIso ? (typeof daysLeft === "number" ? daysLeft : daysUntil(deadlineIso, today)) : null;
@@ -72,7 +72,7 @@ export function DeadlineStamp({
           fontFamily="var(--font-public-sans), 'Public Sans', system-ui, sans-serif"
         >
           <textPath href="#stamp-arc-bottom" startOffset="50%" textAnchor="middle">
-            {bottomText ?? (landed ? "CASE OPENED" : "RECOURSE")}
+            {bottomText ?? "CASE OPENED"}
           </textPath>
         </text>
       </svg>

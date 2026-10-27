@@ -15,15 +15,22 @@ import {
   type Verdict,
 } from "@/lib/case";
 
+/* The two verification counts as lines, for the receipt and for the verdict. Counts, never a percentage. */
+export function verificationLines(investigation: Investigation, letter: Letter | null): string[] {
+  const { coverage } = investigation;
+  const lines = [`${coverage.supported} of ${coverage.claims} findings verified`];
+  if (letter && letter.status === "done" && letter.applicable && letter.verification) lines.push(letterVerificationLine(letter.verification));
+  return lines;
+}
+
 /*
-  The Trust panel: verification coverage as a count, never a percentage,
-  with abstentions, struck findings, and failed questions each counted on
-  their own;
-  the letter's sentences verified and struck, as counts; the self-check's
-  issues found and fixed and the letter's verified sentences before and after
-  it; the cost of the case to four decimals and the time, each the sum of the
-  investigation, verdict, letter, and self-check with the split shown; the
-  models; and the trace when the API sends one.
+  The Trust panel, set as a receipt on paper: the two verification counts
+  large (findings verified; letter sentences verified and struck), never a
+  percentage, with abstentions, struck findings, and failed questions each
+  counted on their own; the self-check's issues found and fixed and the
+  letter's verified sentences before and after it; then the itemized lines,
+  each step's time and cost with the total at the foot; the models; and the
+  trace when the API sends one. Per-question time and cost live in the trace.
 */
 export function TrustPanel({
   investigation,
@@ -65,60 +72,87 @@ export function TrustPanel({
 
   const notes: string[] = [];
   if (notSettled > 0) notes.push(`${notSettled} ${notSettled === 1 ? "finding" : "findings"} not settled by the documents.`);
-  if (struck > 0) notes.push(`${struck} could not be verified and ${struck === 1 ? "is" : "are"} struck out above.`);
+  if (struck > 0) notes.push(`${struck} could not be verified and ${struck === 1 ? "is" : "are"} struck out in the findings.`);
 
   return (
-    <section aria-labelledby="trust-heading" className="land mt-10 border-t-4 border-ink pt-4" data-trust="true">
+    <section aria-labelledby="trust-heading" className="land mt-10 border-t-4 border-ink bg-paper px-4 pt-4 pb-5 sm:px-6" data-trust="true">
       <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Trust</p>
       <h2 id="trust-heading" className="mt-1 text-[22px] leading-tight font-bold">
         {split ? "How this case was checked" : "How this investigation was checked"}
       </h2>
-      <dl className="mt-4 divide-y divide-hairline border-b border-hairline">
-        <Row label="Verification coverage">
-          <span className="font-bold">
-            {coverage.supported} of {coverage.claims} findings verified
-          </span>
-          {notes.length > 0 ? <span className="mt-1 block text-[15px] text-muted">{notes.join(" ")}</span> : null}
-          {errors > 0 ? (
-            <span className="mt-1 block text-[15px] font-semibold text-ink" data-errors={errors}>
-              {errors === 1 ? "1 question could not be investigated." : `${errors} questions could not be investigated.`}
-            </span>
-          ) : null}
-        </Row>
-        {showLetter ? (
-          <Row label="Appeal letter">
-            <span className="font-bold" data-letter-verification="true">
-              {letterVerificationLine(letter.verification)}
-            </span>
-            <span className="mt-1 block text-[15px] text-muted">Struck sentences are shown crossed out in the letter and left out of the copy.</span>
-          </Row>
+
+      <div className="mt-5 border-t border-hairline pt-4" data-coverage="true">
+        <p className="text-[28px] leading-tight font-bold tabular-nums">
+          {coverage.supported} of {coverage.claims} findings verified
+        </p>
+        {notes.length > 0 ? <p className="mt-1 text-[15px] text-muted">{notes.join(" ")}</p> : null}
+        {errors > 0 ? (
+          <p className="mt-1 text-[15px] font-semibold text-ink" data-errors={errors}>
+            {errors === 1 ? "1 question could not be investigated." : `${errors} questions could not be investigated.`}
+          </p>
         ) : null}
-        {selfCheck ? (
-          <Row label="Self-check">
-            <span className="font-bold" data-selfcheck-trust="true">
-              {selfCheck.lead}
-              {selfCheck.detail ? `; ${selfCheck.detail}` : ""}
-            </span>
-          </Row>
-        ) : null}
-        <Row label="Cost of this case">
-          <span data-total-cost="true">{formatCost(totalCost, costModel)}</span>
-          {split ? (
-            <span className="mt-1 block text-[15px] text-muted">
-              {steps.map((x) => `${capitalize(x.name)} ${formatCost(x.cost, x.model)}`).join(", ")}
-            </span>
-          ) : null}
-        </Row>
-        <Row label="Time taken">
-          {formatSeconds(totalMs)}
-          {split ? (
-            <span className="mt-1 block text-[15px] text-muted">{steps.map((x) => `${capitalize(x.name)} ${formatSeconds(x.ms)}`).join(", ")}</span>
-          ) : null}
-        </Row>
-        <Row label={models.length > 1 ? "Models" : "Model"}>
-          <span className="font-mono text-[16px]">{models.length > 0 ? models.join(", ") : investigation.model}</span>
-        </Row>
-      </dl>
+      </div>
+
+      {showLetter ? (
+        <div className="mt-4 border-t border-hairline pt-4">
+          <p className="text-[28px] leading-tight font-bold tabular-nums" data-letter-verification="true">
+            {letterVerificationLine(letter.verification)}
+          </p>
+          <p className="mt-1 text-[15px] text-muted">Struck sentences are shown crossed out in the letter and left out of the copy.</p>
+        </div>
+      ) : null}
+
+      {selfCheck ? (
+        <p className="mt-4 border-t border-hairline pt-4 text-[17px] leading-snug tabular-nums" data-selfcheck-trust="true">
+          <span className="font-bold">Self-check: </span>
+          {selfCheck.lead}
+          {selfCheck.detail ? `; ${selfCheck.detail}` : ""}
+        </p>
+      ) : null}
+
+      <table className="mt-5 w-full border-collapse text-left text-[16px] tabular-nums" data-receipt="true">
+        <caption className="sr-only">Time and cost of each step, with the total</caption>
+        <thead>
+          <tr className="border-y border-ink">
+            <th scope="col" className="py-2 pr-3 text-[14px] font-semibold text-muted">
+              Step
+            </th>
+            <th scope="col" className="py-2 pr-3 text-right text-[14px] font-semibold text-muted">
+              Time
+            </th>
+            <th scope="col" className="py-2 text-right text-[14px] font-semibold text-muted">
+              Cost
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {steps.map((x) => (
+            <tr key={x.name} className="border-b border-hairline">
+              <th scope="row" className="py-2 pr-3 font-normal">
+                {capitalize(x.name)}
+              </th>
+              <td className="py-2 pr-3 text-right whitespace-nowrap">{formatSeconds(x.ms)}</td>
+              <td className="py-2 text-right">{formatCost(x.cost, x.model)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-b border-ink">
+            <th scope="row" className="py-2 pr-3 font-bold">
+              Total
+            </th>
+            <td className="py-2 pr-3 text-right font-bold whitespace-nowrap">{formatSeconds(totalMs)}</td>
+            <td className="py-2 text-right font-bold" data-total-cost="true">
+              {formatCost(totalCost, costModel)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+      <p className="mt-3 text-[15px] text-muted">
+        {models.length > 1 ? "Models" : "Model"}:{" "}
+        <span className="font-mono text-ink">{models.length > 0 ? models.join(", ") : investigation.model}</span>
+      </p>
+
       {trace ? (
         <div className="mt-4">
           <button
@@ -148,13 +182,4 @@ export function TrustPanel({
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="py-3 sm:grid sm:grid-cols-[200px_minmax(0,1fr)] sm:gap-4">
-      <dt className="text-[14px] font-semibold tracking-wide text-muted uppercase sm:pt-1">{label}</dt>
-      <dd className="mt-1 text-[18px] leading-snug sm:mt-0 lg:text-[17px]">{children}</dd>
-    </div>
-  );
 }

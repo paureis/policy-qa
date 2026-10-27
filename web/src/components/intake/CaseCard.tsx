@@ -14,6 +14,8 @@ export interface CaseCardProps {
   caseId?: string;
   /* h1 on the intake screen; h2 where the page already has its heading. */
   headingTag?: "h1" | "h2";
+  /* false where the page already shows the postmark (the case page): one stamp per page. */
+  stamp?: boolean;
   onChange: (key: FieldKey, value: FieldValue) => void;
   onLooksRight: (key: FieldKey) => void;
 }
@@ -31,6 +33,7 @@ export function CaseCard({
   today,
   caseId,
   headingTag: Heading = "h1",
+  stamp = true,
   onChange,
   onLooksRight,
 }: CaseCardProps) {
@@ -53,7 +56,7 @@ export function CaseCard({
             </p>
           ) : null}
         </div>
-        <DeadlineStamp deadlineIso={deadlineIso} today={today} landed={landed} />
+        {stamp ? <DeadlineStamp deadlineIso={deadlineIso} today={today} landed={landed} /> : null}
       </div>
 
       <p className="mt-5 text-[18px] leading-relaxed lg:text-[17px]">{summary}</p>

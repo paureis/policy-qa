@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  /* Capture hygiene: no Next dev badge in screenshots or the demo video. Errors still surface. */
+  devIndicators: false,
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

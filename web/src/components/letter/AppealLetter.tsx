@@ -3,9 +3,7 @@
 import { useId, useState } from "react";
 import {
   API_URL,
-  COULD_NOT_VERIFY_LABEL,
   INTAKE_MODE,
-  citationLabel,
   letterPlainText,
   sentenceStruck,
   type CitationRef,
@@ -13,7 +11,8 @@ import {
   type LetterSentence,
   type Paragraph,
 } from "@/lib/case";
-import { QuoteFigure } from "@/components/investigation/CitationChip";
+import { InlineReferenceChip, QuoteFigure } from "@/components/investigation/CitationChip";
+import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
 
 const ACTION =
   "inline-flex min-h-12 w-full items-center justify-center rounded-sm px-5 text-[18px] font-semibold sm:w-auto";
@@ -148,10 +147,7 @@ function LetterParagraph({ sentences, index }: { sentences: LetterSentence[]; in
               {i > 0 ? " " : ""}
               {struck ? (
                 <>
-                  <s className="decoration-ink decoration-2">{s.text}</s>{" "}
-                  <span className="inline-block border border-ink px-1.5 align-baseline text-[13px] leading-5 font-bold tracking-wide text-ink uppercase">
-                    {COULD_NOT_VERIFY_LABEL}
-                  </span>
+                  <s className="decoration-ink decoration-2">{s.text}</s> <CouldNotVerifyTag inline />
                 </>
               ) : (
                 s.text
@@ -174,39 +170,12 @@ function LetterParagraph({ sentences, index }: { sentences: LetterSentence[]; in
 }
 
 /*
-  A small chip inside a line of text. The visible pill is short so the line
-  keeps its rhythm; a transparent extension makes the hit area 44px tall.
+  A small reference inside a line of text: a short document name and page on
+  a paper tint, no box, so the line keeps its rhythm; a transparent extension
+  makes the hit area 44px tall.
 */
-export function InlineChip({
-  citation,
-  open,
-  controls,
-  onToggle,
-}: {
-  citation: CitationRef;
-  open: boolean;
-  controls: string;
-  onToggle: () => void;
-}) {
-  const title = citationLabel(citation);
-  return (
-    <button
-      type="button"
-      aria-expanded={open}
-      aria-controls={open ? controls : undefined}
-      onClick={onToggle}
-      className={`relative inline-flex max-w-full items-baseline rounded-sm border border-ink px-1.5 align-baseline text-[14px] leading-6 text-ink before:absolute before:inset-x-0 before:-inset-y-[10px] before:content-[''] ${
-        open ? "bg-paper" : "bg-bond"
-      }`}
-      data-chip="letter"
-    >
-      <span aria-hidden="true" className="mr-1 font-bold">
-        {open ? "–" : "+"}
-      </span>
-      <span className="max-w-[17ch] truncate font-semibold sm:max-w-[30ch]">{title}</span>
-      <span className="shrink-0 text-muted">, page {citation.page}</span>
-    </button>
-  );
+export function InlineChip(props: { citation: CitationRef; open: boolean; controls: string; onToggle: () => void }) {
+  return <InlineReferenceChip {...props} />;
 }
 
 async function writeClipboard(text: string): Promise<boolean> {

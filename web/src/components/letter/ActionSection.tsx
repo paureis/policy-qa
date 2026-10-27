@@ -6,6 +6,9 @@ import { DeadlineFiling } from "./DeadlineFiling";
 import { EvidenceChecklist } from "./EvidenceChecklist";
 import { SelfCheck } from "./SelfCheck";
 
+/* The anchor the status line "Appeal letter ready." links to. */
+export const APPEAL_LETTER_ID = "appeal-letter";
+
 /*
   Action. With an applicable letter: the letter, copy and download, the
   evidence checklist, then the deadline and filing path. Without one: why the
@@ -31,7 +34,11 @@ export function ActionSection({
   const settledAgainst = verdict?.outcome === "consistent";
   return (
     <>
-      <section aria-labelledby="action-heading" className="land mt-10 border-t-4 border-ink pt-4" data-action={letter.applicable ? "letter" : "explanation"}>
+      <section
+        id={letter.applicable ? APPEAL_LETTER_ID : undefined}
+        aria-labelledby="action-heading"
+        className="land mt-10 scroll-mt-4 border-t-4 border-ink pt-4"
+        data-action={letter.applicable ? "letter" : "explanation"}>
         <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Action</p>
         {letter.applicable ? (
           <>
