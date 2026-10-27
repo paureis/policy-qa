@@ -1,0 +1,158 @@
+{
+  "config": {
+    "date": "2026-10-26",
+    "model": "muse-spark-1.3",
+    "reasoning_effort": "low",
+    "prices": {
+      "input_usd_per_m": 1.25,
+      "output_usd_per_m": 4.25
+    },
+    "modes": {
+      "intake": "muse-spark-1.3",
+      "investigation": "muse-spark-1.3",
+      "verdict": "muse-spark-1.3",
+      "critic": "muse-spark-1.3"
+    },
+    "critic_rounds": 1,
+    "concurrency": 1,
+    "cases": "C:\\Users\\pau\\recourse\\cases\\cases.csv",
+    "ids": [
+      "dc-030"
+    ],
+    "limit": null,
+    "alternates": {
+      "dc-008": [
+        "not_settled"
+      ],
+      "dc-020": [
+        "consistent"
+      ]
+    },
+    "refusal_ids": [
+      "dc-011"
+    ],
+    "wall_s": 42.8
+  },
+  "summary": {
+    "n": 1,
+    "correct": 1,
+    "accuracy": 1.0,
+    "by_intended": {
+      "not_settled": {
+        "n": 1,
+        "correct": 1,
+        "accuracy": 1.0
+      }
+    },
+    "by_program": {
+      "unknown": {
+        "n": 1,
+        "correct": 1,
+        "accuracy": 1.0
+      }
+    },
+    "by_jurisdiction": {
+      "Federal": {
+        "n": 1,
+        "correct": 1,
+        "accuracy": 1.0
+      }
+    },
+    "refusal_correct": null,
+    "letter_failures": 0,
+    "critic_failures": 0,
+    "outside_corpus": [
+      {
+        "id": "dc-030",
+        "got": "not_settled",
+        "correct": true,
+        "route_program": "unknown",
+        "route_reason": "The letter is from Sample Employer Health Plan, a plan outside the public programs in the corpus (Florida Medicaid, KidCare, Medicare). No document in the corpus governs it; the Florida Medicaid and federal Medicare rules are checked for reference only.",
+        "route_unknown": true,
+        "route_outside_corpus": true
+      }
+    ],
+    "letters": {
+      "applicable": 1,
+      "claims": 0,
+      "verified": 0,
+      "struck": 0,
+      "verification_rate": null,
+      "struck_rate": null
+    },
+    "critic": {
+      "reviewed": 1,
+      "accepted": 0,
+      "skipped": 0,
+      "errors": 0,
+      "issues_found": 0,
+      "issues_fixed": 0
+    },
+    "cost_usd": {
+      "total": 0.107508,
+      "mean": 0.107508,
+      "p50": 0.107508
+    },
+    "seconds": {
+      "total": 42.4,
+      "mean": 42.4,
+      "p50": 42.4
+    },
+    "confusion": {
+      "not_settled": {
+        "not_settled": 1
+      }
+    },
+    "errors": [],
+    "wrong": []
+  },
+  "rows": [
+    {
+      "id": "dc-030",
+      "program": "unknown",
+      "jurisdiction": "Federal",
+      "trap": "yes",
+      "demo": "no",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "not_settled",
+      "correct": true,
+      "refused": null,
+      "route_program": "unknown",
+      "route_reason": "The letter is from Sample Employer Health Plan, a plan outside the public programs in the corpus (Florida Medicaid, KidCare, Medicare). No document in the corpus governs it; the Florida Medicaid and federal Medicare rules are checked for reference only.",
+      "route_outside_corpus": true,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 4,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.107508,
+      "stage_cost_usd": {
+        "intake": 0.005803,
+        "investigation": 0.079965,
+        "verdict": 0.0,
+        "letter": 0.009404,
+        "critique": 0.012336
+      },
+      "seconds": 42.4,
+      "error": null
+    }
+  ]
+}
