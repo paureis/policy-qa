@@ -131,7 +131,22 @@ Scoring rule:
 - A critic failure leaves the verdict's score alone, because the product keeps the letter as drafted by design, and is counted as `critic_failures`.
 - `--limit` must be 1 or more; leave it out to run every case.
 
-Numbers: not yet run live.
+Numbers, first live run, Oct 26, 2026 (`results/case-evals-2026-10-26.json` and `.md`; Muse Spark 1.3, reasoning effort low, critic 1 round, three cases at a time):
+
+| Measure | Value |
+|---|---|
+| Verdict accuracy | 22 of 30 (73.3%) |
+| Intended consistent | 9 of 10 |
+| Intended inconsistent | 10 of 13 |
+| Intended not settled | 2 of 6 |
+| Refusal on the medical question (dc-011) | correct |
+| Letter claims verified | 61 of 61 over 16 letters; 0 struck |
+| Critic revisions accepted | 9 of 16 |
+| Cost per case | mean $0.084, p50 $0.088, $2.50 for the run |
+| Seconds per case | mean 34, p50 38 |
+| Errors, template letters, critic failures | 0, 0, 0 |
+
+What the misses say (recorded in DECISIONS.md, Oct 26): four "not settled" rows came out "consistent" because the model takes the payer's stated facts as given (dc-009, dc-014, dc-020 scored on its alternate, dc-002 the other way); three "inconsistent" rows whose proof is an exception elsewhere in the document came out "not settled" or "consistent" (dc-018 eyeglasses after cataract surgery, dc-026 rosacea not cosmetic, dc-021 QMB cost sharing); dc-017 is a close call either way; dc-030, the employer plan, was answered with an "inconsistent" verdict although the route said no corpus document governs it, a product bug fixed the same night. These are the tuning targets, measured before any change.
 
 ## Design notes
 
