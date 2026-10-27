@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { JURISDICTION_HEADINGS, groupFindings, type Finding, type Route } from "@/lib/case";
 import { FindingCard } from "./FindingCard";
+import { OPENING, OPENING_H2, SectionTitle } from "./SectionTitle";
 
 /*
   Findings in arrival order, newest at the bottom. A dual case groups them
@@ -37,15 +38,19 @@ export function FindingsList({
   return (
     <section
       aria-labelledby="findings-heading"
-      className={appendix ? `land mt-10 border-t-4 border-ink pt-4 ${annotated ? "lg:mt-20 lg:border-t-0 lg:pt-0" : ""}` : "mt-6"}
+      className={appendix ? `land mt-10 border-t-4 border-ink pt-4 ${annotated ? OPENING : ""}` : "mt-6"}
       data-findings={appendix ? "appendix" : "live"}
     >
       {appendix ? <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Investigation</p> : null}
       <h2
         id="findings-heading"
-        className={appendix ? `mt-1 text-[22px] leading-tight font-bold ${annotated ? "lg:mt-0 lg:text-[28px]" : ""}` : "text-[20px] font-bold"}
+        className={appendix ? `mt-1 text-[22px] leading-tight font-bold ${annotated ? OPENING_H2 : ""}` : "text-[20px] font-bold"}
       >
-        {appendix ? "How the case was investigated" : "Findings"}
+        <SectionTitle
+          title={appendix ? "How the case was investigated" : "Findings"}
+          short="Investigation record"
+          numbered={annotated && appendix}
+        />
       </h2>
       {appendix ? lead : null}
       <div className={dual ? "mt-4 lg:grid lg:grid-cols-2 lg:gap-x-10" : appendix ? "mt-4" : ""} aria-live={appendix ? undefined : "polite"}>

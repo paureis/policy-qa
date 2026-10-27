@@ -18,6 +18,7 @@ import {
 } from "@/lib/case";
 import { Band } from "@/components/intake/Band";
 import { CaseHeader } from "./CaseHeader";
+import { SECTION_COUNTER } from "./SectionTitle";
 import { FindingsList } from "./FindingsList";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { RouteLine } from "./RouteLine";
@@ -156,14 +157,17 @@ export function InvestigationView({ caseId }: { caseId: string }) {
   const proof = done && investigation && verdictDone ? verificationLines(investigation, letterDone ? letter : null) : [];
   /*
     The finished case with a letter (drafted, reviewing, reviewed) reads as the
-    Annotated Letter at 1024px and up: a paper desk, a 1,120 px frame (1,088 px
-    of content: the 620 px sheet, the 48 px gutter, the 420 px margin), the
-    header as a strip, the outcome heading block, the letter sheet with its
-    margin notes, the record, the self-check, the receipt. annotated switches
-    classes only, so no element remounts when the letter lands; desk (the same
-    at desktop width, from the script) moves the checklist and the filing path
-    onto the sheet and the self-check after the record, where DOM order must
-    change with the visual order. Under 1024px the page is the phone column.
+    Annotated Letter at 1024px and up: the desk (--desk, a step darker than
+    paper), a 1,120 px frame (1,088 px of content: the 620 px sheet, the 48 px
+    gutter, the 420 px margin), the header as a line of facts, then six
+    numbered sections, each opened by a 4 px ink rule across the frame:
+    1 Verdict, 2 Appeal letter (the sheet with footnoted margin notes),
+    3 What to send and where to file, 4 Investigation record, 5 Self-check,
+    6 Receipt. annotated switches classes only, so no element remounts when
+    the letter lands; desk (the same at desktop width, from the script) adds
+    section 3 under the sheet and moves the self-check after the record, where
+    DOM order must change with the visual order. Under 1024px the page is the
+    phone column.
   */
   const annotated = letterDone && letter.applicable;
   const desk = annotated && desktop;
@@ -204,7 +208,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
 
   return (
     <PageViewerProvider>
-      <div className={`flex min-h-full flex-col ${annotated ? "lg:bg-paper" : ""}`} data-layout={annotated ? "annotated" : "column"}>
+      <div className={`flex min-h-full flex-col ${annotated ? "lg:bg-desk" : ""}`} data-layout={annotated ? "annotated" : "column"}>
         <Band sample={sample} widthClass={width}>
           <Link href="/case/new" className="min-h-11 rounded-sm px-2 py-2 text-[15px] font-semibold underline underline-offset-4 focus-visible:outline-white">
             New case
@@ -257,7 +261,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
             ) : null}
 
             {record ? (
-              <div data-view={record.status}>
+              <div data-view={record.status} className={annotated ? SECTION_COUNTER : undefined}>
                 <CaseHeader record={record} today={today} strip={annotated} />
 
                 {record.status === "intake" ? (

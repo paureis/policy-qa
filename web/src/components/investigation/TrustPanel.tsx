@@ -14,6 +14,7 @@ import {
   type Letter,
   type Verdict,
 } from "@/lib/case";
+import { OPENING, OPENING_H2, SectionTitle } from "./SectionTitle";
 
 /* The two verification counts as lines, for the receipt and for the verdict. Counts, never a percentage. */
 export function verificationLines(investigation: Investigation, letter: Letter | null): string[] {
@@ -80,18 +81,26 @@ export function TrustPanel({
   return (
     <section
       aria-labelledby="trust-heading"
-      className={`land mt-10 border-t-4 border-ink bg-paper px-4 pt-4 pb-5 sm:px-6 ${
-        annotated ? "lg:mt-16 lg:max-w-[620px] lg:border-x lg:border-b lg:border-x-hairline lg:border-b-hairline lg:bg-bond lg:px-8 lg:pt-6 lg:pb-7" : ""
-      }`}
+      className={`land mt-10 border-t-4 border-ink bg-paper px-4 pt-4 pb-5 sm:px-6 ${annotated ? `${OPENING} lg:bg-transparent lg:px-0 lg:pb-0` : ""}`}
       data-trust="true"
     >
       <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Trust</p>
-      <h2 id="trust-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? "lg:mt-0 lg:text-[28px]" : ""}`}>
-        {split ? "How this case was checked" : "How this investigation was checked"}
+      <h2 id="trust-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? OPENING_H2 : ""}`}>
+        <SectionTitle title={split ? "How this case was checked" : "How this investigation was checked"} short="Receipt" numbered={annotated} />
       </h2>
 
-      <div className="mt-5 border-t border-hairline pt-4" data-coverage="true">
-        <p className="text-[28px] leading-tight font-bold tabular-nums">
+      {/*
+        The receipt itself. On the phone a plain wrapper (the section is the
+        paper block). At desktop on the finished case: a bond slip on the desk,
+        narrower than the letter, with a 1 px ink edge and a dashed tear line
+        at the top, so it reads as a slip torn off, not as a card.
+      */}
+      <div
+        className={annotated ? "lg:mt-8 lg:max-w-[560px] lg:border lg:border-ink lg:bg-bond lg:px-8 lg:pt-6 lg:pb-7 lg:[border-top-style:dashed]" : ""}
+        data-receipt-slip="true"
+      >
+      <div className={`mt-5 border-t border-hairline pt-4 ${annotated ? "lg:mt-0 lg:border-t-0 lg:pt-0" : ""}`} data-coverage="true">
+        <p className={`text-[28px] leading-tight font-bold tabular-nums ${annotated ? "lg:text-[24px]" : ""}`}>
           {coverage.supported} of {coverage.claims} findings verified
         </p>
         {notes.length > 0 ? <p className="mt-1 text-[15px] text-muted">{notes.join(" ")}</p> : null}
@@ -104,7 +113,7 @@ export function TrustPanel({
 
       {showLetter ? (
         <div className="mt-4 border-t border-hairline pt-4">
-          <p className="text-[28px] leading-tight font-bold tabular-nums" data-letter-verification="true">
+          <p className={`text-[28px] leading-tight font-bold tabular-nums ${annotated ? "lg:text-[24px]" : ""}`} data-letter-verification="true">
             {letterVerificationLine(letter.verification)}
           </p>
           <p className="mt-1 text-[15px] text-muted">Struck sentences are shown crossed out in the letter and left out of the copy.</p>
@@ -185,6 +194,7 @@ export function TrustPanel({
           ) : null}
         </div>
       ) : null}
+      </div>
     </section>
   );
 }

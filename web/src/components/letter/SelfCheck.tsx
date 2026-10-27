@@ -18,6 +18,7 @@ import {
 } from "@/lib/case";
 import { QuoteFigure } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
+import { OPENING, OPENING_H2, SectionTitle } from "@/components/investigation/SectionTitle";
 import { InlineChip, LetterFrame } from "./AppealLetter";
 
 /*
@@ -69,16 +70,18 @@ export function SelfCheck({
   const laterError = critique.accepted ? (critique.error?.trim() || rounds.find((r) => !r.accepted && r.error?.trim())?.error?.trim() || "") : "";
   const kept = critique.accepted && accepted.length > 0;
   const draft = letter.draft_paragraphs ?? [];
+  /* The brief's desktop scale on the finished case: h3 at 20 px, weight 600. */
+  const h3 = annotated ? "lg:text-[20px] lg:font-semibold" : "";
 
   return (
     <Shell state={kept ? "accepted" : "rejected"} annotated={annotated}>
-      <p className="mt-2 text-[16px] text-muted">
+      <p className={`mt-2 text-[16px] text-muted ${annotated ? "lg:mt-3" : ""}`}>
         {kept
           ? "A second pass read the draft for problems and revised it. The letter above is the revised one."
           : "A second pass read the draft for problems. The letter above is the first draft."}
       </p>
 
-      <h3 className="mt-5 text-[18px] font-bold">What it found</h3>
+      <h3 className={`mt-5 text-[18px] font-bold ${h3}`}>What it found</h3>
       {issues.length > 0 ? (
         <ul className="mt-2 divide-y divide-hairline border-y border-hairline" data-issues={issues.length}>
           {issues.map(({ issue, round }, i) => (
@@ -102,7 +105,7 @@ export function SelfCheck({
 
       {kept && changes.length > 0 ? (
         <>
-          <h3 className="mt-6 text-[18px] font-bold">What changed</h3>
+          <h3 className={`mt-6 text-[18px] font-bold ${h3}`}>What changed</h3>
           <ol className="mt-3 space-y-4" data-changes={changes.length}>
             {changes.map((c, i) => (
               <ChangePair key={i} change={c} order={i} round={accepted.length > 1 ? c.round : null} />
@@ -128,12 +131,12 @@ function Shell({
   return (
     <section
       aria-labelledby="selfcheck-heading"
-      className={`land mt-10 border-t-4 border-ink pt-4 ${annotated ? "lg:mt-16 lg:max-w-[620px] lg:border-t-0 lg:pt-0" : ""}`}
+      className={`land mt-10 border-t-4 border-ink pt-4 ${annotated ? `${OPENING} lg:*:max-w-[620px]` : ""}`}
       data-selfcheck={state}
     >
       <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Self-check</p>
-      <h2 id="selfcheck-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? "lg:mt-0 lg:text-[28px]" : ""}`}>
-        How the letter checked itself
+      <h2 id="selfcheck-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? OPENING_H2 : ""}`}>
+        <SectionTitle title="How the letter checked itself" short="Self-check" numbered={annotated} />
       </h2>
       {children}
     </section>

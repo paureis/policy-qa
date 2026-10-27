@@ -15,8 +15,8 @@ const SOURCE_LINE: Record<Letter["deadline"]["source"], string> = {
   path. The citations behind the deadline and the path follow as one list, one
   chip per document and page. The heading changes when no letter applies: the
   person may still choose to appeal, so the date and the path stay visible.
-  register: set on the letter sheet's footer register at desktop, as an h3
-  under the letter's heading, without the section rule and overline.
+  register: part of section 3 at desktop ("What to send and where to file"),
+  under the letter sheet, as an h3 without the section rule and overline.
 */
 export function DeadlineFiling({ letter, today, register = false }: { letter: Letter; today: Date; register?: boolean }) {
   const { deadline, filing } = letter;
@@ -24,10 +24,12 @@ export function DeadlineFiling({ letter, today, register = false }: { letter: Le
   const days = known ? (typeof deadline.days_left === "number" ? deadline.days_left : daysUntil(deadline.date as string, today)) : null;
   const sources = [deadline.citation, filing.citation].filter((c): c is CitationRef => c !== null && c !== undefined);
   const Heading = register ? "h3" : "h2";
+  /* In the register's narrow margin column the label sits over its value. */
+  const row = register ? "py-3" : "py-3 sm:grid sm:grid-cols-[200px_minmax(0,1fr)] sm:gap-4";
   return (
     <section
       aria-labelledby="deadline-heading"
-      className={register ? "mt-10 border-t border-hairline pt-6" : "land mt-10 border-t-4 border-ink pt-4"}
+      className={register ? "" : "land mt-10 border-t-4 border-ink pt-4"}
       data-deadline={deadline.source}
       data-register={register ? "true" : undefined}
     >
@@ -46,11 +48,11 @@ export function DeadlineFiling({ letter, today, register = false }: { letter: Le
       </div>
 
       <dl className="mt-6 divide-y divide-hairline border-y border-hairline">
-        <div className="py-3 sm:grid sm:grid-cols-[200px_minmax(0,1fr)] sm:gap-4">
+        <div className={row}>
           <dt className="text-[14px] font-semibold tracking-wide text-muted uppercase sm:pt-1">Where to file</dt>
           <dd className="mt-1 text-[18px] leading-snug sm:mt-0 lg:text-[17px]">{filing.where}</dd>
         </div>
-        <div className="py-3 sm:grid sm:grid-cols-[200px_minmax(0,1fr)] sm:gap-4">
+        <div className={row}>
           <dt className="text-[14px] font-semibold tracking-wide text-muted uppercase sm:pt-1">How</dt>
           <dd className="mt-1 text-[18px] leading-snug sm:mt-0 lg:text-[17px]">{filing.how}</dd>
         </div>

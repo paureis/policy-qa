@@ -56,7 +56,10 @@ function ChipFace({ citation, open, quotes = 1 }: { citation: ChipCitation; open
       <span aria-hidden="true" className="mr-1.5 shrink-0 text-muted">
         {open ? "–" : "+"}
       </span>
-      <span className="min-w-0 truncate font-semibold">{shortDocName(citation)}</span>
+      {/* Under 360 px the name wraps instead of pushing the page sideways (320 px reflow). */}
+      <span className="min-w-0 truncate font-semibold max-[359px]:whitespace-normal lg:underline lg:decoration-edge lg:decoration-1 lg:underline-offset-4">
+        {shortDocName(citation)}
+      </span>
       <span aria-hidden="true" className="mx-1.5 shrink-0 text-muted">
         ·
       </span>
@@ -70,9 +73,13 @@ function ChipFace({ citation, open, quotes = 1 }: { citation: ChipCitation; open
   );
 }
 
+/*
+  At 1024 px and up the face drops the tint and the rule for an underlined
+  cite (the name), so a 44 px tall target does not read as a button.
+*/
 const FACE = (open: boolean) =>
   `relative inline-flex max-w-full items-baseline border-b text-left text-ink tabular-nums before:absolute before:inset-x-0 before:content-[''] ${
-    open ? "border-ink bg-hairline" : "border-edge bg-paper"
+    open ? "border-ink bg-hairline" : "border-edge bg-paper lg:border-transparent lg:bg-transparent"
   }`;
 
 /*
@@ -88,14 +95,14 @@ export function CitationChip({ citations }: { citations: ChipCitation[] }) {
   const first = citations[0];
   const ids = citations.map((_, k) => `${id}-${k}`);
   return (
-    <li className={`list-none ${open ? "basis-full" : ""}`}>
+    <li className={`max-w-full min-w-0 list-none ${open ? "basis-full" : ""}`}>
       <button
         type="button"
         aria-expanded={open}
         aria-controls={open ? ids.join(" ") : undefined}
         onClick={() => setOpen((o) => !o)}
         title={first.title?.trim() || undefined}
-        className={`${FACE(open)} px-2 py-0.5 text-[16px] leading-6 before:-inset-y-[9px]`}
+        className={`${FACE(open)} px-2 py-0.5 text-[16px] leading-6 before:-inset-y-[9px] lg:min-h-11 lg:items-center lg:before:hidden`}
         data-chip="reference"
       >
         <ChipFace citation={first} open={open} quotes={citations.length} />
@@ -128,7 +135,7 @@ export function InlineReferenceChip({
       aria-controls={open ? controls : undefined}
       onClick={onToggle}
       title={citation.title?.trim() || undefined}
-      className={`${FACE(open)} px-1.5 align-baseline text-[15px] leading-6 before:-inset-y-[10px]`}
+      className={`${FACE(open)} px-1.5 align-baseline text-[15px] leading-6 before:-inset-y-[10px] lg:-my-[10px] lg:border-transparent lg:bg-clip-content lg:py-[10px] lg:before:hidden`}
       data-chip="letter"
     >
       <ChipFace citation={citation} open={open} />

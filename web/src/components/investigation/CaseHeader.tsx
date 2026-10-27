@@ -14,9 +14,10 @@ const noop = () => {};
   "Show the full case card" and render through the read-only CaseCard.
 
   strip: the finished case with a letter. At 1024px and up the header is a
-  bond strip on the paper desk: the payer, one line of facts, and the
-  disclosure; the postmark moves to the letter sheet's corner (the page's one
-  stamp). Classes only: the same elements, so nothing remounts.
+  line of facts set straight on the desk, no box: the payer, the facts
+  between hairline rules, the disclosure, and one rule under the line; the
+  postmark moves to the letter sheet's corner (the page's one stamp). Classes
+  only: the same elements, so nothing remounts.
 */
 export function CaseHeader({ record, today, strip = false }: { record: CaseRecord; today: Date; strip?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -31,7 +32,7 @@ export function CaseHeader({ record, today, strip = false }: { record: CaseRecor
       aria-labelledby="case-heading"
       className={`border-t-4 border-ink pt-4 ${
         strip
-          ? "lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-x-6 lg:gap-y-1 lg:border lg:border-hairline lg:bg-bond lg:px-5 lg:py-3"
+          ? "lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-x-6 lg:gap-y-1 lg:border-t-0 lg:border-b lg:border-edge lg:pt-1 lg:pb-3"
           : ""
       }`}
       data-case={record.case_id}

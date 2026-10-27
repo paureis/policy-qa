@@ -321,9 +321,11 @@ function PageViewerPanel({
   const side = variant === "side";
   const header = (
     <div className="flex items-start gap-2">
-      <p className="min-w-0 flex-1 pt-2 text-[16px] leading-snug font-semibold" data-viewer-title="true">
+      {/* In a margin note the note above already names the document and page (and the dialog's name carries the full title), so the header keeps only its controls. */}
+      <p className={variant === "margin" ? "sr-only" : "min-w-0 flex-1 pt-2 text-[16px] leading-snug font-semibold"} data-viewer-title="true">
         {title}, page {citation.page}
       </p>
+      {variant === "margin" ? <span aria-hidden="true" className="flex-1" /> : null}
       {highlight && !imageFailed ? (
         <button
           type="button"

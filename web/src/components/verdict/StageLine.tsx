@@ -35,7 +35,14 @@ export function StageLine({
         data-stage-line="true"
       >
         {line && letterHref ? (
-          <a href={letterHref} className="-my-2 inline-block py-2 text-ink underline decoration-2 underline-offset-4" data-letter-link="true">
+          <a
+            href={letterHref}
+            className={`-my-2 inline-block py-2 text-ink underline decoration-2 underline-offset-4 ${
+              /* At desktop the line steps down to 17 px: the link keeps a 44 px target, its margin box no taller than the line. */
+              compact ? "lg:-my-[9.5px] lg:inline-flex lg:min-h-11 lg:items-center lg:py-0" : ""
+            }`}
+            data-letter-link="true"
+          >
             {line}
           </a>
         ) : (

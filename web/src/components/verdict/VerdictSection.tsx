@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { verdictHeadline, type CitationRef, type Verdict, type VerdictOutcome } from "@/lib/case";
 import { CitationChips } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
+import { OPENING_H2, SectionTitle } from "@/components/investigation/SectionTitle";
 
 /* The headline's ink: the stamp's blue for an inconsistent denial, ink when it holds, muted when unsettled. Never red or green. */
 const HEADLINE_INK: Record<VerdictOutcome, string> = {
@@ -21,7 +22,7 @@ const HEADLINE_INK: Record<VerdictOutcome, string> = {
   (proof) sit under the headline, so the proof is read with the claim.
 
   annotated: the finished case with a letter. At 1024px and up the section is
-  the outcome heading block over the letter sheet: the headline at 46px with
+  section 1 of the page under its numbered opening ("1 Verdict"): the headline at 46px with
   no side bar, the counts and the day count on one line, then the rule and the
   gap, what would change it, and the steelman in the sheet's two columns.
   Classes only, so the block never remounts when the letter lands.
@@ -47,21 +48,23 @@ export function VerdictSection({
   const steelId = useId();
   const outcome = verdict.outcome;
   const ink = HEADLINE_INK[outcome] ?? "text-ink";
+  /* The brief's desktop scale: h3 at 20 px, weight 600 (700 is kept for the verdict and the h2s). */
+  const h3 = `text-[18px] font-bold ${annotated ? "lg:text-[20px] lg:font-semibold" : ""}`;
 
   return (
     <section
       aria-labelledby="verdict-heading"
-      className={`land ${first ? "mt-8" : "mt-10"} border-t-4 border-ink pt-4 ${annotated ? "lg:mt-5 lg:border-t-0 lg:pt-0" : ""}`}
+      className={`land ${first ? "mt-8" : "mt-10"} border-t-4 border-ink pt-4 ${annotated ? "lg:mt-8" : ""}`}
       data-verdict={outcome}
     >
       <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Verdict</p>
-      <h2 id="verdict-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? "lg:sr-only" : ""}`}>
-        What the documents say
+      <h2 id="verdict-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? OPENING_H2 : ""}`}>
+        <SectionTitle title="What the documents say" short="Verdict" numbered={annotated} />
       </h2>
 
       <p
         className={`stamp-in mt-4 border-l-[6px] border-current pl-4 text-[32px] leading-[1.15] font-bold tracking-tight sm:text-[38px] ${ink} ${
-          annotated ? "lg:mt-0 lg:max-w-[26ch] lg:border-l-0 lg:pl-0 lg:text-[46px] lg:leading-[1.08] lg:text-balance" : ""
+          annotated ? "lg:mt-7 lg:max-w-[26ch] lg:border-l-0 lg:pl-0 lg:text-[46px] lg:leading-[1.08] lg:text-balance" : ""
         }`}
         data-headline={outcome}
       >
@@ -97,25 +100,25 @@ export function VerdictSection({
       {/* At desktop, annotated: the sheet's two columns, read row by row (the rule, the gap; what would change it, the steelman). */}
       <div className={annotated ? "lg:mt-8 lg:grid lg:desk-cols lg:items-start lg:gap-y-5 lg:*:mt-0" : ""} data-verdict-body="true">
       <div className="mt-6 border-t border-hairline pt-4">
-        <h3 className="text-[18px] font-bold">The rule</h3>
+        <h3 className={h3}>The rule</h3>
         <Claim text={verdict.rule?.statement ?? ""} unsupported={verdict.rule?.unsupported === true} citations={verdict.rule?.citations ?? []} />
       </div>
 
       <div className="mt-5 border-t border-hairline pt-4">
-        <h3 className="text-[18px] font-bold">The gap</h3>
+        <h3 className={h3}>The gap</h3>
         <p className="mt-2 text-[18px] leading-relaxed lg:text-[17px]">{verdict.gap}</p>
       </div>
 
       {/* For a denial that holds, Action shows this as "What would have made it covered"; it is not repeated here. */}
       {verdict.what_would_change?.trim() && !changeShownBelow ? (
         <div className="mt-5 border-t border-hairline pt-4" data-what-would-change="true">
-          <h3 className="text-[18px] font-bold">What would change it</h3>
+          <h3 className={h3}>What would change it</h3>
           <p className="mt-2 text-[18px] leading-relaxed lg:text-[17px]">{verdict.what_would_change}</p>
         </div>
       ) : null}
 
       <div className="mt-5 border-y border-hairline py-2">
-        <h3 className="text-[18px] font-bold">
+        <h3 className={h3}>
           <button
             type="button"
             aria-expanded={steelOpen}

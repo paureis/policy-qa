@@ -2,6 +2,7 @@
 
 import type { Critique, Letter, Verdict } from "@/lib/case";
 import { DeadlineStamp } from "@/components/intake/DeadlineStamp";
+import { OPENING, OPENING_H2, SectionTitle } from "@/components/investigation/SectionTitle";
 import { AppealLetter } from "./AppealLetter";
 import { DeadlineFiling } from "./DeadlineFiling";
 import { EvidenceChecklist } from "./EvidenceChecklist";
@@ -18,11 +19,12 @@ export const APPEAL_LETTER_ID = "appeal-letter";
   anyway. The self-check sits between the letter and the checklist.
 
   annotated: the finished case with a letter; its classes take the desktop
-  layout at 1024px and up (CSS only, so nothing remounts). desk: the same at
-  desktop width as the script sees it; the letter becomes the Annotated
-  Letter, the checklist and the filing path move onto the sheet's footer
-  register, and the self-check is left to the page, which places it after the
-  investigation record.
+  layout at 1024px and up (CSS only, so nothing remounts): the letter is
+  section 2 of the page, with its numbered opening. desk: the same at desktop
+  width as the script sees it; the letter becomes the Annotated Letter, the
+  checklist and the filing path become section 3 ("What to send and where to
+  file") under the sheet, and the self-check is left to the page, which places
+  it after the investigation record.
 */
 export function ActionSection({
   letter,
@@ -52,15 +54,15 @@ export function ActionSection({
       <section
         id={letter.applicable ? APPEAL_LETTER_ID : undefined}
         aria-labelledby="action-heading"
-        className={`land mt-10 scroll-mt-4 border-t-4 border-ink pt-4 ${annotated ? "lg:mt-16 lg:border-t-0 lg:pt-0" : ""}`}
+        className={`land mt-10 scroll-mt-4 border-t-4 border-ink pt-4 ${annotated ? OPENING : ""}`}
         data-action={letter.applicable ? "letter" : "explanation"}>
         <p className={`text-[14px] font-semibold tracking-wide text-muted uppercase ${annotated ? "lg:hidden" : ""}`}>Action</p>
         {letter.applicable ? (
           <>
-            <h2 id="action-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? "lg:mt-0 lg:text-[28px]" : ""}`}>
-              Your appeal letter
+            <h2 id="action-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? OPENING_H2 : ""}`}>
+              <SectionTitle title="Your appeal letter" short="Appeal letter" numbered={annotated} />
             </h2>
-            <p className="mt-2 text-[16px] text-muted">
+            <p className={`mt-2 text-[16px] text-muted ${annotated ? "lg:mt-3" : ""}`}>
               {sheet
                 ? "Read it before you send it. Add your name, member ID, and signature."
                 : "Read it before you send it. Add your name, member ID, and signature. Tap a citation to see the quote it rests on."}
@@ -70,14 +72,6 @@ export function ActionSection({
               caseId={caseId}
               desk={sheet}
               stamp={sheet ? <DeadlineStamp deadlineIso={deadlineIso} daysLeft={deadline.days_left} today={today} landed className="w-[128px]" /> : null}
-              register={
-                sheet ? (
-                  <>
-                    <EvidenceChecklist items={letter.evidence_checklist ?? []} register />
-                    <DeadlineFiling letter={letter} today={today} register />
-                  </>
-                ) : null
-              }
             />
           </>
         ) : (
@@ -95,7 +89,23 @@ export function ActionSection({
           </>
         )}
       </section>
-      {sheet ? null : (
+      {sheet ? (
+        /*
+          Section 3 at desktop: what goes in the envelope and where it goes, as a
+          register on the desk under the sheet. The checklist in the sheet's
+          column, the deadline (date, day count, its citation) and the filing
+          path in the margin column beside it.
+        */
+        <section aria-labelledby="send-heading" className={`land mt-10 border-t-4 border-ink pt-4 ${OPENING}`} data-send="true">
+          <h2 id="send-heading" className={`mt-1 text-[22px] leading-tight font-bold ${OPENING_H2}`}>
+            <SectionTitle title="What to send and where to file" short="What to send and where to file" numbered />
+          </h2>
+          <div className="mt-8 grid desk-cols items-start">
+            <EvidenceChecklist items={letter.evidence_checklist ?? []} register />
+            <DeadlineFiling letter={letter} today={today} register />
+          </div>
+        </section>
+      ) : (
         <>
           <SelfCheck critique={critique} letter={letter} failedReason={critiqueFailure} />
           {letter.applicable ? <EvidenceChecklist items={letter.evidence_checklist ?? []} /> : null}

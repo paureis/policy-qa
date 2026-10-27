@@ -17,6 +17,13 @@
   --edge: #71767a; /* input boundaries: 4.5:1 on bond, for WCAG 1.4.11 */
   --muted: #565c65;
   --paper: #f7f8f9;
+  /*
+    Layout token, case page at 1024 px and up: the desk the letter sheet lies
+    on. Paper with 6% ink (#eaebec), no new hue. On it: ink 14.4:1, muted
+    5.65:1, stamp 8.1:1, federal 5.6:1, edge 3.85:1; bond 1.19:1, which is why
+    the sheet also carries a 1 px ink edge.
+  */
+  --desk: color-mix(in srgb, var(--paper) 94%, var(--ink));
 }
 
 @theme inline {
@@ -30,6 +37,7 @@
   --color-edge: var(--edge);
   --color-muted: var(--muted);
   --color-paper: var(--paper);
+  --color-desk: var(--desk);
   --font-sans: var(--font-public-sans), "Public Sans", system-ui, sans-serif;
 }
 

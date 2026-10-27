@@ -8,8 +8,8 @@ import { CitationChips } from "@/components/investigation/CitationChip";
   What to include with the appeal. Each row is a real checkbox the person can
   tick as they gather papers; the tick lives only on this screen. The reason
   sits under each item, and the chip when the policy is the reason.
-  register: set on the letter sheet's footer register at desktop, as an h3
-  under the letter's heading, without the section rule and overline.
+  register: part of section 3 at desktop ("What to send and where to file"),
+  under the letter sheet, as an h3 without the section rule and overline.
 */
 export function EvidenceChecklist({ items, register = false }: { items: EvidenceItem[]; register?: boolean }) {
   if (!items || items.length === 0) return null;
@@ -45,8 +45,10 @@ function ChecklistRow({ item }: { item: EvidenceItem }) {
             id={id}
             type="checkbox"
             aria-describedby={`${id}-why`}
-            className="peer absolute inset-0 h-7 w-7 cursor-pointer appearance-none rounded-sm border-2 border-ink bg-bond checked:bg-ink"
+            className="peer absolute inset-0 h-7 w-7 cursor-pointer appearance-none rounded-sm border-2 border-ink bg-bond checked:bg-ink lg:-inset-2 lg:h-11 lg:w-11 lg:border-0 lg:bg-transparent lg:checked:bg-transparent"
           />
+          {/* At desktop the input is a 44 px target and this draws the 28 px box inside it. */}
+          <span aria-hidden="true" className="pointer-events-none absolute inset-0 hidden rounded-sm border-2 border-ink bg-bond peer-checked:bg-ink lg:block" />
           <svg
             viewBox="0 0 20 20"
             aria-hidden="true"
