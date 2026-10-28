@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { Fragment, useId, useState } from "react";
 import { secondOpinionLine, verdictHeadline, type CaseCard, type CitationRef, type SecondOpinion, type Verdict } from "@/lib/case";
 import { CitationChips } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
@@ -24,6 +24,17 @@ function proofMarks(proof: string[]): { text: string; mark: "tick" | "strike" | 
       return { text: part, mark: m && m[1] === m[2] ? ("tick" as const) : ("ring" as const) };
     }),
   );
+}
+
+/*
+  The steelman's first sentence, for the one-line strip on the top sheet: up to the first full stop,
+  question or exclamation mark that ends the text or is followed by a space and a capital (so "U.S."
+  inside a sentence does not cut it). The whole argument when it has no such stop.
+*/
+function firstSentence(text: string): string {
+  const t = text.trim();
+  const m = /^([\s\S]+?[.!?])(?=\s+[A-Z"“(]|$)/.exec(t);
+  return m ? m[1] : t;
 }
 
 /*
@@ -100,13 +111,18 @@ export function VerdictSection({
   */
   const desktop = useDesktop();
   const parts = folder && desktop ? "land" : "";
+  /*
+    The slip is keyed, so React matches it by its key, not by its position among the section's children:
+    the verdict's tree has more children before it than the pending one (the opening, the stamp, its h2,
+    the counts, the second opinion line), and an index match remounted the slip at decided (found on
+    Oct 28, 2026, measuring the latest-finding line's node; padding the pending tree with nulls had
+    drifted out of step when the second opinion line was added).
+  */
+  const slipNode = <Fragment key="slip">{slip}</Fragment>;
   if (maybeVerdict === null) {
     return (
       <section className="hidden lg:block" data-verdict-pending="true">
-        {null}
-        {null}
-        {null}
-        {slip}
+        {slipNode}
       </section>
     );
   }
@@ -117,19 +133,28 @@ export function VerdictSection({
   /* The desktop scale: h3 at 20 px, weight 600 (the page sets 400 and 600; the stamp alone is 850). */
   const h3 = `text-[18px] font-bold ${folder ? "lg:text-[20px] lg:font-semibold" : ""}`;
   const ruleCitation = verdict.rule?.citations?.[0] ?? null;
+  const steelText = verdict.steelman?.argument?.trim() ?? "";
+  const steelStruck = verdict.steelman?.unsupported === true;
 
   return (
     <section
-      aria-labelledby="verdict-heading"
+      aria-labelledby="verdict-h2"
       className={`${parts ? "" : "land"} ${first ? "mt-8" : "mt-10"} ${folder ? `${PHONE_SHEET_ONLY} lg:mt-0` : PHONE_SHEET}`}
       data-verdict={outcome}
     >
-      <h2
+      {/*
+        The section's opening as it is seen (the plain title on the phone, the number and "Verdict" from
+        1024 px, unseen at tabs sizes where the index tab carries it), and the index tab's target. It is not
+        the heading (Oct 28, 2026, critique fix G4): read before the stamp it put an h2 ahead of the page's
+        h1, so it is hidden from assistive technology and the h2 below, after the h1, carries the same name.
+      */}
+      <p
         id="verdict-heading"
+        aria-hidden="true"
         className={`mt-1 text-[22px] leading-tight font-bold ${folder ? `${OPENING_H2} lg:mt-0 lg:text-[20px] tabs:sr-only` : ""}`}
       >
         <SectionTitle title="What the documents say" short="Verdict" n={annotated ? n : null} />
-      </h2>
+      </p>
 
       <h1
         className={`stamp stamp-in mt-6 text-[28px] text-balance sm:text-[34px] ${folder ? "lg:mt-6 lg:max-w-[calc(100%-380px)] lg:text-[32px] xl:max-w-[calc(100%-480px)] xl:text-[38px] tabs:mt-3" : ""}`}
@@ -137,6 +162,10 @@ export function VerdictSection({
       >
         {verdictHeadline(verdict)}
       </h1>
+      {/* The section's heading, after the h1 so the outline reads h1, h2, then the h3s (G4); unseen at every width. */}
+      <h2 id="verdict-h2" className="sr-only">
+        <SectionTitle title="What the documents say" short="Verdict" n={annotated ? n : null} />
+      </h2>
       {marks.length > 0 ? (
         <p
           className={`${parts} mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[17px] leading-snug text-ink tabular-nums ${folder ? "lg:mt-6 lg:gap-x-4 lg:text-[15px] xl:flex-nowrap" : ""}`}
@@ -172,7 +201,7 @@ export function VerdictSection({
         </p>
       ) : null}
 
-      {slip}
+      {slipNode}
 
       {folder && card ? <ExhibitPair card={card} citation={ruleCitation} unsupported={verdict.rule?.unsupported === true} className={parts} /> : null}
 
@@ -225,6 +254,28 @@ export function VerdictSection({
               <span>The payer&apos;s best argument</span>
             </button>
           </h3>
+          {/*
+            The payer's side in view (Oct 28, 2026, critique fix G2): "The payer would say" in 14 px faded ink
+            and the steelman's first sentence in 17 px ink, one line, ending in an ellipsis when it is longer
+            than the line; the disclosure above still opens the full argument under it. Under its heading, so
+            the heading introduces it; on the phone the label sits over the sentence (a shared 326 px line
+            leaves the sentence about 20 characters). A struck steelman is struck here too.
+          */}
+          {steelText ? (
+            <p className="flex min-w-0 flex-col pb-1 pl-7 lg:flex-row lg:items-baseline lg:gap-3" data-payer-strip={steelStruck ? "struck" : "true"}>
+              <span className="shrink-0 text-[14px] leading-5 text-muted">The payer would say</span>
+              <span className="min-w-0 truncate text-[17px] leading-[26px] text-ink">
+                {steelStruck ? (
+                  <>
+                    <span className="sr-only">Struck, could not verify: </span>
+                    <s className="decoration-ink decoration-2">{firstSentence(steelText)}</s>
+                  </>
+                ) : (
+                  firstSentence(steelText)
+                )}
+              </span>
+            </p>
+          ) : null}
           {steelOpen ? (
             <div id={steelId} className="pb-3 pl-7" data-steelman="true">
               <p className="text-[16px] text-muted">Before deciding, the agent argued the payer&apos;s side as strongly as the documents allow.</p>

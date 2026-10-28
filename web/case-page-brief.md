@@ -759,3 +759,102 @@ with a null outcome reads "did not answer" on the line while its receipt row kee
 cost; the receipt note's "ran beside the letter" reads oddly on a case that drafted no letter; the
 `c_fail` fixture's receipt sits 1 px higher on about half of its 1280 captures with or without this
 change (a pre-existing flicker, not a layout change).
+
+## 14. Critique fixes (Oct 28, 2026)
+
+From the Impeccable critique of Oct 28 (27 of 40; `.impeccable/critique/2026-10-28T19-51-00Z__web-src-app-case-id-page-tsx.md`):
+the four fixes that keep the page's structure and cost nothing in layout. A caregiver with a consistent or
+not-settled verdict was shown "Appeal by" as the lead while the real next step sat far down the page; the
+steelman, a stated differentiator, was hidden under a disclosure; the run's findings landed out of view;
+and a screen reader met an h2 before the h1. Decided by the orchestrator (G1 to G5), then by the builder
+where marked.
+
+- G1. On the consistent and the not-settled verdicts the reference block's Lead line is the next step, at
+  the Lead size, and the deadline follows it as a 17 px line with its day count (the reader may still
+  appeal). The inconsistent verdict keeps "Appeal by" as the Lead. Nothing moves at decided.
+- G2. The steelman shows as a one-line strip on the top sheet: "The payer would say" (14 px faded ink) and
+  the steelman's first sentence (17 px ink), ending in an ellipsis rather than taking a second line; the
+  "+ The payer's best argument" disclosure keeps the full text.
+- G3. During the run the newest landed finding's question is in view under the slip, 17 px ink with its
+  mark (tick supported, open ring not settled, strike unsupported), one element changing in place, its
+  line held from the first poll, gone when the slip folds.
+- G4. The h1 (the payer before the verdict, the stamp after) is the first heading in the DOM at every
+  width, the h2 "Verdict" follows it, and "The rule" and "The gap" are h3 under it; the index tabs and the
+  band carry no headings.
+- G5. Under 1024 px G1 to G4 apply in the one-column layout, G3 in the same place (under the stage lines).
+  Every other fixture is pixel-identical; where a fixture carries a steelman or a consistent or
+  not-settled verdict, the only changes are these lines.
+
+Decided by the builder, with the reason:
+
+- G1 wording. The orchestrator's examples ("Ask the plan for the September authorization", "No appeal
+  letter; see why the denial holds") measure 586 and 548 px at the Lead size against a 440 px reference
+  block (340 px from 1024 to 1279), so each takes two lines. The reference block is the taller column, so
+  the slip and the exhibits sit under it: every extra Lead line would move them 33.6 px at decided. The
+  Lead lines are therefore short fixed actions in the page's own words that set on one line at 1024 and
+  at 1280: "See why the denial holds" (consistent, 328 px) and "Find what would settle it" (not settled,
+  317 px). The specific record is named under "What would change it" on the same sheet. A line derived
+  from `what_would_change` is free text from the model and cannot be held to one line. "No appeal letter"
+  is not used: at decided the letter stage has not run, and the page does not guess (section 11).
+- G1 layout. The deadline Lead line is always laid out in its slot; when the next step leads, it stays as
+  an unseen spacer (`visibility: hidden`, out of the accessibility tree) and the next step and the 17 px
+  deadline line sit over it in the same grid cell, so the slot keeps its height (67.2 px at 1280, 100.8 at
+  1024) and the rows, the slip and the exhibits do not move. The deadline line reads "Appeal by Dec 13,
+  2026 · 46 days left". Neither line carries a mark: the open ring already means too many things (the
+  critique counted seven). On the phone the next step is 20 px at 600 (the phone's Lead) above the same
+  17 px deadline line, in place of the 20 px deadline line. Edge: a not-settled or consistent case with
+  no stated deadline has a one-line spacer ("Deadline not stated"), so its slot grows by one line at
+  decided; no fixture has that case.
+- G2 placement. The strip sits inside the steelman's group, under the disclosure's heading and above the
+  full text when it is opened: the heading then introduces the strip for a screen reader (above the
+  heading it would be read as part of the previous section). The group follows the rule and the gap, and
+  "What would change it" on a case with a letter, as before. One line from 1024 px within the group's
+  70ch measure; on the phone the label sits over the sentence, since a shared 326 px line would leave the
+  sentence about 20 characters. A struck steelman (`c_dual`) is struck in the strip too, with "Struck,
+  could not verify" read before it. The sentence's line is 26 px, a whole pixel, so the page under the
+  strip shifts by exactly 30 px (50 on the phone) and renders identically after it.
+- G3. The line is a plain paragraph inside the slip's block, 12 px under the stages, 24 px tall even when
+  empty; it is not a live region (the slip's region already says "Question 3 of 5…"). A screen reader
+  hears "Latest finding:", the question, and the state in words, since the mark alone is never the
+  signal. A run that stops before the verdict (`c_fail`) drops the line: no exhibits exist to move, and the
+  slip's words say where it stopped. On the phone it sits under the two stage lines, gone when the chain is
+  done or stopped before the verdict.
+- G3 found a remount: the slip remounted at decided. `VerdictSection` padded its pending tree with nulls so
+  the slip kept its index, and by the child positions in the code the padding fell out of step when the second opinion line was added (inferred from the code, not measured on the earlier commit).
+  The slip is now a keyed child in both trees, so it is matched by key, not by position. Measured: the
+  slip's list and the latest-finding line are the same nodes from the first poll to the fold at 1280, 1024
+  and 390 on the three cases below.
+- G4. The visible opening ("What the documents say" on the phone, "1 Verdict" from 1024 px, unseen at
+  tabs sizes) is no longer a heading: it is a paragraph hidden from assistive technology and keeps the id
+  the index tab links to and the scroll spy reads, so the tab lands where it did. A visually hidden h2 after
+  the stamp carries the same name ("1. Verdict" at desktop, "What the documents say" on the phone) and
+  labels the section. No pixel changes.
+
+Measured on `c_sample`, `c_notsettled` and `c_consistent` (fixtures, every API call aborted), y in page px:
+
+| Width | Moment | Stamp | Slip | Latest line | First exhibit |
+|---|---|---|---|---|---|
+| 1280 x 800 | first poll | 138.5 (deadline stamp) | 371.2 | 465.2 (empty) | none |
+| 1280 x 800 | decided | 122.2 | 371.2 | 465.2 | 537.2 (was 501.2) |
+| 1280 x 800 | reviewed, slip open | 122.2 | 371.2 | 465.2 | 537.2 |
+| 1280 x 800 | reviewed, slip folded | 122.2 | none | none | 395.2 (as before) |
+| 1024 x 800 | first poll | 138.5 (deadline stamp) | 494.8 | 620.8 (empty) | none |
+| 1024 x 800 | decided to reviewed | 170.5 / 171.9 / 172.7 | 494.8 | 620.8 | 692.8 (was 656.8) |
+| 1024 x 800 | slip folded | as at decided | none | none | 518.8 (as before) |
+
+The reference block measured 233.2 px at 1280 and 304.8 at 1024, and its Lead slot 67.2 and 100.8, on all
+three cases at every moment, as before the change. The exhibits sit 36 px lower while the slip is open
+(the reserved line and its 12 px); the stamp, the slip and the folded page are where they were. On the
+phone the line holds 32 px above the stamp during the run and folds with the chain, so the stamp moves
+up 32 px at the end (the reader's place is kept by the existing anchor).
+
+Verified: `tsc --noEmit` and `npm run lint` clean. Full-page captures of the eight fixtures at 390 and 1280,
+finished, against captures taken before the change (one at a time): `c_fail` identical at both widths
+(its 1280 capture needed a second take for the known 1 px receipt raster state); `c_sample`, `c_error`,
+`c_rejected` and `c_checkerror` identical except the inserted strip (30 rows at 1280, 50 at 390);
+`c_consistent`, `c_notsettled` and `c_dual` identical except the Lead block (rows 142 to 203 at 1280; the
+next-step lines at 390, 11 px taller, plus 41 pixels of the stamp's noise texture where the stamp moved
+11 px) and the strip. Accessibility tree on `c_sample`: before the verdict, level 1 "Sunshine Health" then
+level 2 "Investigation record" (1280) or "Findings" (390); after it, level 1 the stamp, level 2 "1. Verdict"
+(1280) or "What the documents say" (390), then level 3 "The rule", "The gap", "What would change it",
+"The payer's best argument".

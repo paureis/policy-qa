@@ -1,7 +1,45 @@
 import { useState } from "react";
-import { NO_LETTER_LINE, critiqueFailed, secondOpinionLine, stageLine, type CaseRecord } from "@/lib/case";
+import { NO_LETTER_LINE, critiqueFailed, findingStatus, secondOpinionLine, stageLine, type CaseRecord, type Finding, type FindingStatus } from "@/lib/case";
 import { progressLine } from "./InvestigationProgress";
-import { Mark } from "./Marks";
+import { Mark, type MarkKind } from "./Marks";
+
+/* The latest finding's mark and the words a screen reader hears for it (the mark is never the only signal). */
+const LATEST_MARK: Record<FindingStatus, MarkKind> = { supported: "tick", not_settled: "ring", unsupported: "strike", error: "ring" };
+const LATEST_WORDS: Record<FindingStatus, string> = {
+  supported: "supported",
+  not_settled: "not settled",
+  unsupported: "struck, could not verify",
+  error: "could not be checked",
+};
+
+/*
+  The latest finding, in view during the run (Oct 28, 2026, critique fix G3): one 17 px line that reads
+  the newest landed finding's question in ink with its mark (a tick for supported, an open ring for not
+  settled, a strike for unsupported), so the reader sees the clerk's work land without scrolling to the
+  record. One element from the first poll to the end: its words and mark change in place as findings
+  land, and it holds its one-line height (24 px) while it is still empty, so its arrival moves nothing.
+  Plain text, not a live region: the slip's region already says "Question 3 of 5…". At desktop it sits
+  in the slip's block under the stages and folds away with the slip; on the phone the page sets it under
+  the two stage lines (InvestigationView). One line: a long question ends in an ellipsis.
+*/
+export function LatestFinding({ findings, hidden = false, className = "" }: { findings: Finding[]; hidden?: boolean; className?: string }) {
+  const latest: Finding | null = findings.length > 0 ? findings[findings.length - 1] : null;
+  const status = latest ? findingStatus(latest) : null;
+  return (
+    <p className={`${hidden ? "hidden" : "flex"} min-h-6 items-center gap-2 text-[17px] leading-6 text-ink ${className}`} data-latest-finding={status ?? "none"}>
+      {latest && status ? (
+        <>
+          <Mark kind={LATEST_MARK[status]} className="h-4 w-4" />
+          <span className="min-w-0 truncate">
+            <span className="sr-only">Latest finding: </span>
+            {latest.question}
+            <span className="sr-only">{`, ${LATEST_WORDS[status]}`}</span>
+          </span>
+        </>
+      ) : null}
+    </p>
+  );
+}
 
 type StageState = "todo" | "doing" | "done" | "failed";
 
@@ -167,6 +205,16 @@ export function RoutingSlip({
             </li>
           ))}
         </ol>
+        {/*
+          The latest finding under the stages, from the first poll (its line reserved while empty), so the
+          exhibits never move when it fills. A run that stopped before the verdict drops it (no exhibits
+          exist to move): the slip's words say where it stopped, and the record holds the findings.
+        */}
+        <LatestFinding
+          findings={record.investigation?.findings ?? []}
+          hidden={failure !== null && record.verdict?.status !== "done"}
+          className="mt-3"
+        />
       </div>
       <p className="sr-only hidden lg:block" aria-live="polite" aria-atomic="true" data-slip-live="true">
         {live}

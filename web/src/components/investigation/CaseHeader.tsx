@@ -1,13 +1,56 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { FIELD_LABELS, PROGRAM_LABELS, displayValue, type CaseRecord, type Program } from "@/lib/case";
+import { FIELD_LABELS, PROGRAM_LABELS, dayCountLabel, daysUntil, displayValue, formatShortDate, type CaseRecord, type Program, type VerdictOutcome } from "@/lib/case";
 import { CaseCard } from "@/components/intake/CaseCard";
 import { PHONE_SHEET, PHONE_SHEET_ONLY } from "./SectionTitle";
 import { DeadlineLine, DeadlineStamp } from "@/components/intake/DeadlineStamp";
 
 const NO_FLAGS = new Set<never>();
 const noop = () => {};
+
+/*
+  The reader's next step when it is not an appeal (Oct 28, 2026, critique fix G1). On a consistent or a
+  not-settled verdict "Appeal by" no longer leads: the Lead line names the next action in the page's own
+  words, and the deadline follows it as a 17 px line with its day count, since the reader may still
+  appeal. The inconsistent verdict keeps "Appeal by" as the Lead. Short on purpose: at the Lead size
+  each one sets on one line in the reference block at 1024 px (340 px) and at 1280 px (440 px), so the
+  block keeps its height and nothing under it moves at decided ("See why the denial holds" measures
+  328 px, "Find what would settle it" 317 px). The specific record is named under "What would change
+  it" on the same sheet.
+*/
+const NEXT_STEP: Partial<Record<VerdictOutcome, string>> = {
+  consistent: "See why the denial holds",
+  not_settled: "Find what would settle it",
+};
+
+function NextStepLine({
+  text,
+  deadlineIso,
+  daysLeft,
+  today,
+  lead,
+  className = "",
+}: {
+  text: string;
+  deadlineIso: string | null;
+  daysLeft: number | null;
+  today: Date;
+  /* The Lead size of the reference block at desktop (30 px); otherwise the phone's (20 px). */
+  lead: boolean;
+  className?: string;
+}) {
+  const days = deadlineIso ? (typeof daysLeft === "number" ? daysLeft : daysUntil(deadlineIso, today)) : null;
+  const when = deadlineIso !== null && days !== null ? `Appeal by ${formatShortDate(deadlineIso)} · ${dayCountLabel(days)}` : null;
+  return (
+    <div className={className} data-next-step="true">
+      <p className={lead ? "text-[30px] leading-[1.12] font-semibold tracking-[-0.015em]" : "text-[20px] leading-tight font-semibold"}>{text}</p>
+      <p className="mt-2 text-[17px] leading-[1.5] text-ink tabular-nums" data-deadline-line={when ? "date" : "missing"}>
+        {when ?? "Deadline not stated"}
+      </p>
+    </div>
+  );
+}
 
 /*
   The locked case card, compact: payer, case id, the service and the
@@ -61,6 +104,8 @@ export function CaseHeader({
   const payer = card.payer_name.value;
   const Title = titled ? "h1" : "p";
   const toggleRef = useRef<HTMLButtonElement>(null);
+  /* Set once the verdict exists, on the two verdicts whose next step is not an appeal. */
+  const nextStep = record.verdict?.status === "done" ? (NEXT_STEP[record.verdict.outcome] ?? null) : null;
 
   /* While the full card is open as an overlay at desktop, the document says so, and the index tabs step aside. */
   useEffect(() => {
@@ -104,7 +149,16 @@ export function CaseHeader({
         </div>
         {titled ? <DeadlineStamp deadlineIso={deadlineIso} today={today} landed className={`mt-1 mr-1 ${register ? "lg:hidden" : ""}`} /> : null}
       </div>
-      {titled ? null : (
+      {titled ? null : nextStep ? (
+        <NextStepLine
+          text={nextStep}
+          deadlineIso={deadline?.iso ?? deadlineIso}
+          daysLeft={deadline?.daysLeft ?? null}
+          today={today}
+          lead={false}
+          className={`mt-4 ${register ? "lg:hidden" : ""}`}
+        />
+      ) : (
         <DeadlineLine
           deadlineIso={deadline?.iso ?? deadlineIso}
           daysLeft={deadline?.daysLeft ?? null}
@@ -123,7 +177,7 @@ export function CaseHeader({
         ))}
       </dl>
 
-      {register ? <Register record={record} today={today} deadline={deadline ?? { iso: deadlineIso, daysLeft: null }} /> : null}
+      {register ? <Register record={record} today={today} deadline={deadline ?? { iso: deadlineIso, daysLeft: null }} nextStep={nextStep} /> : null}
 
       <button
         ref={toggleRef}
@@ -173,10 +227,13 @@ function Register({
   record,
   today,
   deadline,
+  nextStep,
 }: {
   record: CaseRecord;
   today: Date;
   deadline: { iso: string | null; daysLeft: number | null };
+  /* The next step that leads instead of the deadline (consistent and not settled, once decided). */
+  nextStep: string | null;
 }) {
   /* The Lead deadline line shows from the first poll (Alvaro's choice, Oct 28, 2026): the deadline is
      known at intake, so the rows never move at decided and the sheet is not empty during the run. While
@@ -197,7 +254,24 @@ function Register({
   ];
   return (
     <div className="hidden lg:block" data-notice-register="true">
-      <DeadlineLine deadlineIso={deadline.iso} daysLeft={deadline.daysLeft} today={today} size="lead" />
+      {/*
+        The Lead slot. The deadline Lead line is always laid out in it; when the next step leads, the deadline
+        line stays as an unseen spacer (visibility: hidden, out of the accessibility tree) and the next step
+        sits over it in the same grid cell, so the slot keeps the height it had from the first poll and the
+        rows, the slip and the exhibits stay where they were at decided.
+      */}
+      <div className="grid" data-register-lead={nextStep ? "next-step" : "deadline"}>
+        <DeadlineLine
+          deadlineIso={deadline.iso}
+          daysLeft={deadline.daysLeft}
+          today={today}
+          size="lead"
+          className={`col-start-1 row-start-1 ${nextStep ? "invisible" : ""}`}
+        />
+        {nextStep ? (
+          <NextStepLine text={nextStep} deadlineIso={deadline.iso} daysLeft={deadline.daysLeft} today={today} lead className="col-start-1 row-start-1" />
+        ) : null}
+      </div>
       <dl className="mt-5 grid grid-cols-[120px_minmax(0,1fr)] gap-x-3 gap-y-1.5 border-t border-ink/25 pt-4 tabular-nums">
         {rows.map((r) => (
           <div key={r.key} className="contents" data-register-row={r.key}>

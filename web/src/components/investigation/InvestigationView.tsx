@@ -23,7 +23,7 @@ import { IndexTabs, type IndexTab } from "./IndexTabs";
 import { PHONE_SHEET, SHEET } from "./SectionTitle";
 import { FindingsList } from "./FindingsList";
 import { InvestigationProgress, progressLine } from "./InvestigationProgress";
-import { RoutingSlip, type SlipFailure } from "./RoutingSlip";
+import { LatestFinding, RoutingSlip, type SlipFailure } from "./RoutingSlip";
 import { DeadlineStamp } from "@/components/intake/DeadlineStamp";
 import { RouteLine } from "./RouteLine";
 import { TrustPanel, verificationLines } from "./TrustPanel";
@@ -526,6 +526,14 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                           <StageLine record={record} letterHref={letterHref} inRow={outcomeFirst} compact={annotated} />
                         </div>
                       )}
+                      {/*
+                        The latest finding on the phone (critique fix G3), under the two stage lines, the place the
+                        slip has at desktop: its line held from the first poll, gone when the chain is done (the
+                        slip's fold) or stopped before the verdict. At desktop the slip carries its own.
+                      */}
+                      {folder ? (
+                        <LatestFinding findings={findings} hidden={slipDone || (failed && !verdictDone)} className="mt-2 lg:hidden" />
+                      ) : null}
                     </div>
                     {/*
                       Before the verdict, at desktop: the deadline is the sheet's one stamp, pressed at the
