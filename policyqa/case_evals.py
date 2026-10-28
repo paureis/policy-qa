@@ -119,7 +119,9 @@ def api_chain(case_id: str, text: str) -> dict:
     from fastapi import HTTPException
 
     import api.main as m
+    from policyqa.second_opinion import second_wait_s
 
+    t0 = time.perf_counter()
     try:
         case = asyncio.run(m.case_intake(file=None, text=text))
     except HTTPException as e:
@@ -134,7 +136,14 @@ def api_chain(case_id: str, text: str) -> dict:
         thread.join(CASE_TIMEOUT_S)
         if thread.is_alive():
             raise TimeoutError(f"the chain did not finish in {CASE_TIMEOUT_S} s (last status {(m.STORE.get(cid) or {}).get('status')})")
-    return {"refused": None, "case": m.STORE.get(cid)}
+    seconds = time.perf_counter() - t0  # the chain to its terminal status; the second opinion's extra wait is not in it
+    bound = second_wait_s()
+    finished = m.wait_for_second_opinion(cid, bound)
+    case = m.STORE.get(cid)
+    if not finished and case is not None:
+        # Recorded on the row's copy only: the thread may still land in the store later.
+        case["second_opinion"] = {**(case.get("second_opinion") or {}), "status": "timeout", "error": f"no answer within {bound:g} s"}
+    return {"refused": None, "case": case, "seconds": seconds}
 
 
 @contextmanager
@@ -297,6 +306,27 @@ def miss_stage(rec: dict) -> dict | None:
     return {"stage": "verdict", "why": f"the model proposed {proposed}, {fact}{exc_part}"}
 
 
+def second_fields(so) -> dict:
+    """The row's second-opinion fields (policyqa/second_opinion.py). Skipped, absent (a case from before it
+    existed) or still running reads "skipped" with nulls, `second_reason` saying why when known. A failed one
+    keeps its cost and latency, no outcome; a "timeout" (api_chain stopped waiting) has neither.
+    Its cost stays out of the row's cost_usd, so case costs stay comparable with the runs before it."""
+    base = {"second_status": "skipped", "second_reason": None, "second_model": None, "second_outcome": None,
+            "second_agrees": None, "second_cost_usd": None, "second_latency_ms": None}
+    if not isinstance(so, dict):
+        return {**base, "second_reason": "the chain did not reach the verdict"}
+    status = so.get("status")
+    base["second_model"] = so.get("model")
+    if status == "timeout":
+        return {**base, "second_status": "timeout", "second_reason": so.get("error")}
+    if status not in ("done", "failed"):
+        return {**base, "second_reason": so.get("reason") or (f"still {status}" if status else None)}
+    done = status == "done"
+    return {**base, "second_status": status, "second_reason": None if done else so.get("error"),
+            "second_outcome": so.get("outcome") if done else None, "second_agrees": so.get("agrees") if done else None,
+            "second_cost_usd": float(so.get("cost_usd") or 0), "second_latency_ms": float(so.get("latency_ms") or 0)}
+
+
 def build_row(row: dict, result: dict | None, seconds: float, error: str | None = None) -> dict:
     case = (result or {}).get("case") or None
     refused = (result or {}).get("refused")
@@ -310,8 +340,10 @@ def build_row(row: dict, result: dict | None, seconds: float, error: str | None 
         "stage_cost_usd": {s: 0.0 for s in STAGES}, "seconds": round(seconds, 1), "error": error,
         "proposed_outcome": None, "decisive_fact": None, "settled_by": None, "relies_on_exception": None, "plan_source": None,
         "planned_questions": [], "exceptions": [], "hinge": hinge_trace(row, {}), "miss": None,
+        **second_fields(None),
     }
     if case:
+        rec.update(second_fields(case.get("second_opinion")))
         route = case.get("route") or {}
         inv = case.get("investigation") or {}
         verdict = case.get("verdict") or {}
@@ -362,7 +394,8 @@ def run_case(row: dict, letters_dir: Path, chain) -> dict:
     try:
         text = (Path(letters_dir) / f"{row['id']}.txt").read_text(encoding="utf-8")
         result = chain(row["id"], text)
-        return build_row(row, result, time.perf_counter() - t)
+        seconds = (result or {}).get("seconds")  # api_chain's own measure leaves out the wait for the second opinion
+        return build_row(row, result, float(seconds) if seconds is not None else time.perf_counter() - t)
     except Exception as e:  # noqa: BLE001 - the row records the failure; the run goes on
         return build_row(row, None, time.perf_counter() - t, error=f"{type(e).__name__}: {e}"[:500])
 
@@ -381,6 +414,7 @@ def _env_float(name: str) -> float | None:
 def run_config(cases_path, ids, limit, concurrency) -> dict:
     import api.main as m
     from policyqa.critic import critic_rounds
+    from policyqa.second_opinion import second_model_name
 
     live_intake = m._live_configured()
     return {
@@ -388,6 +422,7 @@ def run_config(cases_path, ids, limit, concurrency) -> dict:
         "model": m.investigation_mode(),
         "reasoning_effort": os.environ.get("POLICYQA_LLM_REASONING_EFFORT") or None,
         "prices": {"input_usd_per_m": _env_float("POLICYQA_LLM_INPUT_USD_PER_M"), "output_usd_per_m": _env_float("POLICYQA_LLM_OUTPUT_USD_PER_M")},
+        "second_model": second_model_name(),  # the second opinion's model (POLICYQA_SECOND_LLM_*), None when not configured
         "modes": {"intake": os.environ.get("POLICYQA_LLM_MODEL") if live_intake else "fixture", "investigation": m.investigation_mode(),
                   "verdict": m.verdict_mode(), "critic": m.critic_mode()},
         "critic_rounds": critic_rounds(),
@@ -497,6 +532,42 @@ def summarize(rows: list[dict]) -> dict:
                   for r in rows if not r["correct"]],
         "misses": misses,
         "misses_by_stage": dict(Counter(m["stage"] for m in misses)),
+        "second_opinion": summarize_second(rows),
+    }
+
+
+def summarize_second(rows: list[dict]) -> dict:
+    """Agreement between the verdict and the second opinion, over the cases where both are done; who was right when
+    they differ (scored by the same rule as the verdict); the second opinion's cost over the cases where it answered
+    or failed (a timeout's cost is unknown). Configured means a row names a second model, whether or not it ran."""
+    ran = [r for r in rows if r.get("second_status") in ("done", "failed", "timeout")]
+    answered = [r for r in ran if r.get("second_status") != "timeout"]
+    skipped = [r for r in rows if r.get("second_status", "skipped") == "skipped"]
+    both = [r for r in rows if r.get("second_status") == "done" and r.get("got") is not None]
+    agree = sum(1 for r in both if r.get("second_agrees") is True)
+
+    def second_right(r) -> bool:
+        return score(r["id"], r["intended"], r.get("second_outcome"))
+
+    def primary_right(r) -> bool:  # the verdict alone: a later stage's error does not make the verdict wrong here
+        return score(r["id"], r["intended"], r.get("got"))
+
+    return {
+        "configured": any(r.get("second_model") for r in rows),
+        "models": sorted({str(r.get("second_model")) for r in rows if r.get("second_model")}),
+        "ran": len(ran),
+        "done": sum(1 for r in rows if r.get("second_status") == "done"),
+        "failed": sum(1 for r in rows if r.get("second_status") == "failed"),
+        "timeout": sum(1 for r in rows if r.get("second_status") == "timeout"),
+        "skipped": len(skipped),
+        "skip_reasons": dict(Counter(r.get("second_reason") or "no reason recorded" for r in skipped)),
+        "both_done": len(both),
+        "agree": agree,
+        "agreement_rate": _rate(agree, len(both)),
+        "second_right_primary_wrong": [r["id"] for r in both if second_right(r) and not primary_right(r)],
+        "primary_right_second_wrong": [r["id"] for r in both if primary_right(r) and not second_right(r)],
+        "cost_usd": _stats([float(r.get("second_cost_usd") or 0) for r in answered], 6),
+        "latency_ms": _stats([float(r.get("second_latency_ms") or 0) for r in answered], 1),
     }
 
 
@@ -511,14 +582,25 @@ def _money(x) -> str:
     return "n/a" if x is None else f"${x:.4f}"
 
 
+def _second_cell(r: dict) -> str:
+    status = r.get("second_status") or "skipped"
+    if status != "done":
+        return status
+    return f"{r.get('second_outcome') or 'none'} ({'agrees' if r.get('second_agrees') else 'disagrees'})"
+
+
 def render_markdown(res: dict) -> str:
     cfg, s, rows = res["config"], res["summary"], res["rows"]
     lt, cr = s["letters"], s["critic"]
     effort = cfg.get("reasoning_effort") or "default"
+    so = s.get("second_opinion") or summarize_second(rows)
+    second_model = cfg.get("second_model") or ", ".join(so.get("models") or [])
+    second_on = bool(second_model)  # "not configured" only when no second model is named, by the run or by a row
+    second_line = f"Second opinion: {second_model}, {so.get('ran', 0)} ran." if second_on else "Second opinion: not configured."
     lines = [
         f"# Denial-case evaluation, {cfg['date']}",
         "",
-        f"Model: {cfg['model']} (reasoning effort: {effort}). Critic rounds: {cfg['critic_rounds']}. Cases: {s['n']}. Wall time: {cfg.get('wall_s', 'n/a')} s.",
+        f"Model: {cfg['model']} (reasoning effort: {effort}). Critic rounds: {cfg['critic_rounds']}. Cases: {s['n']}. Wall time: {cfg.get('wall_s', 'n/a')} s. {second_line}",
         "",
         "| Measure | Value |",
         "|---|---|",
@@ -537,18 +619,36 @@ def render_markdown(res: dict) -> str:
         f"| Errors (scored wrong) | {len(s['errors'])} |",
         f"| Template letters (left out of the rates) | {s['letter_failures']} |",
         f"| Critic failures (letter kept as drafted) | {s['critic_failures']} |",
-        "",
     ]
+    reasons = "; ".join(f"{k} ({v})" for k, v in sorted((so.get("skip_reasons") or {}).items())) or "no reason recorded"
+    if second_on and so.get("ran"):
+        def ids(xs: list[str]) -> str:  # "2 (dc-002, dc-017)", or "0"
+            return f"{len(xs)} ({', '.join(xs)})" if xs else "0"
+
+        lines += [
+            f"| Second opinion agrees with the verdict | {_frac(so['agree'], so['both_done'])} of the cases where both ran |",
+            f"| Second opinion right, verdict wrong | {ids(so['second_right_primary_wrong'])} |",
+            f"| Verdict right, second opinion wrong | {ids(so['primary_right_second_wrong'])} |",
+            f"| Second opinion cost per case | mean {_money(so['cost_usd']['mean'])} over {so['done'] + so['failed']} runs |",
+            f"| Second opinion failed, timed out, skipped | {so['failed']}, {so.get('timeout', 0)}, {so['skipped']} |",
+        ]
+        if so["skipped"]:
+            lines.append(f"| Second opinion skip reasons | {reasons} |")
+    elif second_on:
+        lines.append(f"| Second opinion | 0 ran; skipped {so['skipped']}: {reasons} |")
+    else:
+        lines.append("| Second opinion | not configured |")
+    lines.append("")
     for title, key in (("Program", "by_program"), ("Jurisdiction", "by_jurisdiction")):
         lines += [f"| {title} | Correct |", "|---|---|"]
         lines += [f"| {k} | {_frac(g['correct'], g['n'])} |" for k, g in s[key].items()]
         lines.append("")
-    lines += ["| Case | Intended | Got | Correct | Verified / claims | Cost | Seconds |", "|---|---|---|---|---|---|---|"]
+    lines += ["| Case | Intended | Got | Correct | Verified / claims | Cost | Seconds | Second opinion |", "|---|---|---|---|---|---|---|---|"]
     for r in rows:
         got = (f"error ({r['got']})" if r.get("got") else "error") if r.get("error") else (f"refused ({r['refused']})" if r.get("refused") else (r.get("got") or "none"))
         lt_r = r.get("letter")
         vc = "template" if lt_r and lt_r.get("error") else (f"{lt_r['verified']} / {lt_r['claims']}" if lt_r and lt_r.get("applicable") else "n/a")
-        lines.append(f"| {r['id']} | {r['intended']} | {got} | {'yes' if r['correct'] else 'no'} | {vc} | {_money(r.get('cost_usd'))} | {r.get('seconds')} |")
+        lines.append(f"| {r['id']} | {r['intended']} | {got} | {'yes' if r['correct'] else 'no'} | {vc} | {_money(r.get('cost_usd'))} | {r.get('seconds')} | {_second_cell(r)} |")
     lines.append("")
     if s["wrong"]:
         lines.append("Wrong cases:")

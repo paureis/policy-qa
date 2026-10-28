@@ -409,3 +409,177 @@ def test_limit_zero_is_rejected():
 
     with pytest.raises(SystemExit):
         cli.main(["case-evals", "--limit", "0"])
+
+
+# ---- second opinion (Oct 28 afternoon) -------------------------------------------------
+
+
+def _second(status="done", outcome="inconsistent", agrees=True, cost=0.004, latency=12000.0, reason=None, error=None):
+    return {"status": status, "reason": reason, "model": "meta-models/muse-spark-open-1026", "outcome": outcome, "proposed_outcome": outcome,
+            "decisive_fact": None, "relies_on_exception": False, "agrees": agrees, "input_tokens": 2000, "output_tokens": 900,
+            "reasoning_tokens": 400, "latency_ms": latency, "cost_usd": cost, "error": error}
+
+
+def _with_second(so):
+    case = fake_case()
+    if so is not None:
+        case["second_opinion"] = so
+    return case
+
+
+def test_a_row_records_the_second_opinion():
+    r = ce.build_row(DC002_ROW, {"refused": None, "case": _with_second(_second(outcome="consistent", agrees=False))}, 1.0)
+    assert r["second_status"] == "done" and r["second_outcome"] == "consistent" and r["second_agrees"] is False
+    assert r["second_cost_usd"] == 0.004 and r["second_latency_ms"] == 12000.0
+    assert r["cost_usd"] == 0.03  # the case's own cost leaves the second opinion out; the summary reports it apart
+
+
+@pytest.mark.parametrize("so", [None, _second(status="skipped", outcome=None, agrees=None, cost=0.0, latency=0.0, reason="not configured")])
+def test_a_row_without_a_second_opinion_reads_skipped_with_nulls(so):
+    r = ce.build_row(DC002_ROW, {"refused": None, "case": _with_second(so)}, 1.0)
+    assert r["second_status"] == "skipped"
+    assert r["second_outcome"] is None and r["second_agrees"] is None and r["second_cost_usd"] is None and r["second_latency_ms"] is None
+
+
+def test_a_failed_second_opinion_keeps_its_cost_but_no_outcome():
+    r = ce.build_row(DC002_ROW, {"refused": None, "case": _with_second(_second(status="failed", outcome=None, agrees=None, cost=0.001, error="HTTP 500"))}, 1.0)
+    assert r["second_status"] == "failed" and r["second_outcome"] is None and r["second_agrees"] is None and r["second_cost_usd"] == 0.001
+
+
+def _second_rows():
+    # dc-002 intended consistent: primary inconsistent (wrong), second consistent (right)
+    a = ce.build_row(DC002_ROW, {"refused": None, "case": _with_second(_second(outcome="consistent", agrees=False, cost=0.004))}, 1.0)
+    # dc-001 intended inconsistent: both inconsistent (agree, both right)
+    b = ce.build_row({**DC002_ROW, "id": "dc-001", "intended_outcome": "inconsistent"}, {"refused": None, "case": _with_second(_second(cost=0.006))}, 1.0)
+    # dc-005 intended inconsistent: primary right, second not_settled (wrong)
+    c = ce.build_row({**DC002_ROW, "id": "dc-005", "intended_outcome": "inconsistent"}, {"refused": None, "case": _with_second(_second(outcome="not_settled", agrees=False, cost=0.002))}, 1.0)
+    # dc-006: second failed
+    d = ce.build_row({**DC002_ROW, "id": "dc-006", "intended_outcome": "inconsistent"}, {"refused": None, "case": _with_second(_second(status="failed", outcome=None, agrees=None, cost=0.0, error="HTTP 500"))}, 1.0)
+    return [a, b, c, d]
+
+
+def test_the_summary_counts_second_opinion_agreement_and_who_was_right():
+    s = ce.summarize(_second_rows())["second_opinion"]
+    assert s["configured"] is True
+    assert s["both_done"] == 3 and s["agree"] == 1 and s["agreement_rate"] == round(1 / 3, 4)
+    assert s["second_right_primary_wrong"] == ["dc-002"] and s["primary_right_second_wrong"] == ["dc-005"]
+    assert s["done"] == 3 and s["failed"] == 1 and s["skipped"] == 0
+    assert s["cost_usd"]["mean"] == 0.003  # over the cases where it ran (done or failed): (0.004 + 0.006 + 0.002 + 0.0) / 4
+
+
+def test_the_summary_says_not_configured_when_no_second_opinion_ran():
+    rows = [ce.build_row(DC002_ROW, {"refused": None, "case": fake_case()}, 1.0)]
+    s = ce.summarize(rows)["second_opinion"]
+    assert s["configured"] is False and s["both_done"] == 0 and s["agreement_rate"] is None and s["skipped"] == 1
+    md = ce.render_markdown({"config": {"date": "2026-10-28", "model": "m", "critic_rounds": 1}, "summary": ce.summarize(rows), "rows": rows})
+    assert "second opinion: not configured" in md.lower()
+    assert "| Case | Intended | Got | Correct | Verified / claims | Cost | Seconds | Second opinion |" in md
+    assert [ln for ln in md.splitlines() if ln.startswith("| dc-002 | consistent | inconsistent | no |")][0].endswith("| skipped |")
+
+
+def test_the_markdown_reports_second_opinion_lines_and_a_column():
+    rows = _second_rows()
+    res = {"config": {"date": "2026-10-28", "model": "m", "critic_rounds": 1, "second_model": "meta-models/muse-spark-open-1026"}, "summary": ce.summarize(rows), "rows": rows}
+    md = ce.render_markdown(res)
+    assert "| Second opinion agrees with the verdict | 1 / 3 (33.3%) of the cases where both ran |" in md
+    assert "| Second opinion right, verdict wrong | 1 (dc-002) |" in md
+    assert "| Verdict right, second opinion wrong | 1 (dc-005) |" in md
+    assert "| Second opinion cost per case | mean $0.0030 over 4 runs |" in md
+    assert "Second opinion: meta-models/muse-spark-open-1026" in md
+    lines = {ln.split(" | ")[0][2:]: ln for ln in md.splitlines() if ln.startswith("| dc-") and ln.count("|") == 9}
+    assert lines["dc-002"].endswith("| consistent (disagrees) |")
+    assert lines["dc-001"].endswith("| inconsistent (agrees) |")
+    assert lines["dc-006"].endswith("| failed |")
+
+
+def test_the_run_config_names_the_second_model(fixture_api, monkeypatch):
+    monkeypatch.setenv("POLICYQA_SECOND_LLM_BASE_URL", "https://inference.baseten.co/v1")
+    monkeypatch.setenv("POLICYQA_SECOND_LLM_MODEL", "meta-models/muse-spark-open-1026")
+    assert ce.run_config("c.csv", None, None, 1)["second_model"] == "meta-models/muse-spark-open-1026"
+    monkeypatch.delenv("POLICYQA_SECOND_LLM_MODEL")
+    assert ce.run_config("c.csv", None, None, 1)["second_model"] is None
+
+
+def _slow_second_api(fixture_api, monkeypatch, delay):
+    """A primary verdict that counts as a model verdict (the fixture's reply under a live model name) and a second
+    endpoint that answers after `delay` seconds over the fake transport."""
+    import time
+
+    import httpx
+
+    from policyqa.generate import Provider
+    from policyqa.verdict import FixtureVerdict
+
+    class LivePrimary(FixtureVerdict):
+        model = "muse-spark-1.3"
+
+    def handler(request):
+        time.sleep(delay)
+        body = {"steelman": {"argument": "a", "citations": []}, "rule": {"statement": "r", "citations": []}, "decisive_fact": {"fact": "f", "settled_by": "letter"},
+                "relies_on_exception": False, "outcome": "consistent", "gap": "g", "what_would_change": "w"}
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(body)}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 10, "completion_tokens": 5}})
+
+    second = Provider(base_url="https://inference.baseten.co/v1", api_key="k", model="meta-models/muse-spark-open-1026", transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(fixture_api, "verdicter", lambda: LivePrimary(delay=0))
+    monkeypatch.setattr(fixture_api, "second_provider", lambda: second)
+
+
+def test_a_second_opinion_past_its_bound_is_a_timeout_and_the_case_still_scores(fixture_api, monkeypatch):
+    from policyqa import second_opinion as so
+
+    _slow_second_api(fixture_api, monkeypatch, delay=1.5)
+    monkeypatch.setenv("POLICYQA_LLM_TIMEOUT_S", "0.2")
+    monkeypatch.setattr(so, "SECOND_WAIT_SLACK_S", 0.0)
+    assert so.second_wait_s() == 0.2
+    r = ce.run_evals(ids=["dc-001"], concurrency=1)["rows"][0]
+    assert r["correct"] is True and r["error"] is None and r["got"] == "inconsistent"
+    assert r["second_status"] == "timeout" and r["second_outcome"] is None and r["second_agrees"] is None
+    assert r["seconds"] < 1.0
+
+
+def test_the_wait_bound_is_the_model_timeout_plus_a_minute(monkeypatch):
+    from policyqa import second_opinion as so
+
+    monkeypatch.delenv("POLICYQA_LLM_TIMEOUT_S", raising=False)
+    assert so.second_wait_s() == 180.0
+    monkeypatch.setenv("POLICYQA_LLM_TIMEOUT_S", "300")
+    assert so.second_wait_s() == 360.0
+
+
+def test_the_row_seconds_leave_out_the_wait_for_the_second_opinion(fixture_api, monkeypatch):
+    _slow_second_api(fixture_api, monkeypatch, delay=0.8)
+    r = ce.run_evals(ids=["dc-001"], concurrency=1)["rows"][0]
+    assert r["second_status"] == "done" and r["second_outcome"] == "not_settled" and r["second_agrees"] is False
+    assert r["second_latency_ms"] >= 800 and r["seconds"] < 0.6
+
+
+def test_the_summary_counts_timeouts_apart():
+    rows = _second_rows()
+    rows[3].update(second_status="timeout", second_cost_usd=None, second_latency_ms=None)
+    s = ce.summarize(rows)["second_opinion"]
+    assert s["timeout"] == 1 and s["failed"] == 0 and s["ran"] == 4 and s["cost_usd"]["mean"] == 0.004
+
+
+def test_the_markdown_names_a_configured_model_that_ran_on_no_case():
+    fixture = "the primary verdict is the fixture (no model call)"
+    skip = _second(status="skipped", outcome=None, agrees=None, cost=0.0, latency=0.0, reason=fixture)
+    rows = [ce.build_row(DC002_ROW, {"refused": None, "case": _with_second(skip)}, 1.0),
+            ce.build_row({**DC002_ROW, "id": "dc-001", "intended_outcome": "inconsistent"}, {"refused": None, "case": _with_second(skip)}, 1.0)]
+    s = ce.summarize(rows)
+    assert s["second_opinion"]["configured"] is True and s["second_opinion"]["ran"] == 0 and s["second_opinion"]["skip_reasons"] == {fixture: 2}
+    md = ce.render_markdown({"config": {"date": "2026-10-28", "model": "fixture", "critic_rounds": 1}, "summary": s, "rows": rows})
+    assert "not configured" not in md.lower()
+    assert "Second opinion: meta-models/muse-spark-open-1026, 0 ran." in md
+    assert f"| Second opinion | 0 ran; skipped 2: {fixture} (2) |" in md
+    # the config alone (old rows without the field) is enough to say it is configured
+    old = [ce.build_row(DC002_ROW, {"refused": None, "case": fake_case()}, 1.0)]
+    md = ce.render_markdown({"config": {"date": "2026-10-28", "model": "m", "critic_rounds": 1, "second_model": "meta-models/muse-spark-open-1026"}, "summary": ce.summarize(old), "rows": old})
+    assert "not configured" not in md.lower() and "Second opinion: meta-models/muse-spark-open-1026, 0 ran." in md
+
+
+def test_a_row_whose_chain_never_reached_the_verdict_says_so():
+    """dc-011 is refused at intake and never reaches the verdict, so there is no second_opinion key at all; the
+    row's reason must say that, not "no reason recorded" (the Oct 28 live run)."""
+    r = ce.build_row(DC002_ROW, {"refused": None, "case": _with_second(None)}, 1.0)
+    assert r["second_status"] == "skipped"
+    assert r["second_reason"] == "the chain did not reach the verdict"

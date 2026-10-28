@@ -876,3 +876,168 @@ def test_the_stored_route_is_computed_with_the_intake_summary(monkeypatch, tmp_p
     assert client.post(f"/case/{cid}/investigate").status_code == 202
     stored = client.get(f"/case/{cid}").json()
     assert seen and seen[0] == stored["summary"] and seen[0]
+
+
+# ---- second opinion (the verdict again on Muse Spark Open) -------------------------------
+
+SECOND_KEYS = {"status", "reason", "model", "outcome", "proposed_outcome", "decisive_fact", "relies_on_exception", "agrees",
+               "input_tokens", "output_tokens", "reasoning_tokens", "latency_ms", "cost_usd", "error"}
+SECOND_NAMES = ("POLICYQA_SECOND_LLM_BASE_URL", "POLICYQA_SECOND_LLM_MODEL", "POLICYQA_SECOND_LLM_API_KEY")
+
+
+def _live_verdicts(monkeypatch, second_reply=None, second_status=200, second_delay=0.0, primary_agent=None):
+    """The primary verdict and the second opinion on real Providers over one fake transport; the letter and critic stay fixtures.
+    `second_delay` makes the second endpoint answer late; `primary_agent` replaces the primary verdict agent."""
+    import time
+
+    import httpx
+
+    from policyqa.generate import Provider
+    from policyqa.verdict import FixtureVerdict, LiveVerdict
+
+    sent = {"primary": [], "second": []}
+    holder = {}
+
+    def handler(request):
+        who = "second" if request.url.host == "inference.baseten.co" else "primary"
+        sent[who].append(json.loads(request.content))
+        if who == "second" and second_delay:
+            time.sleep(second_delay)
+        if who == "second" and second_status != 200:
+            return httpx.Response(second_status, json={"error": "upstream"})
+        reply = FixtureVerdict(delay=0).reply(STORE.get(holder["cid"])["investigation"])
+        if who == "second" and second_reply:
+            reply.update(second_reply)
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(reply)}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 2000, "completion_tokens": 900}})
+
+    transport = httpx.MockTransport(handler)
+    primary = Provider(base_url="https://api.meta.ai/v1", api_key="k", model="muse-spark-1.3", transport=transport)
+    second = Provider(base_url="https://inference.baseten.co/v1", api_key="k2", model="meta-models/muse-spark-open-1026", transport=transport)
+    monkeypatch.setattr(api_main, "verdicter", lambda: primary_agent or LiveVerdict(primary))
+    monkeypatch.setattr(api_main, "second_provider", lambda: second)
+    cid = _intake_text().json()["case_id"]
+    holder["cid"] = cid
+    assert client.post(f"/case/{cid}/investigate").status_code == 202
+    return cid, sent
+
+
+def test_new_case_has_a_null_second_opinion():
+    assert _intake_text().json()["second_opinion"] is None
+
+
+def test_second_opinion_is_skipped_when_unset_and_nothing_calls_the_network(monkeypatch, tmp_path):
+    import httpx
+
+    for k in SECOND_NAMES:
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+
+    def no_network(*a, **kw):
+        raise AssertionError("the network was called")
+
+    monkeypatch.setattr(httpx.Client, "__init__", no_network)
+    cid = _intake_text().json()["case_id"]
+    client.post(f"/case/{cid}/investigate")
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "reviewed"
+    so = b["second_opinion"]
+    assert set(so) == SECOND_KEYS and so["status"] == "skipped" and "not configured" in so["reason"]
+    assert so["agrees"] is None and so["model"] is None
+    assert "second_opinion" not in [sp["name"] for sp in b["investigation"]["trace"]["spans"]]
+
+
+def test_second_opinion_runs_with_the_primarys_message_and_the_get_returns_it(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+    cid, sent = _live_verdicts(monkeypatch)
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "reviewed" and b["verdict"]["outcome"] == "inconsistent"
+    (a,), (s,) = sent["primary"], sent["second"]
+    assert a["model"] == "muse-spark-1.3" and s["model"] == "meta-models/muse-spark-open-1026"
+    assert a["messages"] == s["messages"]
+    so = b["second_opinion"]
+    assert set(so) == SECOND_KEYS and so["status"] == "done" and so["outcome"] == "inconsistent" and so["agrees"] is True
+    assert so["model"] == "meta-models/muse-spark-open-1026" and so["input_tokens"] == 2000
+    assert "second_opinion" in [sp["name"] for sp in b["investigation"]["trace"]["spans"]]
+    assert b["letter"]["status"] == "done" and b["critique"]["status"] == "done"
+
+
+def test_a_disagreeing_second_opinion_never_changes_the_verdict_or_the_letter(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+    cid, _ = _live_verdicts(monkeypatch, second_reply={"outcome": "consistent", "what_would_change": "An authorization for the extra hours."})
+    b = client.get(f"/case/{cid}").json()
+    assert b["second_opinion"]["outcome"] == "consistent" and b["second_opinion"]["agrees"] is False
+    assert b["verdict"]["outcome"] == "inconsistent" and b["letter"]["applicable"] is True and b["status"] == "reviewed"
+
+
+def test_a_500_from_the_second_endpoint_leaves_the_primary_and_the_case_alone(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+    cid, sent = _live_verdicts(monkeypatch, second_status=500)
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "reviewed" and b["verdict"]["status"] == "done" and b["verdict"]["error"] is None
+    assert b["verdict"]["outcome"] == "inconsistent" and b["verdict"]["model"] == "muse-spark-1.3"
+    so = b["second_opinion"]
+    assert so["status"] == "failed" and "500" in so["error"] and so["agrees"] is None and so["outcome"] is None
+    assert len(sent["second"]) == 1
+
+
+def test_an_exception_in_the_second_opinion_never_fails_the_case(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+
+    def boom():
+        raise RuntimeError("second provider exploded")
+
+    monkeypatch.setattr(api_main, "second_provider", boom)
+    cid = _intake_text().json()["case_id"]
+    client.post(f"/case/{cid}/investigate")
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "reviewed" and b["second_opinion"]["status"] == "failed" and "exploded" in b["second_opinion"]["error"]
+
+
+def test_set_stage_accepts_the_second_opinion():
+    from api.cases import CaseStore
+
+    s = CaseStore(None)
+    cid = s.create({"card": {}})["case_id"]
+    s.set_stage(cid, "second_opinion", {"status": "skipped"})
+    assert s.get(cid)["second_opinion"] == {"status": "skipped"} and s.get(cid)["status"] == "intake"
+
+
+class _Breaks:
+    """A letter or critic agent that raises."""
+
+    model = "boom"
+
+    def draft(self, case, investigation, verdict):
+        raise RuntimeError("letter exploded")
+
+    def review(self, case, investigation, verdict, letter):
+        raise RuntimeError("critic exploded")
+
+
+@pytest.mark.parametrize("breaks, final_status", [(None, "reviewed"), ("letterer", "failed"), ("critic", "reviewed")])
+def test_the_inline_post_returns_only_after_a_slow_second_opinion_lands(monkeypatch, tmp_path, breaks, final_status):
+    """The inline POST (tests, the CLI) waits for the second opinion; a letter or critic failure does not skip the wait."""
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+    if breaks:
+        monkeypatch.setattr(api_main, breaks, lambda: _Breaks())
+    cid, sent = _live_verdicts(monkeypatch, second_delay=0.3)
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == final_status
+    assert b["second_opinion"]["status"] == "done" and b["second_opinion"]["agrees"] is True and len(sent["second"]) == 1
+
+
+def test_a_failed_primary_verdict_stores_a_skipped_second_opinion_and_never_calls_the_second_model(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "DATA", tmp_path)
+
+    class Boom:
+        model = "muse-spark-1.3"
+
+        def decide(self, case, investigation):
+            raise RuntimeError("verdict exploded")
+
+    cid, sent = _live_verdicts(monkeypatch, primary_agent=Boom())
+    b = client.get(f"/case/{cid}").json()
+    assert b["status"] == "failed" and b["verdict"]["status"] == "failed"
+    so = b["second_opinion"]
+    assert so["status"] == "skipped" and "did not finish" in so["reason"] and so["model"] == "meta-models/muse-spark-open-1026"
+    assert sent["second"] == []

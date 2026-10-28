@@ -1,4 +1,5 @@
 import { stageLine, stageNote, type CaseRecord } from "@/lib/case";
+import { useSecondOpinionNews } from "@/components/investigation/RoutingSlip";
 
 /*
   The steps after the investigation, one stepped line under the question
@@ -24,6 +25,8 @@ export function StageLine({
 }) {
   const line = stageLine(record);
   const note = stageNote(record);
+  /* The second opinion settling is said once in this live region too (the phone's; display: none at desktop, where the slip's says it), unseen. */
+  const news = useSecondOpinionNews(record, line);
   const working = record.status === "deciding" || record.status === "drafting" || record.status === "reviewing";
   const noteClass = `mt-1 text-[16px] text-muted ${inRow ? "sm:basis-full" : ""}`;
   return (
@@ -48,6 +51,7 @@ export function StageLine({
         ) : (
           (line ?? "")
         )}
+        {news ? <span className="sr-only">{` ${news.text}`}</span> : null}
       </p>
       {note ? (
         <p className={noteClass} data-stage-note="true">

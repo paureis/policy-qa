@@ -27,7 +27,14 @@ Surface:
                                  applicable, a model failure, or an exception in the critic all still end
                                  `reviewed` (critique.skipped with a reason, critique.error, or
                                  critique.status "failed") with the letter as drafted.
-                                 Shapes: policyqa/verdict.py, policyqa/letter.py, policyqa/critic.py.
+                                 Beside the letter, a second thread runs the verdict stage again on a second
+                                 model (POLICYQA_SECOND_LLM_*, Muse Spark Open) and stores `second_opinion`
+                                 (skipped with a reason, running, done with `agrees`, or failed). It never
+                                 changes the verdict or the status, and nothing in the chain waits for it, so
+                                 the case can be `reviewed` while it is still "running": poll until it is not.
+                                 The inline POST waits for it, bounded (wait_for_second_opinion).
+                                 Shapes: policyqa/verdict.py, policyqa/letter.py, policyqa/critic.py,
+                                 policyqa/second_opinion.py.
   GET   /doc/{doc_id}/page/{page}.png?dpi=110
                                  the real PDF page as a PNG (pdftoppm, disk cache), Cache-Control public 1 day
   GET   /doc/{doc_id}/page/{page}/highlight?quote=&dpi=110
@@ -60,6 +67,8 @@ Run: uvicorn api.main:app --reload --port 8000
 """
 from __future__ import annotations
 
+import copy
+import logging
 import os
 import threading
 from datetime import datetime, timezone
@@ -80,7 +89,9 @@ MAX_UPLOAD = 10 * 1024 * 1024
 RUN_INVESTIGATION_INLINE = False  # True: POST /case/{id}/investigate runs the whole investigation before answering (tests)
 FIXTURE_DELAY = 0.8  # seconds between fixture findings, so progress is visible on screen
 INVESTIGATION_THREADS: dict[str, threading.Thread] = {}
+SECOND_THREADS: dict[str, threading.Thread] = {}  # case_id -> the running second opinion's thread; it removes itself when done
 VISION_CACHE: dict[tuple, dict] = {}  # (doc_id, page, quote, dpi, model) -> vision result; a second open costs nothing
+log = logging.getLogger("recourse.api")
 
 app = FastAPI(title="Recourse API", version="0.1.0")
 
@@ -168,6 +179,13 @@ def critic():
     if verdict_mode() == "fixture":
         return FixtureCritic(delay=FIXTURE_DELAY)
     return LiveCritic(provider())
+
+
+def second_provider():
+    """The second opinion's Provider (POLICYQA_SECOND_LLM_*), or None when it is not configured. Read per case, not cached."""
+    from policyqa.second_opinion import provider_from_env
+
+    return provider_from_env()
 
 
 @lru_cache(maxsize=1)
@@ -377,15 +395,24 @@ def _run_investigation(case_id: str) -> None:
                 STORE.set_status(case_id, "failed")
 
 
+_SPAN_LOCK = threading.Lock()  # the second opinion's thread and the chain both append spans
+
+
 def _add_span(case_id: str, span: dict) -> None:
-    """Append a stage span to the investigation's trace, so the case keeps one readable trace."""
-    inv = (STORE.get(case_id) or {}).get("investigation")
-    if not isinstance(inv, dict):
-        return
-    trace = inv.setdefault("trace", {"spans": []})
-    trace.setdefault("spans", []).append(span)
-    trace["total_ms"] = round(sum(float(s.get("ms", 0)) for s in trace["spans"]), 1)
-    STORE.set_stage(case_id, "investigation", inv)
+    """Append a stage span to the investigation's trace, so the case keeps one readable trace.
+
+    Read, copy, append and store under one lock: the second opinion adds its span from its own thread,
+    and the copy keeps the store's own dict from changing outside the store's lock while it is saved."""
+    with _SPAN_LOCK:
+        inv = (STORE.get(case_id) or {}).get("investigation")
+        if not isinstance(inv, dict):
+            return
+        inv = copy.deepcopy(inv)
+        trace = inv.setdefault("trace", {"spans": []})
+        trace.setdefault("spans", []).append(span)
+        # the second opinion runs beside the letter, so its time is not added to the chain's total
+        trace["total_ms"] = round(sum(float(s.get("ms", 0)) for s in trace["spans"] if s.get("name") != "second_opinion"), 1)
+        STORE.set_stage(case_id, "investigation", inv)
 
 
 def _err_text(e: BaseException) -> str:
@@ -396,7 +423,6 @@ def _run_decision(case_id: str) -> None:
     """Steelman and Verdict, then the Action stage, each stored as it lands. Never raises."""
     import time
 
-    from policyqa.letter import empty_letter
     from policyqa.verdict import empty_verdict
 
     c = STORE.get(case_id)
@@ -409,7 +435,9 @@ def _run_decision(case_id: str) -> None:
         verdict = agent.decide(c, inv)
     except Exception as e:  # noqa: BLE001 - the stage records the failure; the investigation is kept
         _add_span(case_id, {"name": "steelman_verdict", "ms": round((time.perf_counter() - t) * 1000, 1), "model": model, "error": _err_text(e)})
-        STORE.set_stage(case_id, "verdict", empty_verdict(model, "failed", _err_text(e)), "failed")
+        failed = empty_verdict(model, "failed", _err_text(e))
+        STORE.set_stage(case_id, "verdict", failed, "failed")
+        _start_second_opinion(case_id, c, inv, failed)  # stores it skipped, with the reason; starts nothing
         return
     _add_span(case_id, {
         "name": "steelman_verdict", "ms": round((time.perf_counter() - t) * 1000, 1), "model": verdict.get("model"),
@@ -420,6 +448,89 @@ def _run_decision(case_id: str) -> None:
         "reasoning_tokens": verdict.get("reasoning_tokens"), "cost_usd": verdict.get("cost_usd"), "error": verdict.get("error"),
     })
     STORE.set_stage(case_id, "verdict", verdict, "decided")
+
+    # The chain never waits for the second opinion: a slow open endpoint must not hold the case or its thread.
+    # Whoever needs it finished waits on SECOND_THREADS with a bound (the inline POST below, case-evals).
+    _start_second_opinion(case_id, c, inv, verdict)
+    _run_letter(case_id, inv, verdict)
+
+
+def _store_second(case_id: str, value: dict) -> None:
+    """Write the second opinion; a store error is logged, never raised (it must not fail the case)."""
+    try:
+        STORE.set_stage(case_id, "second_opinion", value)
+    except Exception as e:  # noqa: BLE001 - any store error is logged; the second opinion must never fail the case
+        log.warning("could not store the second opinion for %s: %s", case_id, e)
+
+
+def _start_second_opinion(case_id: str, case: dict, inv: dict, verdict: dict) -> threading.Thread | None:
+    """Store the second opinion as skipped (with the reason) or running, and start its thread. Never raises.
+
+    The thread gets copies of the same case, investigation and verdict the primary used, so the verdict's
+    user message is identical and nothing the chain does next can change what the second model sees."""
+    from policyqa.second_opinion import NOT_CONFIGURED, empty_second_opinion, skip_reason, skipped
+
+    try:
+        prov = second_provider()
+        if prov is None:
+            _store_second(case_id, skipped(NOT_CONFIGURED))
+            return None
+        model = getattr(prov, "model", "?")
+        why = skip_reason(case, inv, verdict)
+        if why:
+            _store_second(case_id, skipped(why, model))
+            return None
+        _store_second(case_id, empty_second_opinion(model))
+        t = threading.Thread(target=_run_second_opinion, args=(case_id, copy.deepcopy(case), copy.deepcopy(inv), copy.deepcopy(verdict), prov),
+                             name=f"second-opinion-{case_id}", daemon=True)
+        SECOND_THREADS[case_id] = t
+        t.start()
+        return t
+    except Exception as e:  # noqa: BLE001 - the second opinion records its failure; the case goes on
+        _store_second(case_id, empty_second_opinion(None, "failed", error=_err_text(e)))
+        return None
+
+
+def _run_second_opinion(case_id: str, case: dict, inv: dict, verdict: dict, prov) -> None:
+    """Body of the second opinion's thread: the verdict stage on the second model, stored as `second_opinion`."""
+    import time
+
+    from policyqa.second_opinion import empty_second_opinion, run_second_opinion
+
+    t = time.perf_counter()
+    try:
+        out = run_second_opinion(case, inv, verdict, prov)
+    except Exception as e:  # noqa: BLE001 - any failure becomes status "failed" with the reason; the thread must not die silently
+        out = empty_second_opinion(getattr(prov, "model", "?"), "failed", error=_err_text(e))
+    try:
+        _add_span(case_id, {
+            "name": "second_opinion", "ms": round((time.perf_counter() - t) * 1000, 1), "model": out.get("model"), "status": out.get("status"),
+            "outcome": out.get("outcome"), "agrees": out.get("agrees"), "input_tokens": out.get("input_tokens"), "output_tokens": out.get("output_tokens"),
+            "reasoning_tokens": out.get("reasoning_tokens"), "cost_usd": out.get("cost_usd"), "error": out.get("error"),
+        })
+    except Exception as e:  # noqa: BLE001 - a trace failure never fails the second opinion or the case
+        log.warning("could not add the second opinion span for %s: %s", case_id, e)
+    _store_second(case_id, out)
+    if SECOND_THREADS.get(case_id) is threading.current_thread():  # stored first, so a waiter that finds no thread reads the result
+        SECOND_THREADS.pop(case_id, None)
+
+
+def wait_for_second_opinion(case_id: str, timeout: float | None = None) -> bool:
+    """Wait at most `timeout` (default second_wait_s()) for the case's second opinion. True when none is still running."""
+    from policyqa.second_opinion import second_wait_s
+
+    t = SECOND_THREADS.get(case_id)
+    if t is None:
+        return True
+    t.join(second_wait_s() if timeout is None else timeout)
+    return not t.is_alive()
+
+
+def _run_letter(case_id: str, inv: dict, verdict: dict) -> None:
+    """The Action stage (the letter), then the critic, each stored as it lands."""
+    import time
+
+    from policyqa.letter import empty_letter
 
     agent = letterer()
     model = getattr(agent, "model", "?")
@@ -482,6 +593,7 @@ def case_investigate(case_id: str):
     STORE.set_investigation(case_id, route, _empty_investigation(getattr(inv, "model", "?")), "investigating")
     if RUN_INVESTIGATION_INLINE:
         _run_investigation(case_id)
+        wait_for_second_opinion(case_id)  # inline means the whole case, the second opinion too (bounded)
     else:
         t = threading.Thread(target=_run_investigation, args=(case_id,), name=f"investigate-{case_id}", daemon=True)
         INVESTIGATION_THREADS[case_id] = t

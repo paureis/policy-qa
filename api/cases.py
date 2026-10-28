@@ -2,12 +2,14 @@
 
 Shape of a case (what every /case route returns):
   {case_id, source, raw_text, summary, card, status, model, cost_usd, latency_ms, created_at,
-   route, investigation, verdict, letter, critique}
+   route, investigation, verdict, letter, critique, second_opinion}
 Statuses: intake -> investigating -> investigated -> deciding -> decided -> drafting -> drafted
 -> reviewing -> reviewed, or failed at any step up to the letter (the stage that failed carries
 `status: "failed"` and `error`). The critic never fails the case: a critic failure ends
 `reviewed` with the letter as drafted. `route` and `investigation` are null until the
 investigation starts; `verdict`, `letter` and `critique` are null until their stage starts.
+`second_opinion` (policyqa/second_opinion.py) is written beside the letter and never sets the
+status; a case stored before it existed has no such key.
 Shapes: policyqa/investigate.py, policyqa/verdict.py, policyqa/letter.py, policyqa/critic.py.
 
 The interface (create, get, patch, set_status, claim_for_investigation, set_investigation, set_stage)
@@ -19,7 +21,9 @@ Persistence: CaseStore(directory) loads every `<case_id>.json` in the directory 
 rewrites the case's file (atomically: temp file, then replace) after every mutation, so a
 uvicorn reload or a cold start on a host keeps open cases. CaseStore(None) is memory only.
 The module store reads RECOURSE_CASE_DIR (default `data/cases` under the repo; empty string
-means memory only). A file that does not parse is skipped with a warning, never fatal.
+means memory only). A file that does not parse is skipped with a warning, never fatal. A loaded
+case whose `second_opinion` is still "running" (its daemon thread died with the old process) is
+rewritten as "failed" with SECOND_RESTARTED, every other field kept.
 """
 from __future__ import annotations
 
@@ -35,6 +39,7 @@ from pathlib import Path
 log = logging.getLogger("recourse.cases")
 
 DEFAULT_CASE_DIR = Path(__file__).resolve().parent.parent / "data" / "cases"
+SECOND_RESTARTED = "the server restarted before the second opinion finished"
 
 
 class CaseStore:
@@ -55,6 +60,11 @@ class CaseStore:
                 log.warning("skipping unreadable case file %s: %s", f, e)
                 continue
             self._cases[cid] = case
+            so = case.get("second_opinion")
+            if isinstance(so, dict) and so.get("status") == "running":
+                # Its thread is a daemon and died with the old process; nothing else would ever finish it.
+                case["second_opinion"] = {**so, "status": "failed", "error": SECOND_RESTARTED}
+                self._save(case)
 
     def _save(self, case: dict) -> None:
         """Write the case's file; called under the lock. A write error is logged, not raised: the case stays in memory."""
@@ -81,7 +91,7 @@ class CaseStore:
             cid = self._new_id()
             while cid in self._cases:
                 cid = self._new_id()
-            case = {"case_id": cid, **data, "status": "intake", "created_at": self._now(), "route": None, "investigation": None, "verdict": None, "letter": None, "critique": None}
+            case = {"case_id": cid, **data, "status": "intake", "created_at": self._now(), "route": None, "investigation": None, "verdict": None, "letter": None, "critique": None, "second_opinion": None}
             self._cases[cid] = case
             self._save(case)
             return dict(case)
@@ -134,7 +144,7 @@ class CaseStore:
             self._save(c)
             return dict(c)
 
-    STAGES = ("investigation", "verdict", "letter", "critique")
+    STAGES = ("investigation", "verdict", "letter", "critique", "second_opinion")
 
     def set_stage(self, case_id: str, field: str, value: dict | None, status: str | None = None) -> dict | None:
         """Store a copy of one stage (investigation, verdict, letter, or critique) and, when given, the case status."""

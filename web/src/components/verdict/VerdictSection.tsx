@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { verdictHeadline, type CaseCard, type CitationRef, type Verdict } from "@/lib/case";
+import { secondOpinionLine, verdictHeadline, type CaseCard, type CitationRef, type SecondOpinion, type Verdict } from "@/lib/case";
 import { CitationChips } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
 import { Disclosure, Mark } from "@/components/investigation/Marks";
@@ -70,6 +70,7 @@ export function VerdictSection({
   slip = null,
   n = null,
   card = null,
+  secondOpinion = null,
 }: {
   /* Null while the case runs before the verdict: the section then holds the slip alone. */
   verdict: Verdict | null;
@@ -87,6 +88,8 @@ export function VerdictSection({
   n?: number | null;
   /* The case card, for the exhibit pair's "The letter says" (annotated only). */
   card?: CaseCard | null;
+  /* The second opinion on the verdict (Muse Spark Open), shown as one line under the counts; absent, null or skipped shows nothing. */
+  secondOpinion?: SecondOpinion | null;
 }) {
   const [steelOpen, setSteelOpen] = useState(false);
   const steelId = useId();
@@ -110,6 +113,7 @@ export function VerdictSection({
   const verdict = maybeVerdict;
   const outcome = verdict.outcome;
   const marks = proofMarks(proof);
+  const second = secondOpinionLine(secondOpinion);
   /* The desktop scale: h3 at 20 px, weight 600 (the page sets 400 and 600; the stamp alone is 850). */
   const h3 = `text-[18px] font-bold ${folder ? "lg:text-[20px] lg:font-semibold" : ""}`;
   const ruleCitation = verdict.rule?.citations?.[0] ?? null;
@@ -145,6 +149,26 @@ export function VerdictSection({
               {i < marks.length - 1 ? <span className="sr-only">. </span> : null}
             </span>
           ))}
+        </p>
+      ) : null}
+
+      {/*
+        The second opinion: one line directly under the counts, at every width, a mark and the words in
+        ink at the counts' size, weight and leading (15 px at desktop, 17 px on the phone) and 4 px under
+        them (the counts' own row gap), so the two read as one group. It is there from decided, when the verdict stage runs again beside the letter, so
+        its row arrives with the counts; it then changes its words and its mark in place (the same
+        element, no land on a text change), and the tick steps in when Muse Spark Open agrees. Absent,
+        null or skipped: not rendered, so a case without one looks exactly as before.
+      */}
+      {second ? (
+        <p
+          /* The mark sits centred on the first line (4 px down the phone's 23 px line, 2 px down desktop's 21 px) when the words wrap. */
+          className={`${parts} mt-1 flex items-start gap-2 text-[17px] leading-snug text-ink tabular-nums ${folder ? "lg:text-[15px]" : ""}`}
+          data-second-opinion={secondOpinion?.status}
+          data-agrees={secondOpinion?.agrees === null || secondOpinion?.agrees === undefined ? undefined : String(secondOpinion.agrees)}
+        >
+          <Mark kind={second.mark} className={`mt-1 h-4 w-4 ${folder ? "lg:mt-0.5" : ""} ${second.mark === "tick" ? "tick-step" : ""}`} />
+          <span>{second.text}</span>
         </p>
       ) : null}
 

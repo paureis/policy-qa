@@ -640,3 +640,122 @@ Recorded after the re-check (Oct 28, 2026, orchestrator): `FieldRow` is shared w
 sentence case, 400) instead of the old uppercase eyebrows. Accepted as the intended outcome of
 Alvaro's label decision, not a regression: the finish review had removed that register from every
 other part of the case page. The collapsed case page is pixel-identical; only the expanded panel changes.
+
+## 13. Second opinion on the page (Oct 28, 2026)
+
+The API now runs the verdict stage a second time on Muse Spark Open (Meta's open-weights model) with the
+same findings and prompt, beside the letter, and stores `second_opinion` with whether it agrees with Muse
+Spark 1.3's verdict (`api/main.py`, `policyqa/second_opinion.py`). It is a trust signal for the reader and
+a Meta-tooling point for the judges; it never changes the verdict. The page shows it in the world's idiom
+(a drawn mark beside words, ink, no new hue) without moving anything piece 3 holds still. Made by the
+orchestrator (F1 to F7), then by the builder where marked.
+
+- F1. Contract: `CaseRecord.second_opinion?: SecondOpinion | null` in `src/lib/case.ts`, the API's shape
+  (status skipped, running, done or failed; reason, model, outcome, proposed_outcome, decisive_fact,
+  relies_on_exception, agrees, the token counts, latency_ms, cost_usd, error). Nothing else in the
+  contract changes.
+- F2. One line directly under the counts line in the verdict section, at every width: a 16 px mark and
+  17 px ink words, tabular numerals. Done and agrees: a tick, "Second opinion: Muse Spark Open agrees."
+  Done and disagrees: an open ring, "Second opinion: Muse Spark Open says the denial holds" (or "the
+  denial appears inconsistent", "the documents do not settle it"). Running: a ring, "... is deciding…".
+  Failed: a ring, "... did not answer." Skipped, absent or null: not rendered. The name is "Muse Spark
+  Open" for any model id containing "muse-spark-open", else the id as given.
+- F3. Nothing moves when the second opinion settles: the line arrives with the counts at decided and
+  changes its words in place (same element, no land on a text change); the tick steps in when agrees
+  arrives; reduced motion stops it.
+- F4. Receipt: a row "Second opinion (Muse Spark Open)" after the verdict's row with its seconds and
+  cost when done; "Second opinion" with "did not answer" in the time column when failed; no row when
+  skipped or absent. The total time leaves it out (it ran beside the letter); the total cost includes it.
+- F5. Announced through a live region that already exists, never a new one.
+- F6. Fixtures: `c_sample` agrees (running first, done one poll later), `c_consistent` disagrees (says not
+  settled), `c_notsettled` is skipped; the other fixtures carry no `second_opinion` key.
+- F7. Full-page captures of `c_dual`, `c_rejected`, `c_checkerror`, `c_fail` and `c_error` at 390 and
+  1280 identical before and after; `c_sample` at 1280 identical except the added line and the receipt.
+
+Decided by the builder, with the reason:
+
+- The poll keeps going while `second_opinion.status` is "running" (`secondOpinionPending` in `pollCase`),
+  but `isWorking` is unchanged: the case's chain is done at reviewed whatever the second opinion does, so
+  the slip still folds into the band after its one-poll hold and nothing else waits for it. Absent, null,
+  skipped, done and failed stop the poll as before.
+- The slot is not reserved by an empty box: the line exists from the first poll that carries a running
+  second opinion, which on the API is in practice the poll that brings the verdict (it is stored running
+  right after the verdict, before the letter starts; a poll landing between those two writes would show
+  the line one poll later), so it lands with the counts (the same `land` class) and only its words and
+  mark change after. A case whose second opinion is skipped, absent or null keeps today's
+  pixels, which F7 requires; an empty reserved row would have moved every one of them.
+- The slip and the exhibits do not move because the stamp's column (stamp, counts, the new line) is
+  still shorter than the reference block beside it: measured at 1280 by 800 on `c_sample`, counts at
+  y 282.9, line at 311.5, slip at 371.2 and the first exhibit at 501.2 at decided (running), at done and
+  at reviewed until the slip folds (then 395.2, as before), the same stamp (122.2), slip and exhibit
+  values as before the change; the slip was at 371.2 while deciding too. At 1024 the slip at 494.8 and
+  the exhibit at 656.8 from deciding through reviewed. (Numbers from the first build; re-measured after
+  the fix pass below.) The mark is top-aligned, centred on the first line, for when the words wrap.
+- The tick on the line uses the slip's `tick-step` (160 ms, two steps), added when the mark turns to a
+  tick, so it runs once; under reduced motion its animation is none (measured).
+- Announcement: `useSecondOpinionNews` in `RoutingSlip.tsx`. When the view saw the second opinion go from
+  running to done or failed, its line is the news in the slip's polite atomic region until the stage line
+  changes; if the stage line changed in the same poll both are said ("Drafting the appeal letter… Second
+  opinion: Muse Spark Open agrees."). A case opened already settled announces nothing; the line is on the
+  page. The phone's existing stage-line live region (display: none at desktop) gets the same news as an
+  unseen span, so a phone reader hears it too; no pixel changes there.
+- The receipt row is not counted in the model line ("Model: fixture" stays) or in the heading's step
+  count; its label names the model. A failed row prints its cost without the model, so a zero reads
+  "$0.0000", not "prices not set". (The note about the total time is in the fix pass below.)
+- `c_notsettled`'s skip reason is the one the API gives a fixture verdict ("the primary verdict is the
+  fixture (no model call)"): it is never shown, and it is the honest reason for a fixture.
+- `c_error` and `c_fail` share the sample's fixture kind but carry no second opinion: only the ids
+  starting `c_sample`, `c_consistent` and `c_notsettled` do. `c_sample`'s line arrives at decided as "is
+  deciding…" and turns to "agrees." at drafting (one poll), latency 4.2 s, cost $0.0091; `c_consistent`'s
+  says "the documents do not settle it." (3.9 s, $0.0087).
+- A model id that is null (a failure before the provider was made) is named "the second model".
+
+Verified: `npx tsc --noEmit` and `npm run lint` clean. Poll stop, against mocked GET responses on a live
+id with every other API request aborted, at 1280: a reviewed record with no `second_opinion` key, with
+null, with skipped and with failed each sent 2 GETs and stopped (the no-key record is today's behaviour;
+React's development double mount sends one extra); running for three GETs then done sent 4 and stopped;
+running throughout kept polling (10 GETs in about 15 s). The line was the same node from "is deciding…"
+to "agrees.", and the slip's live region read "Second opinion: Muse Spark Open agrees." F7 (captures run
+one at a time; run in parallel the baseline itself was not stable): nine of the ten captures of the five
+cases are pixel-identical to the baseline. `c_fail` at 1280 renders its receipt in one of two raster
+states 1 px apart: one capture of seven after the change matched the baseline exactly and six were the
+other state, while its layout measured the same on every run (receipt heading at y 1588.81, a fractional
+offset that snaps either way). `c_notsettled` at 1280 is identical too.
+`c_sample` at 1280: the page is 41 px taller (the receipt row); rows above the counts are identical except
+46 pixels inside the stamp's noise texture (the stamp's y is 122.2 in both); the added line; the rest
+identical down to the receipt's table, whose columns rebalance for the longer label, the new row and the
+total cost ($0.0000 to $0.0091); the page foot under the table identical.
+
+Fix pass (Oct 28, 2026, orchestrator), built as follows:
+
+1. Size. The line takes the counts' size, weight and leading at every width: 15 px / 20.6 px at 400 at
+   desktop, 17 px / 23.4 px at 400 on the phone (measured equal to the counts at 390, 1024 and 1280), and
+   sits 4 px under them, the counts' own row gap (was 8 px and 17 px everywhere), so the two read as one
+   group. The mark is 2 px down the 21 px line at desktop, 4 px down the phone's 23 px line. Re-measured
+   on `c_sample` at 1280 by 800: stamp 122.2, counts 282.9, line 307.5, slip 371.2 (371.2 while deciding
+   too), first exhibit 501.2, the same at decided (running), at done and at reviewed until the slip folds
+   (then 395.2); at 1024: stamp 170.5, slip 494.8, exhibit 656.8 through the same moments. `c_consistent`
+   at 1280 gives the same stamp, slip and exhibit values.
+2. Wording. At 15 px the longest wording, "Second opinion: Muse Spark Open says the documents do not settle
+   it.", measures 467 px and sets on one line at 1024 (the line box is 498 px) and at 1280 (526 px), so
+   the disagree form is not shortened. On the phone (17 px, 300 px for the words) it takes two lines,
+   under the counts' three rows.
+3. Receipt note. When the second opinion's row is shown, one line under the table, before the model
+   line: "The second opinion ran beside the letter; its time is not in the total." It uses the receipt's
+   existing note style, which measures 15 px in faded ink (#4e493d), not 14 px; matched to the notes
+   already on the slip. Measured on all eight fixtures at 1280: the note is on `c_sample` and on
+   `c_consistent` (the two with a second opinion row, F6); none of the other six. This replaces the
+   builder bullet above that left the total unexplained.
+
+Verified after the fix pass: `tsc --noEmit` and `npm run lint` clean. F7 recaptured one at a time: the
+same nine of ten captures pixel-identical, `c_fail` at 1280 again in its other raster state, `c_notsettled`
+at 1280 identical. `c_sample` at 1280 is identical above row 311 (the stamp's texture matched this time),
+then the line, the rest identical down to the receipt; the page is 76 px taller (the row and the note).
+
+Recorded after the fresh evaluation (Oct 28, 2026, orchestrator), not changed: on the phone the
+stage line's atomic region re-reads its old line together with the second opinion's news when it
+settles; at 390 the agree line wraps with "agrees." alone on its second line; a done second opinion
+with a null outcome reads "did not answer" on the line while its receipt row keeps its seconds and
+cost; the receipt note's "ran beside the letter" reads oddly on a case that drafted no letter; the
+`c_fail` fixture's receipt sits 1 px higher on about half of its 1280 captures with or without this
+change (a pre-existing flicker, not a layout change).

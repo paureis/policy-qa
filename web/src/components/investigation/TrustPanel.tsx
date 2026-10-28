@@ -8,10 +8,12 @@ import {
   formatCost,
   formatSeconds,
   letterVerificationLine,
+  secondOpinionModelName,
   selfCheckLine,
   type Critique,
   type Investigation,
   type Letter,
+  type SecondOpinion,
   type Verdict,
 } from "@/lib/case";
 import { APPENDIX, APPENDIX_H2, PHONE_SHEET, PHONE_SHEET_ONLY, SectionTitle } from "./SectionTitle";
@@ -38,6 +40,7 @@ export function TrustPanel({
   verdict = null,
   letter = null,
   critique = null,
+  secondOpinion = null,
   annotated = false,
   folder = false,
   n = null,
@@ -46,6 +49,11 @@ export function TrustPanel({
   verdict?: Verdict | null;
   letter?: Letter | null;
   critique?: Critique | null;
+  /*
+    The second opinion (Muse Spark Open), once done or failed: its own row after the verdict's. It ran
+    beside the letter, so its time is not added to the total; its cost is.
+  */
+  secondOpinion?: SecondOpinion | null;
   /* The finished case with a letter: at 1024px and up the receipt is a bond slip on the paper desk, the sheet's width. */
   annotated?: boolean;
   /*
@@ -71,18 +79,31 @@ export function TrustPanel({
   const trace = spans.length > 0 ? spans : null;
 
   // Steps that have reported their usage: the investigation always, then the verdict and the letter once done.
-  const steps: { name: string; cost: number; ms: number; model: string }[] = [
+  /* beside: a step that ran beside the chain (the second opinion): its own row and its cost, outside the total time, the model line and the heading's count. */
+  const steps: { name: string; cost: number; ms: number; model: string; time?: string; beside?: boolean }[] = [
     { name: "investigation", cost: investigation.cost_usd, ms: investigation.latency_ms, model: investigation.model },
   ];
   if (verdict && verdict.status !== "running") steps.push({ name: "verdict", cost: verdict.cost_usd ?? 0, ms: verdict.latency_ms ?? 0, model: verdict.model });
+  if (secondOpinion && secondOpinion.status === "done")
+    steps.push({
+      name: `Second opinion (${secondOpinionModelName(secondOpinion.model)})`,
+      cost: secondOpinion.cost_usd ?? 0,
+      ms: secondOpinion.latency_ms ?? 0,
+      model: secondOpinion.model ?? "",
+      beside: true,
+    });
+  else if (secondOpinion && secondOpinion.status === "failed")
+    /* No model answered, so a zero cost is not "prices not set": the cost is printed without the model. */
+    steps.push({ name: "Second opinion", cost: secondOpinion.cost_usd ?? 0, ms: 0, model: "", time: "did not answer", beside: true });
   if (letter && letter.status !== "running") steps.push({ name: "letter", cost: letter.cost_usd ?? 0, ms: letter.latency_ms ?? 0, model: letter.model });
   if (critique && critique.status !== "running" && !critique.skipped)
     steps.push({ name: "self-check", cost: critique.cost_usd ?? 0, ms: critique.latency_ms ?? 0, model: critique.model });
   const totalCost = steps.reduce((s, x) => s + (Number.isFinite(x.cost) ? x.cost : 0), 0);
-  const totalMs = steps.reduce((s, x) => s + (Number.isFinite(x.ms) ? x.ms : 0), 0);
-  const models = [...new Set(steps.map((x) => x.model).filter((m): m is string => typeof m === "string" && m !== ""))];
+  const totalMs = steps.reduce((s, x) => s + (!x.beside && Number.isFinite(x.ms) ? x.ms : 0), 0);
+  const chain = steps.filter((x) => !x.beside);
+  const models = [...new Set(chain.map((x) => x.model).filter((m): m is string => typeof m === "string" && m !== ""))];
   const costModel = models.every((m) => m === FIXTURE_MODEL) ? FIXTURE_MODEL : models.find((m) => m !== FIXTURE_MODEL);
-  const split = steps.length > 1;
+  const split = chain.length > 1;
   const showLetter = letter !== null && letter.status === "done" && letter.applicable && letter.verification;
   const selfCheck = critique && critique.status === "done" && !critique.skipped && showLetter ? selfCheckLine(critique) : null;
 
@@ -162,8 +183,8 @@ export function TrustPanel({
               <th scope="row" className="py-2 pr-3 font-normal">
                 {capitalize(x.name)}
               </th>
-              <td className="py-2 pr-3 text-right whitespace-nowrap">{formatSeconds(x.ms)}</td>
-              <td className="py-2 text-right">{formatCost(x.cost, x.model)}</td>
+              <td className="py-2 pr-3 text-right whitespace-nowrap">{x.time ?? formatSeconds(x.ms)}</td>
+              <td className="py-2 text-right">{formatCost(x.cost, x.model === "" ? undefined : x.model)}</td>
             </tr>
           ))}
         </tbody>
@@ -179,6 +200,12 @@ export function TrustPanel({
           </tr>
         </tfoot>
       </table>
+      {/* Only when the second opinion's row is shown: why the total time is not the sum of the rows. The receipt's note style. */}
+      {steps.some((x) => x.beside) ? (
+        <p className="mt-3 text-[15px] text-muted" data-receipt-note="second-opinion">
+          The second opinion ran beside the letter; its time is not in the total.
+        </p>
+      ) : null}
       <p className="mt-3 text-[15px] text-muted">
         {models.length > 1 ? "Models" : "Model"}:{" "}
         <span className="font-mono text-ink">{models.length > 0 ? models.join(", ") : investigation.model}</span>

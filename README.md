@@ -20,6 +20,10 @@ The point of the project is not the demo. Every step is measured against a human
 6. **Action.** A draft appeal letter where every sentence carries a citation and has passed the verifier; an evidence checklist derived from the policy's own conditions; the deadline with a day count and the filing path, cited from the appeals documents in the corpus. For a consistent denial, a plain explanation and what would have made the service covered.
 7. **Trust.** Verification coverage (claims supported over claims made), cost of the case, time taken, and the full trace.
 
+**Second opinion.** After the verdict, the same Steelman and Verdict stage runs a second time on Meta's open-weights model, Muse Spark Open, with the same findings, the same prompt and the same code guards; only the model differs. It runs beside the letter, and nothing in the chain waits for it, so the case status can reach `reviewed` before the second opinion finishes: a client polls `GET /case/{id}` until `second_opinion.status` is not `running`. The case records whether the two models agree (`second_opinion.agrees`). It never changes the verdict, and the letter and the critic read only the primary verdict. It is skipped, with the reason, when it is not configured or when the verdict made no model call (the verdict failed, a plan outside the corpus, no supported finding, a model failure, or the fixture verdict used without a model key). A second opinion still running when the server restarts loads as `failed`. Configure it with `POLICYQA_SECOND_LLM_BASE_URL`, `POLICYQA_SECOND_LLM_MODEL` and `POLICYQA_SECOND_LLM_API_KEY`, plus `POLICYQA_SECOND_LLM_INPUT_USD_PER_M` and `POLICYQA_SECOND_LLM_OUTPUT_USD_PER_M` (the primary's prices when unset); see `.env.example` and `policyqa/second_opinion.py`. `case-evals` reports the agreement rate, the cases where only one of the two is right, and the second opinion's cost.
+
+Live agreement rate (Oct 28, 2026, `results/case-evals-2026-10-28-second-opinion.*`, the 30 cases on Muse Spark 1.3 with Muse Spark Open at Baseten as the second model): the second opinion ran on 28 cases (dc-011 is refused at intake and dc-030 is outside the corpus) and agreed with the verdict on 27 of 28 (96.4%). The one disagreement is dc-009 (the verdict said not settled, which is right; the open model said consistent). No case where the open model was right and the verdict wrong. It cost $0.008 a case on top of the $0.096 chain and added no time to it. The primary verdicts in that run: 27 of 30 (90.0%), 81 of 81 letter claims verified; dc-026 came back right and dc-002 missed at retrieval, the run-to-run variance the tables above describe.
+
 ## What is here
 
 | Piece | Status |
@@ -117,7 +121,7 @@ python -m policyqa.cli case-evals [--ids dc-001,dc-011] [--limit N] [--concurren
 
 It writes `results/case-evals-<date>.json` (per-case rows, the summary, the model, reasoning effort, prices, and modes) and `results/case-evals-<date>.md` (a summary table and a per-case table to paste here).
 
-Measured: verdict accuracy overall and by intended outcome, program, and jurisdiction; refusal on the medical-question trap; the letter verification rate (verified claims over claims, letters that apply only) and the struck rate; critic revisions accepted; cost and seconds per case (mean and p50) and in total.
+Measured: verdict accuracy overall and by intended outcome, program, and jurisdiction; refusal on the medical-question trap; the letter verification rate (verified claims over claims, letters that apply only) and the struck rate; critic revisions accepted; cost and seconds per case (mean and p50) and in total. With the second opinion configured: its agreement with the verdict over the cases where both ran, the cases where only one of the two is right, and its mean cost, kept out of the case's own cost so runs stay comparable; each row has a "Second opinion" column ("skipped" when it did not run).
 
 Scoring rule:
 

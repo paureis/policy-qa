@@ -627,6 +627,8 @@ export interface CaseRecord extends IntakeResponse {
   letter?: Letter | null;
   /* The critic's self-check of the letter, once drafted. Null until it starts; absent on older API builds. */
   critique?: Critique | null;
+  /* The verdict stage run again on a second model, beside the letter. Null until the verdict; absent on older API builds and old cases. */
+  second_opinion?: SecondOpinion | null;
   created_at?: string;
   model?: string;
   cost_usd?: number;
@@ -1038,6 +1040,10 @@ function fixtureCase(caseId: string, now: number): CaseRecord | null {
             ? "checkerror"
             : "sample";
   const chain = finished && !fail ? fixtureChain(kind, now - (startedAt + latency)) : null;
+  /* Absent for the fixtures without one; null on the three that have one until the verdict lands. */
+  /* c_error and c_fail share the sample's kind but carry no second opinion: only c_sample, c_consistent and c_notsettled do. */
+  const withSecond = caseId.startsWith("c_sample") || consistent || notSettled;
+  const second = withSecond ? fixtureSecondOpinion(kind, chain ? now - (startedAt + latency) : -1) : undefined;
   const trace: TraceSpan[] = [
     { name: "route", ms: 2 },
     { name: "plan questions", ms: 1 },
@@ -1068,6 +1074,7 @@ function fixtureCase(caseId: string, now: number): CaseRecord | null {
     verdict: chain?.verdict ?? null,
     letter: chain?.letter ?? null,
     critique: chain?.critique ?? null,
+    ...(second === undefined ? {} : { second_opinion: second }),
     created_at: new Date(startedAt - 60_000).toISOString(),
   };
 }
@@ -1150,6 +1157,9 @@ export function isInvestigating(record: CaseRecord): boolean {
   Fetch the case, hand each version to onUpdate, and poll every POLL_MS while
   the case works itself (investigation, verdict, letter) until drafted or failed. Resolves with the final record. Aborting the signal
   stops the loop quietly. Errors (including not_found) propagate.
+  The second opinion runs beside the letter and can still be running when the case is reviewed, so the
+  loop also continues while second_opinion.status is "running"; absent, null, skipped, done or failed
+  stops it as before.
 */
 export async function pollCase(
   caseId: string,
@@ -1161,7 +1171,7 @@ export async function pollCase(
     const record = await getCase(caseId, signal);
     if (signal?.aborted) throw abortError();
     onUpdate(record);
-    if (!isWorking(record)) return record;
+    if (!isWorking(record) && !secondOpinionPending(record)) return record;
     await sleep(intervalMs, signal);
   }
 }
@@ -1212,6 +1222,63 @@ export interface Verdict extends Usage {
   rule: { statement: string; citations: CitationRef[]; unsupported?: boolean };
   gap: string;
   what_would_change: string | null;
+}
+
+/*
+  The second opinion (policyqa/second_opinion.py): the Steelman and Verdict stage run again on Muse
+  Spark Open with the same findings and prompt. It never changes the verdict; `agrees` says whether its
+  outcome is the verdict's (null unless both are done). Skipped carries the reason and is not shown.
+*/
+export type SecondOpinionStatus = "skipped" | "running" | "done" | "failed";
+
+export interface SecondOpinion {
+  status: SecondOpinionStatus;
+  reason: string | null;
+  model: string | null;
+  outcome: VerdictOutcome | null;
+  proposed_outcome: VerdictOutcome | null;
+  decisive_fact: { fact: string; settled_by: string } | null;
+  relies_on_exception: boolean | null;
+  agrees: boolean | null;
+  input_tokens: number;
+  output_tokens: number;
+  reasoning_tokens: number;
+  latency_ms: number;
+  cost_usd: number;
+  error: string | null;
+}
+
+/* The second opinion's outcome in the product's words, after "says". */
+export const SECOND_OPINION_SAYS: Record<VerdictOutcome, string> = {
+  consistent: "the denial holds",
+  inconsistent: "the denial appears inconsistent",
+  not_settled: "the documents do not settle it",
+};
+
+/* The second model's display name: "Muse Spark Open" for any Muse Spark Open id, else the id as given. */
+export function secondOpinionModelName(model: string | null | undefined): string {
+  if (!model) return "the second model";
+  return model.toLowerCase().includes("muse-spark-open") ? "Muse Spark Open" : model;
+}
+
+/*
+  The one line under the counts, or null when it is not shown (absent, null, skipped).
+  Done and agrees: a tick. Everything else an open ring: deciding, a different outcome, no answer.
+*/
+export function secondOpinionLine(so: SecondOpinion | null | undefined): { mark: "tick" | "ring"; text: string } | null {
+  if (!so || so.status === "skipped") return null;
+  const name = secondOpinionModelName(so.model);
+  if (so.status === "running") return { mark: "ring", text: `Second opinion: ${name} is deciding…` };
+  if (so.status === "done" && so.agrees === true) return { mark: "tick", text: `Second opinion: ${name} agrees.` };
+  if (so.status === "done" && so.outcome && so.outcome in SECOND_OPINION_SAYS)
+    return { mark: "ring", text: `Second opinion: ${name} says ${SECOND_OPINION_SAYS[so.outcome]}.` };
+  if (so.status === "done" || so.status === "failed") return { mark: "ring", text: `Second opinion: ${name} did not answer.` };
+  return null;
+}
+
+/* The second opinion still running: the page keeps polling, though the chain itself may have finished. */
+export function secondOpinionPending(record: Pick<CaseRecord, "second_opinion">): boolean {
+  return record.second_opinion?.status === "running";
 }
 
 export interface LetterSentence {
@@ -2013,6 +2080,67 @@ function reviewed(kind: FixtureKind): { status: CaseStatus; letter: Letter; crit
     case "notsettled":
       return { status: "reviewed", letter, critique: CRITIQUE_SKIPPED("No letter was drafted because the documents do not settle the denial.") };
   }
+}
+
+/*
+  The fixture's second opinion, `t` ms after the investigation finished, or undefined for a fixture
+  without one (the key is then absent, as on an old case). The sample agrees and the consistent case
+  disagrees (it says not settled); both are running while the case is decided, so the run shows the
+  line change in place one poll after the verdict, and done from drafting on. The not-settled case is
+  skipped, with the reason the API gives a fixture verdict, and shows nothing.
+*/
+const SECOND_OPINION_FIXTURE_MODEL = "muse-spark-open-fixture";
+
+function fixtureSecondOpinion(kind: FixtureKind, t: number): SecondOpinion | null | undefined {
+  if (kind !== "sample" && kind !== "consistent" && kind !== "notsettled") return undefined;
+  if (t < FIXTURE_DECIDE_MS) return null;
+  const base: SecondOpinion = {
+    status: "running",
+    reason: null,
+    model: SECOND_OPINION_FIXTURE_MODEL,
+    outcome: null,
+    proposed_outcome: null,
+    decisive_fact: null,
+    relies_on_exception: null,
+    agrees: null,
+    input_tokens: 0,
+    output_tokens: 0,
+    reasoning_tokens: 0,
+    latency_ms: 0,
+    cost_usd: 0,
+    error: null,
+  };
+  if (kind === "notsettled") return { ...base, status: "skipped", reason: "the primary verdict is the fixture (no model call)" };
+  if (t < FIXTURE_DECIDE_MS + FIXTURE_DECIDED_MS) return base;
+  return kind === "sample"
+    ? {
+        ...base,
+        status: "done",
+        outcome: "inconsistent",
+        proposed_outcome: "inconsistent",
+        decisive_fact: { fact: "The letter does not state how many hours were authorized for September.", settled_by: "letter" },
+        relies_on_exception: false,
+        agrees: true,
+        input_tokens: 9120,
+        output_tokens: 1210,
+        reasoning_tokens: 640,
+        latency_ms: 4200,
+        cost_usd: 0.0091,
+      }
+    : {
+        ...base,
+        status: "done",
+        outcome: "not_settled",
+        proposed_outcome: "not_settled",
+        decisive_fact: { fact: "Whether the hours billed beyond the authorization were approved later.", settled_by: "outside_documents" },
+        relies_on_exception: false,
+        agrees: false,
+        input_tokens: 8840,
+        output_tokens: 1130,
+        reasoning_tokens: 590,
+        latency_ms: 3900,
+        cost_usd: 0.0087,
+      };
 }
 
 /* The verdict, letter, and self-check steps, `t` ms after the investigation finished. */

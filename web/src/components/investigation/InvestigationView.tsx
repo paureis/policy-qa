@@ -363,6 +363,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
           slip={<RoutingSlip record={record} failure={slipFailure} collapsed={slipDone} />}
           n={numbers?.verdict ?? null}
           card={record.card}
+          secondOpinion={record.second_opinion ?? null}
         />
       </div>
     ) : null;
@@ -610,6 +611,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                           verdict={verdict}
                           letter={letterDone ? letter : null}
                           critique={letterDone ? critique : null}
+                          secondOpinion={verdictDone ? (record.second_opinion ?? null) : null}
                           annotated={annotated}
                           folder={folder}
                           n={numbers?.receipt ?? null}

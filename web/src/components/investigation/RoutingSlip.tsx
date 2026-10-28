@@ -1,4 +1,5 @@
-import { NO_LETTER_LINE, critiqueFailed, stageLine, type CaseRecord } from "@/lib/case";
+import { useState } from "react";
+import { NO_LETTER_LINE, critiqueFailed, secondOpinionLine, stageLine, type CaseRecord } from "@/lib/case";
 import { progressLine } from "./InvestigationProgress";
 import { Mark } from "./Marks";
 
@@ -90,6 +91,26 @@ export function slipLine(record: CaseRecord, failure: SlipFailure | null): strin
 }
 
 /*
+  The second opinion settling, as news for a live region that already exists: when this view saw
+  second_opinion go from running to done or failed, its line ("Second opinion: Muse Spark Open agrees.")
+  is the news until the stage line changes again, so it is announced once. When the stage line changed
+  in the same poll, both are said (withLine). A case opened with the second opinion already settled
+  announces nothing; the line is on the page. State is adjusted during render (React's pattern for
+  state derived from a changing prop), so the news and the record commit together.
+*/
+export function useSecondOpinionNews(record: CaseRecord, line: string | null): { text: string; withLine: boolean } | null {
+  const status = record.second_opinion?.status ?? null;
+  const [seen, setSeen] = useState<{ status: string | null; line: string | null }>({ status, line });
+  const [news, setNews] = useState<{ line: string | null; text: string; withLine: boolean } | null>(null);
+  if (seen.status !== status || seen.line !== line) {
+    setSeen({ status, line });
+    const so = secondOpinionLine(record.second_opinion);
+    if (seen.status === "running" && (status === "done" || status === "failed") && so) setNews({ line, text: so.text, withLine: seen.line !== line });
+  }
+  return news !== null && news.line === line ? { text: news.text, withLine: news.withLine } : null;
+}
+
+/*
   The routing slip: the live run's stage header on the top sheet at 1024 px
   and up (display: none under it, where the phone keeps its two lines).
   Seven stages left to right, each a drawn mark and a word: an open ring
@@ -122,6 +143,10 @@ export function RoutingSlip({
   collapsed: boolean;
 }) {
   const list = stages(record, failure);
+  const line = slipLine(record, failure);
+  /* The second opinion's news, in this live region (no new one): its words alone, or after the stage line when that changed too. */
+  const news = useSecondOpinionNews(record, line);
+  const live = news === null ? line : news.withLine ? `${line} ${news.text}` : news.text;
   return (
     <>
       <div
@@ -144,7 +169,7 @@ export function RoutingSlip({
         </ol>
       </div>
       <p className="sr-only hidden lg:block" aria-live="polite" aria-atomic="true" data-slip-live="true">
-        {slipLine(record, failure)}
+        {live}
       </p>
     </>
   );
