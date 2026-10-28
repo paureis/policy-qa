@@ -28,13 +28,33 @@ function proofMarks(proof: string[]): { text: string; mark: "tick" | "strike" | 
 
 /*
   The steelman's first sentence, for the one-line strip on the top sheet: up to the first full stop,
-  question or exclamation mark that ends the text or is followed by a space and a capital (so "U.S."
-  inside a sentence does not cut it). The whole argument when it has no such stop.
+  question or exclamation mark that ends the text or is followed by a space and a capital. A full stop
+  that ends an abbreviation does not count: a dotted token ("U.S.", "C.F.R."), a single letter, or one
+  of the abbreviations legal and policy text uses before a capital ("Fla. Admin. Code", "Dr. Reyes",
+  "No. 5", "Sec. 3"). The whole argument when it has no such stop. (Oct 28, 2026: the evaluator found
+  "Under 42 C.F.R. Part 409" cut to "Under 42 C.F.R.")
 */
+const ABBREVIATIONS = new Set([
+  "fla", "admin", "stat", "sec", "secs", "subsec", "subd", "para", "ch", "pt", "art", "reg", "regs", "rev", "supp",
+  "no", "nos", "vol", "ed", "eds", "ex", "fig", "cf", "viz", "vs", "etc", "approx", "al",
+  "dr", "mr", "mrs", "ms", "st", "ave", "inc", "co", "corp", "ltd", "dept", "div",
+  "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
+]);
+
 function firstSentence(text: string): string {
   const t = text.trim();
-  const m = /^([\s\S]+?[.!?])(?=\s+[A-Z"“(]|$)/.exec(t);
-  return m ? m[1] : t;
+  /* A closing quote or bracket after the stop belongs to the sentence ("not authorized." The plan…). */
+  const stops = /[.!?]["”’')\]]*(?=\s+[A-Z"“(]|$)/g;
+  let m: RegExpExecArray | null;
+  while ((m = stops.exec(t)) !== null) {
+    const end = m.index;
+    if (t[end] === ".") {
+      const word = /[A-Za-z][A-Za-z.]*$/.exec(t.slice(0, end))?.[0] ?? "";
+      if (word.includes(".") || word.length === 1 || ABBREVIATIONS.has(word.toLowerCase())) continue;
+    }
+    return t.slice(0, end + m[0].length);
+  }
+  return t;
 }
 
 /*

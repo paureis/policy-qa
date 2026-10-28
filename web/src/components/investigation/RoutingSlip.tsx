@@ -31,9 +31,9 @@ export function LatestFinding({ findings, hidden = false, className = "" }: { fi
         <>
           <Mark kind={LATEST_MARK[status]} className="h-4 w-4" />
           <span className="min-w-0 truncate">
-            <span className="sr-only">Latest finding: </span>
-            {latest.question}
-            <span className="sr-only">{`, ${LATEST_WORDS[status]}`}</span>
+            {/* One string for the reader (no join artifacts between nodes: "? , supported"); the visible question is hidden from it. */}
+            <span className="sr-only">{`Latest finding: ${latest.question.trim()}, ${LATEST_WORDS[status]}`}</span>
+            <span aria-hidden="true">{latest.question}</span>
           </span>
         </>
       ) : null}

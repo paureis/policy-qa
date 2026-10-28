@@ -858,3 +858,149 @@ next-step lines at 390, 11 px taller, plus 41 pixels of the stamp's noise textur
 level 2 "Investigation record" (1280) or "Findings" (390); after it, level 1 the stamp, level 2 "1. Verdict"
 (1280) or "What the documents say" (390), then level 3 "The rule", "The gap", "What would change it",
 "The payer's best argument".
+
+Fresh evaluation (Oct 28, 2026, about 6:40 pm, an Opus evaluator that had not seen the build; its own
+baseline from a worktree of b32d9c9 on port 3001, pixel-identical to the builder's `before` set; patch id
+dfecc7f47bca45069bde93bdb8ade319907e75ce): G1, G2, G4 and the remount claim PASS (the base remounted the
+slip and its `ol` on all 12 runs, the change on none; every desktop number in the table above
+reproduced; the second-opinion line is one element from "is deciding…" to "agrees."); G3 and G5 FAIL,
+both under 1024 px. Accessibility: no regression (strip label 8.96:1, sentence 17.22:1, the struck state
+read in words before the sentence). Findings and what was decided:
+
+- D1 (G3, phone). At 390 by 844 the latest-finding line under the stage lines sits below the viewport
+  during the run (c_dual at y 835 to 869; c_sample ends 3.7 px from the bottom edge), so "in view" does
+  not hold on the phone. Alvaro, Oct 28: deferred to the weekend's phone pass (the critique's P1 redoes
+  that layout); recorded here as a known gap until then.
+- D2. `firstSentence` cut at an abbreviation followed by a capital: "Under 42 C.F.R. Part 409…" became
+  "Under 42 C.F.R."; "U.S. Code", "Fla." and "Dr." the same. No fixture triggers it; real steelmans
+  cite C.F.R. and Fla. Fixed Oct 28 (orchestrator): a stop that ends a dotted token, a single letter or
+  a listed abbreviation does not end the sentence, and a closing quote or bracket after the stop belongs
+  to the sentence (the quote case was already wrong at 405a414; the evaluator's control found it).
+  Re-checked by the same evaluator on its thirteen strings: the four that failed and seven controls
+  cut right; two accepted over-runs ("under Part B. The plan", "answered no. It") come back whole, held
+  to one line by the strip's ellipsis, the cost of keeping "U.S." and "No. 5" intact. The reader-text
+  fix passes (the tree reads "Latest finding: <question>, supported"); all sixteen finished captures
+  pixel-identical to the evaluated set; tsc and lint clean.
+- D3 (G5, cosmetic). At 390 on c_consistent, c_notsettled and c_dual the stamp's grain changes where
+  the stamp moved 11 px: the `#ink-stamp` filter's noise depends on position. Accepted; "pixel-identical"
+  in G5 reads as "except the stamp's grain where the stamp moves".
+- D4 (disclosed). On the phone the reference block grows 17 px at decided where it grew 6 px before;
+  the outcome-first reflow at the same moment hides it. Accepted.
+- Screen-reader text of the latest line read "? , supported" (a join artifact between nodes). Fixed
+  Oct 28: one string, "Latest finding: <question>, supported", with the visible question aria-hidden.
+- Not verified by the evaluator: the open ring for a not-settled finding as the newest one (the polls
+  land findings 2, 4, 6 and 8, never the fixture's only not-settled finding, number 3).
+- Contract gaps it named, left open: "nothing moves at decided" cannot hold under 1024 px because the
+  base already reflows outcome-first there (limit it to 1024 px and up); G3's "in view" conflicts with
+  the phone placement under the stage lines; index tab 1 points at an aria-hidden paragraph (pointing it
+  at the hidden h2 would remove the question, untested with a screen reader); the next-step Lead reads
+  like an action but is not a link; no fixture covers a consistent or not-settled verdict with no stated
+  deadline, an empty steelman, a failure after the verdict, a letter deadline different from the
+  claimed one, widths from 391 to 1023 px, or a phone shorter than 844 px.
+
+## 15. The sample as a recorded run (Oct 28, 2026)
+
+The critique of Oct 28 (P1, issue 2) found that the showcase proof reads as fake: every highlight on
+`c_sample` says "[synthetic fixture quote, not from the document]", the page images are drawn
+"SYNTHETIC FIXTURE PAGE"s, the receipt says "Model: fixture" and "$0.0000", and that case is the
+landing's only sample link. The fix is to replay a real run. On Oct 28 at 4:04 pm the demo letter dc-001
+went through the restarted API with the second opinion on and is stored as `data/cases/c_f3b3d0.json`
+(inconsistent, 6 findings all supported, 4 of 4 letter claims verified, the critic found one issue and
+rejected its own revision, the second opinion agrees in 4.1 s, $0.12 in all). That record becomes
+`c_sample`. Only the denial letter is synthetic (dc-001 was written for the demo and says so in its
+first line); the policy pages, quotes, highlights, vision checks, costs, seconds and the second opinion
+are what the API produced. Decided by the orchestrator with Alvaro (H1 to H12), then by the builder
+where marked. Alvaro's two decisions, Oct 28, 5:40 pm: the replay runs at the recorded timing, and the
+one disclosure lives in the band's tab.
+
+- H1. Scope. The `c_sample` family only (`c_sample` and the `c_sample<n>` ids the fixture-mode intake
+  issues). The other seven fixtures (`c_consistent`, `c_notsettled`, `c_dual`, `c_rejected`,
+  `c_checkerror`, `c_fail`, `c_error`) keep their synthetic data and their pixels: full-page captures at
+  390 and 1280, finished, identical before and after (the control). They are screenshot fixtures and
+  nothing public links to them.
+- H2. The export. A script `web/scripts/sample-case.mjs`, run from `web/` against the local API
+  (`http://localhost:8000`), reads `../data/cases/c_f3b3d0.json` (gitignored; it lives on Alvaro's
+  machine) and writes two committed outputs: `web/src/lib/sample-case.ts` (generated, "do not edit by
+  hand" in its header, the source record named) and `web/public/sample/<doc_id>-p<page>.png`, the cited
+  pages at 110 dpi from `GET /doc/{doc_id}/page/{page}.png` (six pages on Oct 28: fl-03 p5, fl-04 p5,
+  p6, p7, fl-14 p5, fl-21 p71; about 260 KB each). The generated module holds: the `CaseRecord` as the
+  API served it at `reviewed` with `case_id` rewritten to `c_sample` and nothing else changed; and, for
+  every distinct (doc_id, page, quote) cited anywhere in the record (each finding's citations and
+  struck list, the steelman, the rule, every letter sentence, the evidence checklist, the deadline and
+  the filing), the highlight response from `GET .../highlight?quote=&dpi=110` (title, width_px,
+  height_px, boxes_px, score, found, matched) and the vision result from `POST .../vision-check`
+  (checked, model, text_in_highlight, agrees, latency_ms, cost_usd), with `image_url` rewritten to
+  `/sample/<doc_id>-p<page>.png`. The script is idempotent and prints what it wrote. The API caches
+  vision results in process, so a re-run after the first costs nothing; the first run is at most about
+  20 vision checks at about $0.005 each.
+- H3. The replay runs at the recorded timing. The page opens as today with the investigation running
+  (the slip at its first mark), and each stage lands when it did on Oct 28: the plan after its span
+  (5.2 s), the findings in the order of the trace's `question` spans at offsets reconstructed from the
+  trace under the API's recorded concurrency so that the last finding lands at the investigation's
+  `latency_ms` (17.9 s, within half a second; the builder reads the worker count from `policyqa` and
+  records the reconstruction, or spreads the findings evenly after the plan if the trace cannot
+  support it and says so); `investigated` then `deciding` at once; `decided` with the verdict
+  `verdict.latency_ms` later (4.1 s); `drafting`, then `drafted` with the letter `letter.latency_ms`
+  after the verdict (6.9 s); `reviewing`, then `reviewed` with the critique `critique.latency_ms`
+  later (9.0 s); the second opinion `running` from `decided` and `done` `second_opinion.latency_ms`
+  after the verdict (4.1 s, during drafting). About 40 s to `reviewed`. Each stage still outlasts one
+  poll (1.5 s), so every slip mark is seen. The status names are the API's
+  (`investigating`, `investigated`, `deciding`, `decided`, `drafting`, `drafted`, `reviewing`,
+  `reviewed`).
+- H4. Every number on the page is the record's: the receipt's rows carry the recorded seconds and
+  costs per stage and the real model names ("muse-spark-1.3", "Muse Spark Open" for
+  `meta-models/muse-spark-open-1026`), the counts are the record's, the trace is the record's. An
+  enumerable check at `reviewed`, at 390 and 1280: the rendered text of `/case/c_sample` contains none
+  of "fixture", "synthetic fixture", "SYNTHETIC", "$0.0000", "Model: fixture", "Vision check not run",
+  "prices not set", "Sunshine Health", "[synthetic". The word "sample" is allowed only in the band's
+  tab (H6), the letter's own text ("Sample Health Plan", "A. Sample", its first line) and the card.
+- H5. Highlights and the vision check. `getHighlight` and `visionCheck` answer from the recording for
+  the sample's quotes: a lookup by (doc_id, page, quote) in the generated table before anything else,
+  in both intake modes; a quote not in the table behaves as today (synthetic prefix in fixture mode,
+  the API in live mode). The highlight waits the fixture's 450 ms; the vision check waits the recorded
+  `latency_ms` of that check. The policy exhibit on the top sheet shows the real page crop with the
+  real boxes and the caption "Muse Spark vision check: matches the quote." with its tick; "See the
+  page" opens the real page from `/sample/` with the recorded highlight and the recorded check. The
+  exhibit effect stays keyed on `doc_id`, `page`, `quote` (section 11); the check runs once per open.
+- H6. The disclosure, once. On the sample family the band's folder tab reads
+  `c_sample · recorded run, sample letter` (the id as today, then the words in the tab's 14 px mono)
+  with the title "A recorded run of October 28, 2026 on a denial letter written for this demonstration.
+  The policy pages, quotes, checks, costs and the second opinion are the API's own." Under 640 px,
+  where the tab is hidden, the band's plain marker reads `recorded run` with the same title. The other
+  fixtures keep `· sample case` and `sample case` as today. No other line on any sheet says synthetic,
+  sample or demo, and the landing's copy is not touched.
+- H7. The card, summary and letter text. The sample family carries the record's `card`, `summary` and
+  `raw_text` (Sample Health Plan, 16 hours a day, $11,520.00, letter of October 7, 2026, appeal by
+  December 6, 2026). The fixture-mode intake (`fixtureIntake`) returns the record's card and summary
+  too, so the case it opens (`c_sample<n>`) reads as the same case from the card on. The other seven
+  fixtures keep `SAMPLE_CARD`, `SAMPLE_SUMMARY` and `SAMPLE_LETTER_TEXT` (Sunshine Health) unchanged:
+  the builder splits the constants rather than editing them.
+- H8. Dates stay live. `days_left` on the deadline stamp, the Lead line and the deadline section is
+  computed from the record's date at render (the components already fall back to `daysUntil` when
+  `days_left` is absent; the replay sends it absent or recomputed, never the recorded 39), so the count
+  is right on the day a judge opens the page. The recorded `created_at` and the investigation's
+  `started_at` and `finished_at` are shifted to the replay's own clock, as the fixture does today, so the
+  receipt's elapsed times and the slip's timing agree.
+- H9. Production. The fixtures ship in the production build (section 12, Alvaro's decision), so
+  `npm run build` must pass with the generated module and the six PNGs, and `/case/c_sample` must open
+  with every request to the API aborted (the captures below are taken that way). The generated module
+  stays under about 200 KB; the PNGs are served from `public/sample/`.
+- H10. Nothing moves on the replay that held still on the fixture: measured with the section 14
+  script (stamp, slip, latest-finding line, first exhibit, register, Lead slot, strip) at 1280 by 800
+  and 1024 by 800 every 100 ms from the first poll to the fold, and at 390. The positions may differ
+  from section 14's table because the content differs (the stamp's column, the reference block and
+  the strip hold other words), but after an element lands it does not move until the slip folds, the
+  slip and its `ol` are one node from the first poll to the fold, and the second-opinion line is one
+  node from "is deciding…" to "agrees." (sections 11, 13, 14). The builder reports the measured table
+  for `c_sample` in this section.
+- H11. The record's text is kept byte for byte: the policy quotes carry U+2022 bullets from the PDF
+  text layer, and the struck or supported states, the critic's rejected revision ("The revision made
+  no change to the letter.") and the second opinion's decisive fact are shown as the components show
+  them for a live case. If a component renders a recorded field badly (a wrapped bullet, an empty
+  "What would change it"), the builder reports it here and does not edit the data.
+- H12. Verified before Alvaro's look: `npx tsc --noEmit`, `npm run lint` and `npm run build` clean;
+  the export re-run prints "nothing changed"; the H4 text check at both widths; the H1 control (seven
+  fixtures, fourteen captures, pixel-identical, one at a time); H10's table; full-page captures of
+  `c_sample` at 390 and 1280 at `reviewed`, and the run frames at 1280 (the section 14 script with a
+  shots folder). README's demo line ("synthetic sample letters") gains the words that the public
+  sample is a recorded run of dc-001 with its date; DECISIONS gets the entry.
