@@ -37,11 +37,10 @@ Run everything from PowerShell in `~\recourse`, in the venv (`.\.venv\Scripts\Ac
 ### A. Modal account (about 5 minutes)
 
 1. `pip install "modal>=1.0"`
-   Verify: `modal --version` prints a version, 1.0 or later. Modal is not in `pyproject.toml` on purpose.
-2. `modal token new`
-   A browser opens; approve it. Expected: a line saying the token was verified and written to `~/.modal.toml`.
-3. `modal profile current`
-   Verify the workspace printed is the one with the credits. If not, `modal profile list` and `modal profile activate <name>`. Write the workspace name down: it is part of the API URL.
+   Verify: `modal --version` prints a version, 1.0 or later. Modal is not in `pyproject.toml` on purpose. Done on Oct 27 (modal 1.6.3 in the venv).
+2. The token. Done on Oct 27 without the CLI: an API token created in the Modal dashboard (Settings, API Tokens) is saved in `.env` as `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`, the two names the `modal` package reads from the environment. Load `.env` into the window before any `modal` command (PowerShell: the loop in `scripts/dev-api.ps1`; Git Bash: `set -a; . ./.env; set +a`). `modal token new` is only the fallback if those are missing.
+3. `modal app list`
+   Expected: a table (empty before the first deploy), which proves the token. Verified Oct 27 together with `modal secret list`. The workspace is `alpau-reis`, so the API URL will be `https://alpau-reis--recourse-api.modal.run`. The credits are on that workspace.
 
 ### B. Secret (2 minutes)
 
