@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ERROR_COPY,
   critiqueError,
@@ -12,7 +12,9 @@ import {
   investigate,
   isAbort,
   isFixtureCase,
+  isWorking,
   pollCase,
+  POLL_MS,
   type CaseRecord,
 } from "@/lib/case";
 import { Band } from "@/components/intake/Band";
@@ -20,7 +22,9 @@ import { CaseHeader } from "./CaseHeader";
 import { IndexTabs, type IndexTab } from "./IndexTabs";
 import { PHONE_SHEET, SHEET } from "./SectionTitle";
 import { FindingsList } from "./FindingsList";
-import { InvestigationProgress } from "./InvestigationProgress";
+import { InvestigationProgress, progressLine } from "./InvestigationProgress";
+import { RoutingSlip, type SlipFailure } from "./RoutingSlip";
+import { DeadlineStamp } from "@/components/intake/DeadlineStamp";
 import { RouteLine } from "./RouteLine";
 import { TrustPanel, verificationLines } from "./TrustPanel";
 import { PageViewerFrame, PageViewerProvider, useDesktop } from "./PageViewer";
@@ -55,6 +59,52 @@ const FAILURE_COPY = {
 
 const SECONDARY =
   "inline-flex min-h-12 w-full items-center justify-center border border-ink bg-bond px-5 text-[18px] font-semibold text-ink sm:w-auto";
+/*
+  The reader's place. Before a change the chain makes to the page (a poll's
+  new record, the slip folding away) the page notes the first few blocks
+  whose top is at or below the top of the window and where they sit; after
+  the change commits it scrolls by however far the first of them that is
+  still on the page has moved, so the block the reader was on stays where
+  it was. A reader at the very top never scrolls, and a change below the
+  reader moves nothing above it, so it needs no correction. The slip's own
+  rows are never an anchor (they fold away).
+*/
+/* Whole blocks a reader is on (a finding, a letter paragraph, a heading, an exhibit, the receipt's table), not the lines inside them, which reflow when a block changes its layout. */
+const ANCHOR_SELECTOR = "main :is(h1, h2, h3, figure, table, [data-finding], [data-block]):not([data-routing-slip] *)";
+
+interface Anchor {
+  el: Element;
+  top: number;
+}
+
+function readAnchors(): Anchor[] | null {
+  if (typeof window === "undefined" || window.scrollY <= 0) return null;
+  const found: Anchor[] = [];
+  for (const el of document.querySelectorAll(ANCHOR_SELECTOR)) {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) continue;
+    if (r.top >= 0) {
+      found.push({ el, top: r.top });
+      if (found.length >= 8) break;
+    }
+  }
+  return found.length > 0 ? found : null;
+}
+
+function keepAnchor(anchors: Anchor[] | null): void {
+  if (!anchors) return;
+  for (const { el, top } of anchors) {
+    if (!el.isConnected) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) continue;
+    const moved = r.top - top;
+    if (Math.abs(moved) >= 1) window.scrollBy(0, moved);
+    return;
+  }
+}
+
+/* The record sheet while the case runs: bond, 1 px ink edge, 80 px under the top sheet (the gap the top sheet keeps to the next document). */
+const RUN_SHEET = "lg:mt-20 lg:border lg:border-ink lg:bg-bond lg:px-10 lg:pt-8 lg:pb-10";
 const PRIMARY =
   "inline-flex min-h-12 w-full items-center justify-center bg-ink px-5 text-[18px] font-semibold text-bond sm:w-auto";
 
@@ -79,10 +129,21 @@ export function InvestigationView({ caseId }: { caseId: string }) {
   const [starting, setStarting] = useState<"idle" | "busy" | "failed">("idle");
   /* Desktop width as the script sees it (the same 1024px as lg), for the pieces whose DOM order differs at desktop. */
   const desktop = useDesktop();
+  /* The reader's place, noted before a change the chain makes and kept after it commits (readAnchors). */
+  const anchors = useRef<Anchor[] | null>(null);
+  /* This view saw the chain still working, so its last state is held on screen for one poll before the slip folds. */
+  const [sawWork, setSawWork] = useState(false);
+  /* The record whose final state has been held for one poll; the slip folds once it equals the current record. */
+  const [heldId, setHeldId] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    pollCase(caseId, (record) => setView({ kind: "ready", record }), controller.signal).catch((err: unknown) => {
+    const onRecord = (record: CaseRecord) => {
+      anchors.current = readAnchors();
+      if (isWorking(record)) setSawWork(true);
+      setView({ kind: "ready", record });
+    };
+    pollCase(caseId, onRecord, controller.signal).catch((err: unknown) => {
       if (isAbort(err) || controller.signal.aborted) return;
       if (err instanceof IntakeError && err.code === "not_found") setView({ kind: "not_found" });
       else setView({ kind: "error", error: err instanceof IntakeError ? err : new IntakeError("unreachable") });
@@ -185,6 +246,51 @@ export function InvestigationView({ caseId }: { caseId: string }) {
   const annotated = letterDone;
   const hasLetter = letterDone && letter.applicable;
   const desk = annotated && desktop;
+  /*
+    The live run in the folder (Oct 27, 2026, piece 3). At 1024 px and up the
+    folder is open from the first poll, not only once the chain finishes:
+    the band with the case tab, the manila ground, the top sheet (the
+    reference block, the deadline stamp before the verdict, the routing
+    slip), and the record sheet the findings land on. folder switches
+    classes only, all of them from lg, so the phone is unchanged and no
+    element remounts: the top sheet, the case header, the slip, the record
+    and its findings, and the receipt are the same nodes from the first poll
+    to the end. At decided the stamp is pressed above the slip; when the
+    chain finishes (slipDone) the slip folds away (display: none) into the
+    band's status line, the letter's sheets have landed, and the record and
+    the receipt take their numbers, the receipt its slip, and the tabs.
+  */
+  const folder = record !== null && record.status !== "intake";
+  const chainDone = annotated && record !== null && !isWorking(record);
+  /*
+    The slip folds into the band line once the chain is done, after its last state (the Trust tick)
+    has been on screen for one poll interval; a case that was already finished when it opened folds
+    at once. The hold is a pause, not a transition, so it applies under reduced motion too.
+  */
+  const slipDone = chainDone && (!sawWork || heldId === record.case_id);
+  const slipFailure: SlipFailure | null =
+    failedStep === null || failure === null
+      ? null
+      : {
+          step: failedStep,
+          words: failedStep === "investigation" && investigation?.status === "failed" ? progressLine(investigation) : failure.heading,
+        };
+  const claimedDeadline = record?.card.appeal_deadline_claimed.value;
+  const holdingSlip = chainDone && !slipDone;
+  const holdFor = record?.case_id ?? null;
+  useEffect(() => {
+    if (!holdingSlip || holdFor === null) return;
+    const t = window.setTimeout(() => {
+      anchors.current = readAnchors();
+      setHeldId(holdFor);
+    }, POLL_MS);
+    return () => window.clearTimeout(t);
+  }, [holdingSlip, holdFor]);
+  /* After the chain's change commits, before paint: keep the reader's block where it was. */
+  useLayoutEffect(() => {
+    keepAnchor(anchors.current);
+    anchors.current = null;
+  }, [view, slipDone]);
   /* The self-check opens a numbered section only when it ran (or failed); skipped or still running, it does not. */
   const selfCheckSection =
     hasLetter && critique !== null && (selfCheckFailed || critiqueError(critique) !== null || (critique.status === "done" && !critique.skipped));
@@ -196,7 +302,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
   /* Section 2 without a letter: the explanation sheet's head, as ActionSection words it. */
   const explanationTitle = verdict?.outcome === "consistent" ? "Why the denial holds" : "Why no letter was drafted";
   /* The band and the page share one width, so the wordmark and the content share an edge. */
-  const width = annotated
+  const width = folder
     ? "max-w-[640px] lg:max-w-[1152px] lg:px-8"
     : dual
       ? "max-w-[640px] lg:max-w-[1120px]"
@@ -237,18 +343,24 @@ export function InvestigationView({ caseId }: { caseId: string }) {
     with a letter, 1024 px and up). Always the same wrapper, so nothing
     remounts when the letter lands; under 1024 px it is a plain block.
   */
-  const topSheet = annotated ? "lg:flow-root lg:border lg:border-ink lg:bg-bond lg:px-10 lg:pt-8 lg:pb-10" : "";
+  const topSheet = folder ? "lg:flow-root lg:border lg:border-ink lg:bg-bond lg:px-10 lg:pt-8 lg:pb-10" : "";
 
+  /*
+    The verdict section is mounted for the whole run (empty until the verdict exists), so the routing
+    slip inside it is one element from the first poll to the end.
+  */
   const verdictBlock =
-    record && verdictDone ? (
-      <div className={dual && !annotated ? "lg:max-w-[640px]" : ""}>
+    record && folder ? (
+      <div>
         <VerdictSection
-          verdict={verdict}
-          changeShownBelow={letterDone && !letter.applicable && verdict.outcome === "consistent"}
+          verdict={verdictDone ? verdict : null}
+          changeShownBelow={letterDone && !letter.applicable && verdict?.outcome === "consistent"}
           changeInSheet={annotated && !hasLetter}
           proof={proof}
           first={outcomeFirst}
           annotated={annotated}
+          folder={folder}
+          slip={<RoutingSlip record={record} failure={slipFailure} collapsed={slipDone} />}
           n={numbers?.verdict ?? null}
           card={record.card}
         />
@@ -283,7 +395,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
               <>
                 CASE <span className="font-semibold">{record.case_id}</span>
                 {/* The payer and the opened date need the folder's full width: the finished case at 1280 px and up. */}
-                {annotated && (payerName || opened) ? (
+                {folder && (payerName || opened) ? (
                   <span className="hidden xl:inline">
                     {payerName ? ` · ${payerName}` : ""}
                     {opened ? ` · opened ${opened}` : ""}
@@ -297,10 +409,12 @@ export function InvestigationView({ caseId }: { caseId: string }) {
             The status line in the band's right at desktop on the finished case, where the folder's
             edge carries it; on the phone and during the live run it stays in the page.
           */}
-          {desk && record ? (
+          {desk && slipDone && record ? (
             <p
-              aria-live="polite"
-              aria-atomic="true"
+              /*
+                Plain text, not a live region: the routing slip's live region (beside the slip, kept after
+                it folds) is the one that announces the chain at desktop, so nothing is heard twice.
+              */
               /* Two lines at most: the stage line of a case without a letter is longer than the band's room beside the folder tab. */
               className="hidden min-w-0 text-[14px] leading-snug lg:line-clamp-2"
               title={bandStatus}
@@ -316,7 +430,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
         {desk && tabs.length > 0 ? <IndexTabs tabs={tabs} /> : null}
 
         <PageViewerFrame>
-          <main className={`mx-auto w-full min-w-0 flex-1 px-4 pt-6 pb-16 ${annotated ? "lg:pt-9" : ""} ${width}`}>
+          <main className={`mx-auto w-full min-w-0 flex-1 px-4 pt-6 pb-16 ${folder ? "lg:pt-9" : ""} ${width}`}>
             {view.kind === "loading" ? (
               <p className="text-[18px] lg:text-[17px]" aria-live="polite" data-view="loading">
                 Loading case <span className="font-mono">{caseId}</span>…
@@ -361,11 +475,11 @@ export function InvestigationView({ caseId }: { caseId: string }) {
 
             {record ? (
               <div data-view={record.status}>
-                <div className={topSheet} data-top-sheet={annotated ? "true" : undefined}>
+                <div className={topSheet} data-top-sheet={folder ? "true" : undefined}>
                 <CaseHeader
                   record={record}
                   today={today}
-                  register={annotated}
+                  register={folder}
                   titled={!verdictDone}
                   deadline={
                     annotated && letter
@@ -399,18 +513,35 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                       works itself; outcome first once the verdict is reached.
                     */}
                     <div
-                      className={`mt-4 border-t border-hairline pt-4 ${annotated ? "lg:mt-0 lg:border-t-0 lg:pt-0" : ""}`}
+                      className={`mt-4 border-t border-hairline pt-4 ${folder ? "lg:mt-0 lg:border-t-0 lg:pt-0" : ""}`}
                       data-order={outcomeFirst ? "outcome-first" : "chronological"}
                     >
-                      {outcomeFirst ? null : <RouteLine route={record.route} lead />}
+                      {/* At desktop the route line leads the record sheet instead. */}
+                      {outcomeFirst ? null : <RouteLine route={record.route} lead className={folder ? "lg:hidden" : ""} />}
                       {/* One status row at tablet and up once the outcome leads, so the verdict reaches the first screen. */}
                       {desk ? null : (
-                        <div className={outcomeFirst ? "*:mt-0 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-2" : ""}>
+                        <div className={`${outcomeFirst ? "*:mt-0 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-2" : ""} ${folder ? "lg:hidden" : ""}`}>
                           <InvestigationProgress investigation={investigation} compact={annotated} />
                           <StageLine record={record} letterHref={letterHref} inRow={outcomeFirst} compact={annotated} />
                         </div>
                       )}
                     </div>
+                    {/*
+                      Before the verdict, at desktop: the deadline is the sheet's one stamp, pressed at the
+                      top left where the verdict stamp will land. At decided it gives way to the verdict and
+                      to the Lead line in the reference block.
+                    */}
+                    {folder && !verdictDone ? (
+                      /* The stamp's area holds the verdict stamp's and the counts' height, so nothing under it moves at decided. */
+                      <div className="hidden lg:block lg:min-h-[168px] tabs:min-h-[169px]" data-stamp-area="true">
+                        <DeadlineStamp
+                          deadlineIso={typeof claimedDeadline === "string" && claimedDeadline !== "" ? claimedDeadline : null}
+                          today={today}
+                          landed
+                          className="lg:mt-2 lg:ml-1"
+                        />
+                      </div>
+                    ) : null}
                     {verdictBlock}
                   </>
                 )}
@@ -423,13 +554,18 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                       bond sheet on the finished case at 1024 px and up. The wrapper is always
                       there (classes only), so no finding remounts when the letter lands.
                     */}
-                    <div className={annotated ? `land mt-10 ${SHEET}` : ""} data-sheet-section={annotated ? "record" : undefined}>
+                    <div
+                      /* At desktop the record sheet is already on the folder when the letter lands above it: it does not land again. */
+                      className={annotated ? `${desktop ? "" : "land "}mt-10 ${SHEET}` : folder ? RUN_SHEET : ""}
+                      data-sheet-section={folder ? "record" : undefined}
+                    >
                     <FindingsList
                       findings={findings}
                       route={record.route}
                       appendix={outcomeFirst}
-                      lead={outcomeFirst ? <RouteLine route={record.route} lead /> : null}
+                      lead={<RouteLine route={record.route} lead />}
                       annotated={annotated}
+                      folder={folder}
                       n={numbers?.record ?? null}
                     />
 
@@ -446,8 +582,8 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                     </div>
 
                     {failed && failure ? (
-                      <section role="alert" aria-labelledby="failed-heading" className={`mt-8 ${PHONE_SHEET}`} data-view="failed" data-failed-step={failedStep}>
-                        <h2 id="failed-heading" className="text-[26px] leading-tight font-bold">
+                      <section role="alert" aria-labelledby="failed-heading" className={`mt-8 ${PHONE_SHEET} ${folder ? "lg:mt-24 lg:px-10 lg:pt-8 lg:pb-10" : ""}`} data-view="failed" data-failed-step={failedStep}>
+                        <h2 id="failed-heading" className={`text-[26px] leading-tight font-bold ${folder ? "lg:text-[28px]" : ""}`}>
                           {failure.heading}
                         </h2>
                         <p className="mt-4 text-[18px] leading-relaxed lg:text-[17px]">{failureReason}</p>
@@ -463,14 +599,19 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                       </section>
                     ) : null}
 
-                    {done && investigation ? (
-                      <div className={dual && !annotated ? "lg:max-w-[640px]" : ""}>
+                    {/*
+                      The receipt: on the phone once the investigation is done, as before; at desktop from the
+                      first poll, as the finished case's slip holding what the run has so far.
+                    */}
+                    {investigation && (done || folder) ? (
+                      <div className={`${dual && !folder ? "lg:max-w-[640px]" : ""} ${done ? "" : "max-lg:hidden"}`}>
                         <TrustPanel
                           investigation={investigation}
                           verdict={verdict}
                           letter={letterDone ? letter : null}
                           critique={letterDone ? critique : null}
                           annotated={annotated}
+                          folder={folder}
                           n={numbers?.receipt ?? null}
                         />
                       </div>

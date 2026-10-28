@@ -11,9 +11,25 @@
   The page passes the numbers, so a section that is absent (a self-check
   still running, or skipped) never leaves a gap in the sequence. Under
   1024 px the number is display: none and the name is the plain title.
+
+  deskShort (Oct 27, piece 3): a section of the folder while the case still
+  runs, before the sections are numbered (the record, the receipt). At
+  1024 px and up it carries the short title without a number, the way the
+  finished case's sheet head reads at tabs sizes; under 1024 px the plain
+  title, as before.
 */
-export function SectionTitle({ title, short, n }: { title: string; short: string; n: number | null }) {
+export function SectionTitle({ title, short, n, deskShort = false }: { title: string; short: string; n: number | null; deskShort?: boolean }) {
   const numbered = n !== null;
+  if (!numbered && deskShort) {
+    return (
+      <>
+        <span className="lg:hidden">{title}</span>
+        <span className="hidden lg:inline" data-section-title={short}>
+          {short}
+        </span>
+      </>
+    );
+  }
   return (
     <>
       {numbered ? (

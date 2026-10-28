@@ -338,3 +338,115 @@ Fix pass after the evaluation (Oct 27, 2026):
   the inline-text exception of WCAG 2.5.8 applies).
 - Not changed, by decision: the band's status line may wrap to two lines.
 - Not changed, by decision: an open page overlay that runs past the sheet grows the frame below it.
+
+## 11. Piece 3 decisions (Oct 27, 2026)
+
+The live run (investigating to reviewed) in The Case File at 1024 px and up: the clerk works the
+folder in front of the reader. Made by the orchestrator within this brief and DESIGN.md (P1 to P8),
+then by the builder where marked.
+
+- P1. The folder is open from the first poll at 1024 px and up: the band with the case tab (payer and
+  opened date at 1280 and up), the manila ground, the top sheet with the reference block at its top
+  right and the deadline stamp as its one stamp before the verdict. No index tabs and no verdict
+  stamp while the case runs.
+- P2. The routing slip is the stage header: Intake, Routing, Investigation, Steelman, Verdict, Action,
+  Trust, each a mark and a word; an open ring for a stage not reached, a tick (stepped in) for a stage
+  done, and for the stage in progress the ring with its live words ("Question 3 of 5…", "Weighing the
+  payer's side…", "Drafting the appeal letter…", "Checking the letter against itself…"). A stage that
+  stopped keeps its ring and its failure words. Labels 14 px ink, live words 17 px, tabular numerals;
+  one row at 1280, two allowed at 1024. One polite, atomic live region for the whole slip.
+- P3. The record sheet is a bond sheet under the top sheet from the start, its head "Investigation
+  record"; the findings land one by one (the 6 px land) in a 640 px column in the record's compact
+  form; the column lifts to the record's full layout when the chain finishes. A struck citation's
+  strike and a struck finding's strike draw left to right on arrival (150 ms, transform only, off
+  under reduced motion). The route line leads the record.
+- P4. At decided the stamp is pressed on the top sheet where it stays; the counts under it; the slip,
+  then the exhibit pair, the rule and the gap under the slip; the deadline stamp gives way to the Lead
+  line in the reference block. The slip stays through drafting, drafted and reviewing and folds into
+  the band's status line when the chain finishes (display: none, no remount). The stamp's y is the
+  same at decided and at reviewed.
+- P5. No remount: the top sheet, the case header, the verdict section, the slip and its live region,
+  the findings list and every finding, the record sheet and the receipt are the same DOM nodes from
+  the first poll to the end (measured on all eight fixture cases).
+- P6. `c_fail` keeps the slip with the Investigation ring and "Stopped after question 2 of 5.", the
+  failed section on a bond sheet under the record; a verdict or letter failure keeps the stamp and the
+  slip with that stage's ring and the failed section's heading as its words. No red but the stamps.
+- P7. Under 1024 px nothing changes at any status; the six finished cases are pixel-identical at
+  every width.
+- P8. Everything reads the case record (route, investigation, verdict, letter, critique, status),
+  never a timer, so a live case behaves as the fixtures do.
+
+Decided by the builder, with the reason:
+
+- The slip sits under the stamp and the counts, not above them. The stamp must not move between
+  decided and reviewed, and the slip folds away at the end; anything above the stamp that folds away
+  would move it. Before the verdict the slip sits under the deadline stamp and the reference rows, so
+  it is the sheet's top row of content below the head; at decided the stamp is pressed above it.
+- Before the verdict the deadline stamp is pressed at the top sheet's top left, where the verdict
+  stamp will land (one stamp per sheet, in the stamp's place). The reference block holds the Lead
+  line's slot from the first poll (laid out, unseen, its rule transparent) and the Lead line shows in
+  it at decided, so the rows never move (fix pass, below).
+- The deadline stamp keeps its solid inner frame during the run: on the case page the card was
+  confirmed at intake (the phone header has always pressed it landed), so the dashed state belongs
+  to the intake card only.
+- The payer's name stays the page's h1 before the verdict (visually hidden at desktop, where the
+  folder tab names the payer at 1280 and up), so the page always has one h1.
+- The slip and its live region live inside the verdict section, which is mounted from the first poll
+  (empty, display: none under 1024 px, until the verdict exists); that is what lets the stamp be
+  pressed above the slip without remounting it. The live region is a visually hidden line beside the
+  slip, not inside it, so the last line ("Letter checked: 2 of 2 issues fixed.") is still announced
+  after the slip folds away. The phone's two live lines are display: none at desktop. It is the one
+  live region for the chain at desktop: the band's status line is plain text (fix pass).
+- The in-progress stage is set at 600 as well as carrying its words, so a running stage without
+  words (Trust on a case without a letter, where Action already carries "Verdict reached. No appeal
+  letter was drafted.") still reads as running. A failed verdict puts the failure words on Verdict.
+- The index tabs, the section numbers and the letter's sheets arrive when the letter stage is done
+  (drafted), as before: the sheets exist from then, and the tabs point at them. Only the slip waits
+  for the end of the chain (reviewed, or any end the API reports) before it folds into the band.
+- The receipt is the finished case's slip (bond, dashed tear line, 560 px, under the "Receipt"
+  appendix head) from the first poll at desktop (fix pass); its left edge and width never change.
+- The record sheet sits 80 px under the top sheet during the run, the gap the top sheet keeps to the
+  next document on the finished case.
+- `c_dual` keeps its two record columns during the run (section 5 and D5): one 640 px column applies to
+  a single route.
+- The strike draws once the finding has landed (after the 120 ms land), one ink line per line box,
+  in 150 ms across all lines, then the text's own line-through takes over (measured at 3x: the drawn
+  line and the line-through sit on the same pixel rows). With no script or with reduced motion the
+  strike is the plain line-through, as before.
+- The record section and the record sheet do not take the 6 px land at decided or at drafted at
+  desktop (each finding has already landed); on the phone they land as before.
+
+Fix pass after the evaluation (Oct 28, 2026), by the orchestrator's list, built as follows:
+
+- The reader's place is kept. Before every change the chain makes to the page (a poll's new record,
+  the slip folding) the view notes the first blocks at or below the window's top (a finding, a letter
+  block, a heading, an exhibit, a table) and their offsets; in a layout effect after the commit it
+  scrolls by however far the first one still on the page moved. A reader at scrollY 0 never scrolls; a
+  change below the reader needs no correction. Whole blocks, not lines: a line inside a finding
+  reflows when the record's column lifts, and anchoring to it let the finding drift 25 px.
+- No drop at decided: the reference block holds the Lead line's slot from the first poll, and the
+  stamp's area before the verdict holds the verdict stamp and the counts (169 px at tabs sizes, 168 px
+  from 1024; a headline that sets on three lines at 1024 is taller, but the reference block is the
+  taller column at every case measured, so the slip does not move). The slip sits at the same y from
+  the first poll to the end.
+- At decided the verdict section no longer lands as a whole at desktop: the stamp is pressed, and
+  the counts, the exhibits and the rule and the gap land; the slip stays still.
+- From 1024 to 1279 px the slip holds its two-row height (82 px) from the start, so a stage line that
+  wraps moves nothing.
+- The Trust tick is seen: when the chain reaches its final state the slip shows it for one poll
+  interval (POLL_MS) before it folds into the band line, also under reduced motion (a pause, not a
+  transition). A case already finished when it opens folds at once. A failed self-check keeps the
+  Trust ring with the stage line's words.
+- In the compact record during the run the struck citations sit in the answer's column (the 28 px
+  indent under the question), not at the card's edge.
+- The failed section's heading is 28 px at desktop (26 on the phone, as before).
+
+Not changing, by decision (fix pass):
+
+- The run's findings land below the fold at 1280 x 800: the presenter scrolls; the top of the page is
+  the slip's show.
+- The letter's sheets arrive at drafted, when the letter exists.
+- On a case without a letter "What would change it" shows on the top sheet from decided to drafted and
+  moves to the explanation sheet when the letter stage reports no letter; the page does not guess.
+- `c_dual` keeps its two record columns during the run.
+- The strike draws on every mount, including a finished case opened fresh.

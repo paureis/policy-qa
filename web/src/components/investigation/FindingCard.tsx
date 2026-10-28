@@ -12,6 +12,7 @@ import {
 import { CitationChips } from "./CitationChip";
 import { CouldNotVerifyTag } from "./CouldNotVerifyTag";
 import { Disclosure, Mark } from "./Marks";
+import { Strike } from "./Strike";
 import { StruckList } from "./StruckList";
 
 /* The answer's first sentence and the rest, split at the first sentence end followed by a capital. */
@@ -39,15 +40,30 @@ function splitAnswer(answer: string): { first: string; rest: string } {
   only a finding that has them takes two columns. On the phone everything
   shows as before: the collapsed parts are display: none at desktop only, so
   nothing remounts and the phone is unchanged.
+
+  wide: the record's full layout once the chain finishes (Oct 27, piece 3).
+  While the case runs the record is the same compact form in one 640 px
+  column, struck citations under the answer; when the chain finishes the
+  column lifts, and a finding with struck citations takes its two columns.
 */
-export function FindingCard({ finding, level = 3, record = false }: { finding: Finding; level?: 3 | 4; record?: boolean }) {
+export function FindingCard({
+  finding,
+  level = 3,
+  record = false,
+  wide = record,
+}: {
+  finding: Finding;
+  level?: 3 | 4;
+  record?: boolean;
+  wide?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const restId = useId();
   const headingId = `finding-${finding.id}-q`;
   const status = findingStatus(finding);
   const Heading = level === 4 ? "h4" : "h3";
   const { first, rest } = splitAnswer(finding.answer);
-  const struckSide = record && status !== "error" && finding.struck.length > 0;
+  const struckSide = record && wide && status !== "error" && finding.struck.length > 0;
   const expandable =
     record &&
     (rest !== "" || status === "not_settled" || status === "unsupported" || (status === "supported" && finding.citations.length > 0));
@@ -58,7 +74,7 @@ export function FindingCard({ finding, level = 3, record = false }: { finding: F
     <article
       aria-labelledby={headingId}
       className={`land border-t border-hairline pt-4 pb-5 ${record ? "lg:border-edge lg:pt-3 lg:pb-4" : ""} ${
-        struckSide ? "lg:grid lg:desk-cols lg:grid-rows-[auto_1fr] lg:items-start lg:*:col-start-1" : record ? "lg:max-w-[calc((100%-48px)*620/1040)]" : ""
+        struckSide ? "lg:grid lg:desk-cols lg:grid-rows-[auto_1fr] lg:items-start lg:*:col-start-1" : record && wide ? "lg:max-w-[calc((100%-48px)*620/1040)]" : ""
       }`}
       data-finding={finding.id}
       data-status={status}
@@ -107,9 +123,9 @@ export function FindingCard({ finding, level = 3, record = false }: { finding: F
         {status === "unsupported" ? (
           <div className={`mt-3 ${record ? "lg:mt-1" : ""}`}>
             <p className="text-[18px] leading-relaxed lg:text-[17px]">
-              <s className="decoration-ink decoration-2">
+              <Strike className="decoration-ink decoration-2">
                 <Answer text={finding.answer} first={first} rest={rest} record={record} open={open} />
-              </s>
+              </Strike>
             </p>
             <CouldNotVerifyTag />
             <p className={`mt-2 text-[16px] text-muted ${more}`}>{unsupportedExplanation(finding.struck)}</p>
@@ -128,7 +144,7 @@ export function FindingCard({ finding, level = 3, record = false }: { finding: F
         ) : null}
       </div>
 
-      {status !== "error" ? <StruckList struck={finding.struck} className={struckSide ? "lg:col-start-2! lg:row-span-2 lg:row-start-1 lg:mt-1" : ""} /> : null}
+      {status !== "error" ? <StruckList struck={finding.struck} className={struckSide ? "lg:col-start-2! lg:row-span-2 lg:row-start-1 lg:mt-1" : expandable ? "lg:pl-7" : ""} /> : null}
     </article>
   );
 }

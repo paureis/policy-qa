@@ -39,6 +39,7 @@ export function TrustPanel({
   letter = null,
   critique = null,
   annotated = false,
+  folder = false,
   n = null,
 }: {
   investigation: Investigation;
@@ -47,6 +48,14 @@ export function TrustPanel({
   critique?: Critique | null;
   /* The finished case with a letter: at 1024px and up the receipt is a bond slip on the paper desk, the sheet's width. */
   annotated?: boolean;
+  /*
+    The folder layout at 1024 px and up (Oct 27, piece 3): the receipt is the finished case's
+    slip (bond, the dashed tear line, 560 px, under the "Receipt" appendix head) from the first
+    poll, holding what the run has so far (the findings verified so far, the step rows, the
+    model); the page mounts it at desktop before the investigation is done. Same element
+    throughout; only its number arrives when the chain finishes.
+  */
+  folder?: boolean;
   /* The section's number at desktop on the finished case. */
   n?: number | null;
 }) {
@@ -84,11 +93,11 @@ export function TrustPanel({
   return (
     <section
       aria-labelledby="trust-heading"
-      className={`land mt-10 ${annotated ? `${PHONE_SHEET_ONLY} ${APPENDIX}` : PHONE_SHEET}`}
+      className={`land mt-10 ${folder ? `${PHONE_SHEET_ONLY} ${APPENDIX}` : PHONE_SHEET}`}
       data-trust="true"
     >
-      <h2 id="trust-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? APPENDIX_H2 : ""}`}>
-        <SectionTitle title={split ? "How this case was checked" : "How this investigation was checked"} short="Receipt" n={annotated ? n : null} />
+      <h2 id="trust-heading" className={`mt-1 text-[22px] leading-tight font-bold ${folder ? APPENDIX_H2 : ""}`}>
+        <SectionTitle title={split ? "How this case was checked" : "How this investigation was checked"} short="Receipt" n={annotated ? n : null} deskShort={folder} />
       </h2>
 
       {/*
@@ -98,11 +107,13 @@ export function TrustPanel({
         at the top, so it reads as a slip torn off, not as a card.
       */}
       <div
-        className={annotated ? "lg:mt-8 lg:max-w-[560px] lg:border lg:border-ink lg:bg-bond lg:px-8 lg:pt-6 lg:pb-7 lg:[border-top-style:dashed]" : ""}
+        className={
+          folder ? "lg:mt-8 lg:max-w-[560px] lg:border lg:border-ink lg:bg-bond lg:px-8 lg:pt-6 lg:pb-7 lg:[border-top-style:dashed]" : ""
+        }
         data-receipt-slip="true"
       >
-      <div className={`mt-5 border-t border-hairline pt-4 ${annotated ? "lg:mt-0 lg:border-t-0 lg:pt-0" : ""}`} data-coverage="true">
-        <p className={`text-[28px] leading-tight font-bold tabular-nums ${annotated ? "lg:text-[20px] lg:font-semibold" : ""}`}>
+      <div className={`mt-5 border-t border-hairline pt-4 ${folder ? "lg:mt-0 lg:border-t-0 lg:pt-0" : ""}`} data-coverage="true">
+        <p className={`text-[28px] leading-tight font-bold tabular-nums ${folder ? "lg:text-[20px] lg:font-semibold" : ""}`}>
           {coverage.supported} of {coverage.claims} findings verified
         </p>
         {notes.length > 0 ? <p className="mt-1 text-[15px] text-muted">{notes.join(" ")}</p> : null}
@@ -115,7 +126,7 @@ export function TrustPanel({
 
       {showLetter ? (
         <div className="mt-4 border-t border-hairline pt-4">
-          <p className={`text-[28px] leading-tight font-bold tabular-nums ${annotated ? "lg:text-[20px] lg:font-semibold" : ""}`} data-letter-verification="true">
+          <p className={`text-[28px] leading-tight font-bold tabular-nums ${folder ? "lg:text-[20px] lg:font-semibold" : ""}`} data-letter-verification="true">
             {letterVerificationLine(letter.verification)}
           </p>
           <p className="mt-1 text-[15px] text-muted">Struck sentences are shown crossed out in the letter and left out of the copy.</p>
@@ -124,7 +135,7 @@ export function TrustPanel({
 
       {selfCheck ? (
         <p className="mt-4 border-t border-hairline pt-4 text-[17px] leading-snug tabular-nums" data-selfcheck-trust="true">
-          <span className={`font-bold ${annotated ? "lg:font-semibold" : ""}`}>Self-check: </span>
+          <span className={`font-bold ${folder ? "lg:font-semibold" : ""}`}>Self-check: </span>
           {selfCheck.lead}
           {selfCheck.detail ? `; ${selfCheck.detail}` : ""}
         </p>
@@ -158,11 +169,11 @@ export function TrustPanel({
         </tbody>
         <tfoot>
           <tr className="border-b border-ink">
-            <th scope="row" className={`py-2 pr-3 font-bold ${annotated ? "lg:font-semibold" : ""}`}>
+            <th scope="row" className={`py-2 pr-3 font-bold ${folder ? "lg:font-semibold" : ""}`}>
               Total
             </th>
-            <td className={`py-2 pr-3 text-right font-bold whitespace-nowrap ${annotated ? "lg:font-semibold" : ""}`}>{formatSeconds(totalMs)}</td>
-            <td className={`py-2 text-right font-bold ${annotated ? "lg:font-semibold" : ""}`} data-total-cost="true">
+            <td className={`py-2 pr-3 text-right font-bold whitespace-nowrap ${folder ? "lg:font-semibold" : ""}`}>{formatSeconds(totalMs)}</td>
+            <td className={`py-2 text-right font-bold ${folder ? "lg:font-semibold" : ""}`} data-total-cost="true">
               {formatCost(totalCost, costModel)}
             </td>
           </tr>

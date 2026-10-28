@@ -52,12 +52,23 @@ function pct(n: number): string {
 const TITLE = "text-[21px] leading-tight font-semibold tracking-[-0.01em] text-ink";
 const EXHIBIT = "relative flex min-w-0 flex-col border border-ink bg-bond px-7 pt-6 pb-5";
 
-export function ExhibitPair({ card, citation, unsupported }: { card: CaseCard; citation: CitationRef | null; unsupported: boolean }) {
+export function ExhibitPair({
+  card,
+  citation,
+  unsupported,
+  className = "",
+}: {
+  card: CaseCard;
+  citation: CitationRef | null;
+  unsupported: boolean;
+  /* The land when the pair arrives on a sheet that is already there (the live run at desktop). */
+  className?: string;
+}) {
   const payer = card.payer_name.value ? String(card.payer_name.value) : null;
   const dated = card.letter_date.value ? displayValue("letter_date", card.letter_date.value) : null;
   const source = [payer, dated ? `letter dated ${dated}` : null].filter(Boolean).join(", ");
   return (
-    <div className="mt-2 hidden lg:clear-both lg:grid lg:grid-cols-2 lg:gap-x-10 lg:pt-6" data-exhibits="true">
+    <div className={`mt-2 hidden lg:clear-both lg:grid lg:grid-cols-2 lg:gap-x-10 lg:pt-6 ${className}`} data-exhibits="true">
       <figure className={EXHIBIT} data-exhibit="letter">
         <PaperClip className="-top-[22px] left-8" />
         <CornerMarks />

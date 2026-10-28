@@ -27,6 +27,17 @@ const noop = () => {};
   The phone's lines stay in the DOM, display: none at desktop; the register
   is display: none under 1024 px. Classes only, so nothing remounts when the
   letter lands.
+
+  Since Oct 27 (piece 3) the register is the top sheet's reference block
+  from the first poll at 1024 px and up, not only on the finished case.
+  While the case runs (titled) the deadline is still the sheet's one stamp,
+  pressed at the sheet's top left where the verdict will land (the page
+  draws it), so the register holds the Lead line's slot (the line is laid
+  out but visibility: hidden, and its rule is transparent) and shows the
+  rows under it; the payer's name stays the page's h1, read by screen
+  readers (the folder tab shows it at 1280 px and up). Once the verdict
+  exists the Lead line shows in its slot, as on the finished case, and
+  nothing under it moves.
 */
 export function CaseHeader({
   record,
@@ -82,7 +93,7 @@ export function CaseHeader({
       data-case={record.case_id}
       data-register={register ? "true" : undefined}
     >
-      <div className={`flex items-start justify-between gap-4 ${register ? "lg:hidden" : ""}`}>
+      <div className={`flex items-start justify-between gap-4 ${register ? (titled ? "lg:sr-only" : "lg:hidden") : ""}`}>
         <div className="min-w-0">
           <Title id="case-heading" className="text-[26px] leading-tight font-bold">
             {payer ? String(payer) : "Denial letter"}
@@ -91,7 +102,7 @@ export function CaseHeader({
             Case <span className="font-mono text-ink">{record.case_id}</span>
           </p>
         </div>
-        {titled ? <DeadlineStamp deadlineIso={deadlineIso} today={today} landed className="mt-1 mr-1" /> : null}
+        {titled ? <DeadlineStamp deadlineIso={deadlineIso} today={today} landed className={`mt-1 mr-1 ${register ? "lg:hidden" : ""}`} /> : null}
       </div>
       {titled ? null : (
         <DeadlineLine
@@ -112,7 +123,7 @@ export function CaseHeader({
         ))}
       </dl>
 
-      {register ? <Register record={record} today={today} deadline={deadline ?? { iso: deadlineIso, daysLeft: null }} /> : null}
+      {register ? <Register record={record} today={today} deadline={deadline ?? { iso: deadlineIso, daysLeft: null }} lead={!titled} /> : null}
 
       <button
         ref={toggleRef}
@@ -162,10 +173,13 @@ function Register({
   record,
   today,
   deadline,
+  lead,
 }: {
   record: CaseRecord;
   today: Date;
   deadline: { iso: string | null; daysLeft: number | null };
+  /* The Lead deadline line shows once the verdict exists; before it the slot is held, unseen (the deadline is the sheet's stamp). */
+  lead: boolean;
 }) {
   const { card } = record;
   const program = card.program.value;
@@ -182,8 +196,8 @@ function Register({
   ];
   return (
     <div className="hidden lg:block" data-notice-register="true">
-      <DeadlineLine deadlineIso={deadline.iso} daysLeft={deadline.daysLeft} today={today} size="lead" />
-      <dl className="mt-5 grid grid-cols-[120px_minmax(0,1fr)] gap-x-3 gap-y-1.5 border-t border-ink/25 pt-4 tabular-nums">
+      <DeadlineLine deadlineIso={deadline.iso} daysLeft={deadline.daysLeft} today={today} size="lead" className={lead ? "" : "invisible"} />
+      <dl className={`mt-5 grid grid-cols-[120px_minmax(0,1fr)] gap-x-3 gap-y-1.5 border-t pt-4 tabular-nums ${lead ? "border-ink/25" : "border-transparent"}`}>
         {rows.map((r) => (
           <div key={r.key} className="contents" data-register-row={r.key}>
             <dt className="pt-px text-[14px] leading-5 text-muted">{r.label}</dt>

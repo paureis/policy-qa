@@ -1327,7 +1327,7 @@ export function stageLine(record: Pick<CaseRecord, "status" | "letter" | "critiq
   }
 }
 
-const NO_LETTER_LINE = "Verdict reached. No appeal letter was drafted.";
+export const NO_LETTER_LINE = "Verdict reached. No appeal letter was drafted.";
 
 /* The muted line under the stage line: the critic's reason when it skipped the letter. */
 export function stageNote(record: Pick<CaseRecord, "status" | "critique">): string | null {
