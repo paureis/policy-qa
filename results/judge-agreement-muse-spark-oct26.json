@@ -1,0 +1,100 @@
+{
+  "run": "muse-spark-oct26",
+  "rows_in_subset": 50,
+  "rows_graded": 50,
+  "accuracy": {
+    "exact_agreement": 0.84,
+    "kappa_3way": 0.7046,
+    "collapsed_agreement": 0.92,
+    "kappa_2way": 0.7807,
+    "confusion_human_x_judge": {
+      "correct|correct": 29,
+      "correct|partially_correct": 4,
+      "incorrect|incorrect": 10,
+      "incorrect|partially_correct": 2,
+      "partially_correct|incorrect": 2,
+      "partially_correct|partially_correct": 3
+    },
+    "human_counts": {
+      "incorrect": 12,
+      "correct": 33,
+      "partially_correct": 5
+    },
+    "judge_counts": {
+      "incorrect": 12,
+      "partially_correct": 9,
+      "correct": 29
+    }
+  },
+  "faithfulness": {
+    "rows": 45,
+    "exact_agreement": 0.7556,
+    "collapsed_agreement": 0.7556
+  },
+  "disagreements": [
+    {
+      "id": "gs-006",
+      "type": "fact",
+      "human": "correct",
+      "judge": "partially_correct",
+      "note": "",
+      "judge_rationale": "The answer suggests continued drug use isn't stated as a discharge reason, but it never says that sobriety is not a condition of continued treatment, which is the gold point; it hedges rather than giving a clear no, though every claim it does make is drawn from the cited passages."
+    },
+    {
+      "id": "gs-013",
+      "type": "fact",
+      "human": "partially_correct",
+      "judge": "incorrect",
+      "note": "",
+      "judge_rationale": "The system answer doesn't say no; it effectively claims the corpus doesn't address the question and leaves coverage open, missing the gold's clear exclusion for recipients 21+ in institutional settings, though its stated claims do appear in the cited passages."
+    },
+    {
+      "id": "gs-018",
+      "type": "fact",
+      "human": "correct",
+      "judge": "partially_correct",
+      "note": "",
+      "judge_rationale": "The answer correctly states the natural-environment-or-IFSP-setting rule. It hedges on whether a clinic qualifies instead of clearly saying a clinic is allowed only if the IFSP lists it as an appropriate setting. Every claim it makes appears in the cited passages."
+    },
+    {
+      "id": "gs-111",
+      "type": "proc",
+      "human": "correct",
+      "judge": "partially_correct",
+      "note": "",
+      "judge_rationale": "The answer correctly says PT is billed under its own coverage policy and fee schedule with the TL modifier, not under the EIS policy, but it omits the gold's second required element, submitting the IFSP as supporting documentation for prior authorization; every claim it does make appears in P1 and P5."
+    },
+    {
+      "id": "gs-122",
+      "type": "proc",
+      "human": "partially_correct",
+      "judge": "incorrect",
+      "note": "",
+      "judge_rationale": "The answer gives the general grounds for suspension and says the passages don't address prior notice, so it misses the four no-prior-notice circumstances in the gold answer; its claims are, however, all supported by the cited passages."
+    },
+    {
+      "id": "gs-133",
+      "type": "multi",
+      "human": "correct",
+      "judge": "partially_correct",
+      "note": "",
+      "judge_rationale": "The answer correctly states that Florida Medicaid covers up to 24 hours of private duty nursing per day with the listed criteria, but it misses the gold's second part that Medicare does not pay for 24-hour home care, saying only that the passages don't address it; every claim it does make appears in P3."
+    },
+    {
+      "id": "gs-138",
+      "type": "multi",
+      "human": "incorrect",
+      "judge": "partially_correct",
+      "note": "",
+      "judge_rationale": "The answer correctly describes Part D coverage of ED drugs for FDA-approved non-ED indications, but it says the Florida Medicaid rule is not covered and so misses half of the gold answer, while all of its claims appear in the cited passage."
+    },
+    {
+      "id": "gs-157",
+      "type": "none",
+      "human": "incorrect",
+      "judge": "partially_correct",
+      "note": "",
+      "judge_rationale": "The gold answer is an abstention, and the system does note the passages lack the specific fields on CMS-20027, but it still offers general filing guidance rather than cleanly abstaining; every claim it makes appears in P1."
+    }
+  ]
+}
