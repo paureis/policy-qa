@@ -1,6 +1,6 @@
 import json
 
-from policyqa.generate import enforce_citations, parse_model_json, ABSTAIN_TEXT
+from policyqa.generate import enforce_citations, parse_model_json, ABSTAIN_TEXT, Provider
 
 PASSAGES = [
     {"tag": "P1", "doc_id": "fl-03", "page": 5, "title": "t", "jurisdiction": "Florida", "text": "Florida Medicaid covers up to four intermittent home health visits per day for recipients under the age of 21 years. Visits must be medically necessary."},
@@ -166,3 +166,17 @@ def test_reasoning_effort_sent_when_set_and_dropped_on_400():
     p = Provider(base_url="http://x", api_key="k", model="m", transport=transport)
     p.complete("s", "u", max_tokens=100)
     assert "reasoning_effort" not in json.loads(calls[0].content)
+
+
+def test_timeout_default_and_env(monkeypatch):
+    """The HTTP read timeout is 120 s unless POLICYQA_LLM_TIMEOUT_S says otherwise (the open-weights
+    endpoints answer the verdict stage in 170 s and more; Oct 27, three Fireworks cases timed out)."""
+    monkeypatch.delenv("POLICYQA_LLM_TIMEOUT_S", raising=False)
+    p = Provider(base_url="http://x", api_key="k", model="m")
+    assert p.timeout == 120.0
+    monkeypatch.setenv("POLICYQA_LLM_TIMEOUT_S", "300")
+    p = Provider(base_url="http://x", api_key="k", model="m")
+    assert p.timeout == 300.0
+    # An explicit argument still wins over the environment.
+    p = Provider(base_url="http://x", api_key="k", model="m", timeout=10)
+    assert p.timeout == 10

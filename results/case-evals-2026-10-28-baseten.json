@@ -1,0 +1,3184 @@
+{
+  "config": {
+    "date": "2026-10-28",
+    "model": "meta-models/muse-spark-open-1026",
+    "reasoning_effort": "low",
+    "prices": {
+      "input_usd_per_m": 1.25,
+      "output_usd_per_m": 4.25
+    },
+    "modes": {
+      "intake": "meta-models/muse-spark-open-1026",
+      "investigation": "meta-models/muse-spark-open-1026",
+      "verdict": "meta-models/muse-spark-open-1026",
+      "critic": "meta-models/muse-spark-open-1026"
+    },
+    "critic_rounds": 1,
+    "concurrency": 3,
+    "cases": "C:\\Users\\pau\\recourse\\cases\\cases.csv",
+    "ids": null,
+    "limit": null,
+    "alternates": {
+      "dc-008": [
+        "not_settled"
+      ],
+      "dc-020": [
+        "consistent"
+      ]
+    },
+    "refusal_ids": [
+      "dc-011"
+    ],
+    "wall_s": 262.3
+  },
+  "summary": {
+    "n": 30,
+    "correct": 27,
+    "accuracy": 0.9,
+    "by_intended": {
+      "consistent": {
+        "n": 10,
+        "correct": 9,
+        "accuracy": 0.9
+      },
+      "inconsistent": {
+        "n": 13,
+        "correct": 12,
+        "accuracy": 0.9231
+      },
+      "not_settled": {
+        "n": 6,
+        "correct": 5,
+        "accuracy": 0.8333
+      },
+      "out_of_scope": {
+        "n": 1,
+        "correct": 1,
+        "accuracy": 1.0
+      }
+    },
+    "by_program": {
+      "florida_kidcare": {
+        "n": 3,
+        "correct": 2,
+        "accuracy": 0.6667
+      },
+      "florida_medicaid_ltc": {
+        "n": 3,
+        "correct": 3,
+        "accuracy": 1.0
+      },
+      "florida_medicaid_mma": {
+        "n": 11,
+        "correct": 10,
+        "accuracy": 0.9091
+      },
+      "medicare_a": {
+        "n": 2,
+        "correct": 2,
+        "accuracy": 1.0
+      },
+      "medicare_advantage": {
+        "n": 3,
+        "correct": 3,
+        "accuracy": 1.0
+      },
+      "medicare_b": {
+        "n": 4,
+        "correct": 3,
+        "accuracy": 0.75
+      },
+      "medicare_part_d": {
+        "n": 3,
+        "correct": 3,
+        "accuracy": 1.0
+      },
+      "unknown": {
+        "n": 1,
+        "correct": 1,
+        "accuracy": 1.0
+      }
+    },
+    "by_jurisdiction": {
+      "Federal": {
+        "n": 12,
+        "correct": 12,
+        "accuracy": 1.0
+      },
+      "Florida": {
+        "n": 16,
+        "correct": 14,
+        "accuracy": 0.875
+      },
+      "both": {
+        "n": 2,
+        "correct": 1,
+        "accuracy": 0.5
+      }
+    },
+    "refusal_correct": true,
+    "letter_failures": 0,
+    "critic_failures": 0,
+    "outside_corpus": [
+      {
+        "id": "dc-030",
+        "got": "not_settled",
+        "correct": true,
+        "route_program": "unknown",
+        "route_reason": "The letter is from Sample Employer Health Plan, a plan outside the public programs in the corpus (Florida Medicaid, KidCare, Medicare). No document in the corpus governs it; the Florida Medicaid and federal Medicare rules are checked for reference only.",
+        "route_unknown": true,
+        "route_outside_corpus": true
+      }
+    ],
+    "letters": {
+      "applicable": 19,
+      "claims": 71,
+      "verified": 71,
+      "struck": 0,
+      "verification_rate": 1.0,
+      "struck_rate": 0.0
+    },
+    "critic": {
+      "reviewed": 19,
+      "accepted": 12,
+      "skipped": 9,
+      "errors": 0,
+      "issues_found": 18,
+      "issues_fixed": 18
+    },
+    "cost_usd": {
+      "total": 2.040532,
+      "mean": 0.068018,
+      "p50": 0.072064
+    },
+    "seconds": {
+      "total": 741.9,
+      "mean": 24.7,
+      "p50": 25.6
+    },
+    "confusion": {
+      "consistent": {
+        "inconsistent": 1,
+        "consistent": 9
+      },
+      "inconsistent": {
+        "inconsistent": 12,
+        "refused:not_a_denial_letter": 1
+      },
+      "not_settled": {
+        "not_settled": 5,
+        "inconsistent": 1
+      },
+      "out_of_scope": {
+        "refused:out_of_scope": 1
+      }
+    },
+    "errors": [],
+    "wrong": [
+      {
+        "id": "dc-002",
+        "intended": "consistent",
+        "got": "inconsistent",
+        "refused": null,
+        "error": null
+      },
+      {
+        "id": "dc-017",
+        "intended": "not_settled",
+        "got": "inconsistent",
+        "refused": null,
+        "error": null
+      },
+      {
+        "id": "dc-021",
+        "intended": "inconsistent",
+        "got": null,
+        "refused": "not_a_denial_letter",
+        "error": null
+      }
+    ],
+    "misses": [
+      {
+        "id": "dc-002",
+        "intended": "consistent",
+        "got": "inconsistent",
+        "stage": "answer",
+        "why": "the hinge page fl-04 p4 reached the model (f3) but no verified quote came from it"
+      },
+      {
+        "id": "dc-017",
+        "intended": "not_settled",
+        "got": "inconsistent",
+        "stage": "verdict",
+        "why": "the hinge page fl-27 p31 was quoted (f1, f2, f3, f4); the model proposed inconsistent, decisive fact \"whether the prescriber wrote \"dispense as written\" on the prescription for the brand-name drug\" (letter); exceptions: f4 unchecked"
+      },
+      {
+        "id": "dc-021",
+        "intended": "inconsistent",
+        "got": null,
+        "stage": "intake",
+        "why": "intake refused the letter (not_a_denial_letter)"
+      }
+    ],
+    "misses_by_stage": {
+      "answer": 1,
+      "verdict": 1,
+      "intake": 1
+    }
+  },
+  "rows": [
+    {
+      "id": "dc-001",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 4,
+        "verified": 4,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 1,
+        "issues_fixed": 1,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.079379,
+      "stage_cost_usd": {
+        "intake": 0.00616,
+        "investigation": 0.044766,
+        "verdict": 0.007589,
+        "letter": 0.008159,
+        "critique": 0.012705
+      },
+      "seconds": 41.1,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "Whether Florida Medicaid limits private duty nursing to 8 hours per day for a member under 21, so that 16 hours per day exceeds the limit",
+      "settled_by": "documents",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is private duty nursing covered by Florida Medicaid (MMA)?"
+        },
+        {
+          "topic": "limits",
+          "question": "What limits does Florida Medicaid (MMA) set on how many hours per day of private duty nursing a member under age 21 can receive?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What conditions, such as prior authorization or medical necessity criteria, does Florida Medicaid (MMA) require for private duty nursing for members under age 21?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Florida Medicaid (MMA) say about the reason given in the denial letter for private duty nursing — that Florida Medicaid limits private duty nursing to 8 hours per day and a request for 16 hours per day exceeds this limit?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception under Florida Medicaid (MMA) that allows coverage of private duty nursing for 16 hours per day for a member under age 21, such as a 9-year-old, even when there is an 8-hour per day limit, for example through EPSDT medical necessity?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the appeal process for Florida Medicaid (MMA), including the adverse benefit determination, the plan appeal, the Medicaid Fair Hearing, the deadlines, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f5",
+          "question": "Is there an exception under Florida Medicaid (MMA) that allows coverage of private duty nursing for 16 hours per day for a member under age 21, such as a 9-year-old, even when there is an 8-hour per day limit, for example through EPSDT medical necessity?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f2, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-04",
+        "page": 5,
+        "reached": [
+          "f2",
+          "f5"
+        ],
+        "cited": [
+          "f2",
+          "f5"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-002",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "yes",
+      "demo": "yes",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "inconsistent",
+      "correct": false,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 5,
+        "verified": 5,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 1,
+        "issues_fixed": 1,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.091699,
+      "stage_cost_usd": {
+        "intake": 0.006714,
+        "investigation": 0.051344,
+        "verdict": 0.009694,
+        "letter": 0.011373,
+        "critique": 0.012574
+      },
+      "seconds": 45.1,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "Whether Florida Medicaid limits private duty nursing coverage to members under age 21",
+      "settled_by": "documents",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Under Florida Medicaid, is private duty nursing covered as a benefit?"
+        },
+        {
+          "topic": "limits",
+          "question": "Under Florida Medicaid, what limits apply to how many hours per day of private duty nursing can be covered?"
+        },
+        {
+          "topic": "conditions",
+          "question": "Under Florida Medicaid, what conditions like prior authorization or medical necessity have to be met for private duty nursing to be covered?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Under Florida Medicaid, is there an exception that allows private duty nursing to be covered for a member who is 21 or older even though the plan says it is only for members under age 21, for example through home health services or another adult benefit?"
+        },
+        {
+          "topic": "reason",
+          "question": "Under Florida Medicaid, what do the rules say about the denial reason that private duty nursing is covered only for members under age 21?"
+        },
+        {
+          "topic": "appeal",
+          "question": "Under Florida Medicaid, what are the rules for appealing an adverse benefit determination, including how to file a grievance or appeal, how to request a Medicaid Fair Hearing, the deadlines, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Under Florida Medicaid, is there an exception that allows private duty nursing to be covered for a member who is 21 or older even though the plan says it is only for members under age 21, for example through home health services or another adult benefit?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f3, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-04",
+        "page": 4,
+        "reached": [
+          "f3"
+        ],
+        "cited": []
+      },
+      "miss": {
+        "stage": "answer",
+        "why": "the hinge page fl-04 p4 reached the model (f3) but no verified quote came from it"
+      }
+    },
+    {
+      "id": "dc-003",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.057068,
+      "stage_cost_usd": {
+        "intake": 0.005388,
+        "investigation": 0.044828,
+        "verdict": 0.006852,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 32.0,
+      "error": null,
+      "proposed_outcome": "consistent",
+      "decisive_fact": "The second visit began 40 minutes after the first visit ended, which is less than an hour apart.",
+      "settled_by": "letter",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Does Florida Medicaid MMA cover a home health skilled nursing visit for an adult?"
+        },
+        {
+          "topic": "limits",
+          "question": "Under Florida Medicaid MMA, what are the limits on how many home health skilled nursing visits are covered in one day, including hours, visits, or frequency limits?"
+        },
+        {
+          "topic": "conditions",
+          "question": "Under Florida Medicaid MMA, what conditions such as prior authorization, medical necessity criteria, or documentation are required for a home health skilled nursing visit to be covered?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Under Florida Medicaid MMA, is there an exception that would still cover a second home health skilled nursing visit on the same day even though the payer says intermittent home health visits rendered less than an hour apart are not covered, for example when the second visit that began 40 minutes after the first visit ended was ordered for a separate medical reason or met an exception to the timing rule?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What does Florida Medicaid MMA say about the appeal process for an adverse benefit determination, including how to file a grievance or appeal, how to request a Medicaid Fair Hearing, the deadline to do so, and where to file?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Florida Medicaid MMA say about covering a second home health skilled nursing visit on the same day when the payer says intermittent home health visits rendered less than an hour apart are not covered and the second visit began 40 minutes after the first visit ended?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Under Florida Medicaid MMA, is there an exception that would still cover a second home health skilled nursing visit on the same day even though the payer says intermittent home health visits rendered less than an hour apart are not covered, for example when the second visit that began 40 minutes after the first visit ended was ordered for a separate medical reason or met an exception to the timing rule?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f6, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-03",
+        "page": 7,
+        "reached": [
+          "f4",
+          "f6"
+        ],
+        "cited": [
+          "f4",
+          "f6"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-004",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.054152,
+      "stage_cost_usd": {
+        "intake": 0.006797,
+        "investigation": 0.040496,
+        "verdict": 0.006859,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 17.7,
+      "error": null,
+      "proposed_outcome": "consistent",
+      "decisive_fact": "The denied hours were for housekeeping and chore services, not light housekeeping to make the home safe",
+      "settled_by": "letter",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Does Florida Medicaid (MMA) cover personal care services for members under age 21?"
+        },
+        {
+          "topic": "limits",
+          "question": "Does Florida Medicaid (MMA) limit how many hours of personal care services can be approved per month for members under age 21?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What conditions does Florida Medicaid (MMA) require for personal care services to be approved, such as prior authorization or medical necessity criteria?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception under Florida Medicaid (MMA) that allows personal care services to include light housekeeping to make the home safe when the member under age 21 is also approved for help with bathing, dressing, and eating, even though housekeeping and chore services are generally not covered?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What are the Florida Medicaid (MMA) rules for appealing an adverse benefit determination, including how to file a grievance or appeal with the plan, how to request a Medicaid Fair Hearing, and what deadlines apply?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Florida Medicaid (MMA) say about whether housekeeping and chore services are covered as part of personal care services?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Is there an exception under Florida Medicaid (MMA) that allows personal care services to include light housekeeping to make the home safe when the member under age 21 is also approved for help with bathing, dressing, and eating, even though housekeeping and chore services are generally not covered?",
+          "status": "supported",
+          "state": "not_relevant",
+          "relevant": false,
+          "reason": "it comes from a document about the Long-term Care program (Florida Medicaid Statewide Medicaid Managed Care Long-term Care Program Coverage Policy (Rule 59G-4.192)), and the member's program is Florida Medicaid (MMA)"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-05",
+        "page": 6,
+        "reached": [
+          "f1",
+          "f2",
+          "f3",
+          "f4",
+          "f6"
+        ],
+        "cited": [
+          "f1",
+          "f2",
+          "f3",
+          "f4",
+          "f6"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-005",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 1,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.06149,
+      "stage_cost_usd": {
+        "intake": 0.006513,
+        "investigation": 0.048572,
+        "verdict": 0.006405,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 20.1,
+      "error": null,
+      "proposed_outcome": "consistent",
+      "decisive_fact": "The member is age 38, so the member is 21 or older and falls in the age group the exclusion applies to.",
+      "settled_by": "letter",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is a fixed partial denture (bridge) with one pontic covered under the Florida Medicaid (MMA) program?"
+        },
+        {
+          "topic": "limits",
+          "question": "Under the Florida Medicaid (MMA) program, what are the limits on how many fixed partial dentures (bridges) with one pontic are covered, including frequency or time limits?"
+        },
+        {
+          "topic": "conditions",
+          "question": "Under the Florida Medicaid (MMA) program, what conditions such as prior authorization, medical necessity criteria, or documentation are required for a fixed partial denture (bridge) with one pontic to be covered?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Under the Florida Medicaid (MMA) program, is there an exception that covers a fixed partial denture (bridge) with one pontic for a member age 38 even though fixed partial dentures (bridges) are generally not covered for members age 21 and older?"
+        },
+        {
+          "topic": "appeal",
+          "question": "Under the Florida Medicaid (MMA) program, what are the rules for an adverse benefit determination, including how to file a grievance or appeal and request a Medicaid Fair Hearing, what the deadlines are, and where to file?"
+        },
+        {
+          "topic": "reason",
+          "question": "Under the Florida Medicaid (MMA) program, what do the rules say about whether a fixed partial denture (bridge) with one pontic is not covered for members age 21 and older?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Under the Florida Medicaid (MMA) program, is there an exception that covers a fixed partial denture (bridge) with one pontic for a member age 38 even though fixed partial dentures (bridges) are generally not covered for members age 21 and older?",
+          "status": "not_settled",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "no verified quote (status not_settled)"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-08",
+        "page": 7,
+        "reached": [
+          "f1",
+          "f3"
+        ],
+        "cited": [
+          "f1",
+          "f3"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-006",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.056199,
+      "stage_cost_usd": {
+        "intake": 0.005246,
+        "investigation": 0.044339,
+        "verdict": 0.006614,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 19.8,
+      "error": null,
+      "proposed_outcome": "consistent",
+      "decisive_fact": "The member had no prior CPAP use and therefore no unsuccessful CPAP results before the BIPAP rental request.",
+      "settled_by": "letter",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Under Florida Medicaid (MMA), is a bi-level positive airway pressure device (BIPAP) rental covered for an adult?"
+        },
+        {
+          "topic": "conditions",
+          "question": "Under Florida Medicaid (MMA), what prior authorization or medical necessity criteria must be met for an adult to get a bi-level positive airway pressure device (BIPAP) rental, including any requirement to try a CPAP device first?"
+        },
+        {
+          "topic": "reason",
+          "question": "Under Florida Medicaid (MMA), what do the rules say about covering a bi-level positive airway pressure device (BIPAP) rental only after a CPAP device was tried without success when records show no prior CPAP use?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Under Florida Medicaid (MMA), is there an exception that allows coverage of a bi-level positive airway pressure device (BIPAP) rental for an adult even when there was no prior CPAP trial, for example due to a specific medical condition or diagnosis stated on the prescription?"
+        },
+        {
+          "topic": "limits",
+          "question": "Under Florida Medicaid (MMA), what are the limits on rental payments, frequency, or duration for a bi-level positive airway pressure device (BIPAP) rental for an adult?"
+        },
+        {
+          "topic": "appeal",
+          "question": "Under Florida Medicaid (MMA), what are the rules for appealing an adverse benefit determination, including how to file a grievance or appeal, how to request a fair hearing, the deadline to do so, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Under Florida Medicaid (MMA), is there an exception that allows coverage of a bi-level positive airway pressure device (BIPAP) rental for an adult even when there was no prior CPAP trial, for example due to a specific medical condition or diagnosis stated on the prescription?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f1, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-12",
+        "page": 5,
+        "reached": [
+          "f1",
+          "f3",
+          "f4",
+          "f5"
+        ],
+        "cited": [
+          "f1",
+          "f3",
+          "f4",
+          "f5"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-007",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.075213,
+      "stage_cost_usd": {
+        "intake": 0.005925,
+        "investigation": 0.045716,
+        "verdict": 0.007054,
+        "letter": 0.00748,
+        "critique": 0.009038
+      },
+      "seconds": 25.0,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "Whether Florida Medicaid allows denying a non-emergency transportation round trip because the specialist is more than 30 miles from home.",
+      "settled_by": "documents",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is a non-emergency transportation round trip to a specialist covered by Florida Medicaid (MMA)?"
+        },
+        {
+          "topic": "limits",
+          "question": "Does Florida Medicaid (MMA) limit how many miles or how many round trips for non-emergency transportation to a specialist it will cover?"
+        },
+        {
+          "topic": "conditions",
+          "question": "For non-emergency transportation round trip to a specialist under Florida Medicaid (MMA), what prior authorization, medical necessity, or documentation conditions must be met?"
+        },
+        {
+          "topic": "reason",
+          "question": "Under Florida Medicaid (MMA), what do the rules say about denying non-emergency transportation round trip to a specialist because the appointment is more than 30 miles from the member's home?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Under Florida Medicaid (MMA), is there an exception that covers a non-emergency transportation round trip to a specialist even when the appointment is more than 30 miles from home, for example when the specialist is 48 miles away and no closer specialist is available?"
+        },
+        {
+          "topic": "appeal",
+          "question": "Under Florida Medicaid (MMA), what are the rules for an adverse benefit determination appeal, including a grievance or appeal to the plan, a Medicaid Fair Hearing, the 60-day deadline, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f5",
+          "question": "Under Florida Medicaid (MMA), is there an exception that covers a non-emergency transportation round trip to a specialist even when the appointment is more than 30 miles from home, for example when the specialist is 48 miles away and no closer specialist is available?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f1, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-13",
+        "page": 6,
+        "reached": [
+          "f1",
+          "f2",
+          "f3",
+          "f4",
+          "f5"
+        ],
+        "cited": [
+          "f1",
+          "f2",
+          "f3",
+          "f4",
+          "f5"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-008",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.082936,
+      "stage_cost_usd": {
+        "intake": 0.005889,
+        "investigation": 0.049118,
+        "verdict": 0.007684,
+        "letter": 0.008433,
+        "critique": 0.011812
+      },
+      "seconds": 28.8,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "Whether the June 14-19 inpatient days were for emergency services, where the letter itself states the member was admitted through the emergency department for an emergency and was treated for the emergency medical condition through discharge.",
+      "settled_by": "letter",
+      "relies_on_exception": true,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is an inpatient hospital stay covered by Florida Medicaid MMA?"
+        },
+        {
+          "topic": "limits",
+          "question": "What limits does Florida Medicaid MMA place on the number of inpatient hospital days covered per fiscal year for an adult?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Florida Medicaid MMA say about denying payment for an inpatient hospital stay because the adult member has used the 45 inpatient hospital days covered per fiscal year, for days 46 through 51?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception under Florida Medicaid MMA that covers an inpatient hospital stay beyond the 45-day per fiscal year limit for adults when the member was admitted through the emergency department for an emergency and treated for the emergency medical condition through discharge?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the appeal process under Florida Medicaid MMA, including the adverse benefit determination, the grievance or appeal, the fair hearing, the deadline to file, and where to file?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What conditions, such as prior authorization, medical necessity criteria, or documentation, does Florida Medicaid MMA require for coverage of an inpatient hospital stay?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Is there an exception under Florida Medicaid MMA that covers an inpatient hospital stay beyond the 45-day per fiscal year limit for adults when the member was admitted through the emergency department for an emergency and treated for the emergency medical condition through discharge?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f1, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-14",
+        "page": 5,
+        "reached": [
+          "f1",
+          "f2",
+          "f3",
+          "f4"
+        ],
+        "cited": [
+          "f1",
+          "f2",
+          "f3",
+          "f4"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-009",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "not_settled",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.075447,
+      "stage_cost_usd": {
+        "intake": 0.00507,
+        "investigation": 0.042933,
+        "verdict": 0.010425,
+        "letter": 0.008411,
+        "critique": 0.008608
+      },
+      "seconds": 27.7,
+      "error": null,
+      "proposed_outcome": "not_settled",
+      "decisive_fact": "whether the prior authorization request for 300 test strips per month was approved as medically necessary and meeting documentation requirements",
+      "settled_by": "payer_determination",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Does Florida Medicaid Managed Medical Assistance cover blood glucose test strips for adults?"
+        },
+        {
+          "topic": "limits",
+          "question": "What quantity limit does Florida Medicaid Managed Medical Assistance set for blood glucose test strips per month for adults?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What prior authorization, medical necessity, or documentation requirements does Florida Medicaid Managed Medical Assistance have for approving a higher quantity of blood glucose test strips for adults?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception under Florida Medicaid Managed Medical Assistance that covers blood glucose test strips even when the quantity requested is more than the plan's quantity limit, such as when a member requests 300 test strips per month and submits a prior authorization for a higher quantity?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Florida Medicaid Managed Medical Assistance say about denying blood glucose test strips because the quantity requested is more than the plan's quantity limit and the prior authorization for a higher quantity was not approved?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What are the appeal steps under Florida Medicaid Managed Medical Assistance for an adverse benefit determination, including how to file a grievance or appeal, how to request a fair hearing, what the deadlines are, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Is there an exception under Florida Medicaid Managed Medical Assistance that covers blood glucose test strips even when the quantity requested is more than the plan's quantity limit, such as when a member requests 300 test strips per month and submits a prior authorization for a higher quantity?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f1, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-10",
+        "page": 5,
+        "reached": [
+          "f1",
+          "f2",
+          "f3",
+          "f4",
+          "f5"
+        ],
+        "cited": [
+          "f1",
+          "f3",
+          "f4",
+          "f5"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-010",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "not_settled",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 1,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 5,
+        "verified": 5,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 3,
+        "issues_fixed": 3,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.087544,
+      "stage_cost_usd": {
+        "intake": 0.005757,
+        "investigation": 0.04939,
+        "verdict": 0.008153,
+        "letter": 0.012804,
+        "critique": 0.01144
+      },
+      "seconds": 30.5,
+      "error": null,
+      "proposed_outcome": "not_settled",
+      "decisive_fact": "Whether the behavior assessment and behavior plan submitted for this authorization period support more than 25 hours per week of intervention as medically necessary",
+      "settled_by": "payer_determination",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is behavior analysis intervention services covered by Florida Medicaid Managed Medical Assistance for members under age 21?"
+        },
+        {
+          "topic": "limits",
+          "question": "What limits does Florida Medicaid Managed Medical Assistance set on behavior analysis intervention services billed under code 97153, such as hours per week, visits, or frequency?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What conditions does Florida Medicaid Managed Medical Assistance require for behavior analysis intervention services, such as prior authorization, medical necessity criteria, or documentation in the behavior assessment and behavior plan to support the requested hours?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Florida Medicaid Managed Medical Assistance say about the rule for denying behavior analysis intervention services above 25 hours per week when the behavior assessment and behavior plan submitted for the authorization period do not support more than 25 hours per week?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception under Florida Medicaid Managed Medical Assistance that covers behavior analysis intervention services for a member under age 21 even though the behavior assessment and behavior plan would otherwise limit coverage to 25 hours per week?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the appeal process for Florida Medicaid Managed Medical Assistance, including the adverse benefit determination, grievance or appeal, Medicaid Fair Hearing, deadline to file, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f5",
+          "question": "Is there an exception under Florida Medicaid Managed Medical Assistance that covers behavior analysis intervention services for a member under age 21 even though the behavior assessment and behavior plan would otherwise limit coverage to 25 hours per week?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f1, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-06",
+        "page": 6,
+        "reached": [
+          "f4"
+        ],
+        "cited": []
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-011",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "yes",
+      "demo": "no",
+      "intended": "out_of_scope",
+      "intended_csv": "not_settled",
+      "got": null,
+      "correct": true,
+      "refused": "out_of_scope",
+      "route_program": null,
+      "route_reason": null,
+      "route_outside_corpus": null,
+      "stage_errors": [],
+      "findings": {
+        "supported": 0,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": null,
+      "critique": null,
+      "cost_usd": 0.0,
+      "stage_cost_usd": {
+        "intake": 0.0,
+        "investigation": 0.0,
+        "verdict": 0.0,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 0.0,
+      "error": null,
+      "proposed_outcome": null,
+      "decisive_fact": null,
+      "settled_by": null,
+      "relies_on_exception": null,
+      "plan_source": null,
+      "planned_questions": [],
+      "exceptions": [],
+      "hinge": {
+        "doc_id": "fl-09",
+        "page": 4,
+        "reached": [],
+        "cited": []
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-012",
+      "program": "florida_medicaid_ltc",
+      "jurisdiction": "both",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_ltc",
+      "route_reason": "The letter is from a Florida Medicaid Long-term Care plan and the member is 65 or older, so Medicare may also cover this service; both sets of rules are checked side by side.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 7,
+        "not_settled": 5,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 4,
+        "verified": 4,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 1,
+        "issues_fixed": 1,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.114082,
+      "stage_cost_usd": {
+        "intake": 0.005818,
+        "investigation": 0.081289,
+        "verdict": 0.007288,
+        "letter": 0.008274,
+        "critique": 0.011413
+      },
+      "seconds": 34.4,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "Whether home-delivered meals (S5170, 1 meal per day) are a covered benefit of the Florida Medicaid Long-term Care program",
+      "settled_by": "documents",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Are home-delivered meals, 1 meal per day, covered by the Florida Medicaid Long-term Care program?"
+        },
+        {
+          "topic": "limits",
+          "question": "What limits does the Florida Medicaid Long-term Care program set for home-delivered meals, such as how many meals per day, how many days per week, or the dollar amount that can be billed?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What conditions does the Florida Medicaid Long-term Care program require for home-delivered meals to be approved, such as prior authorization, medical necessity criteria, or documentation of difficulty shopping for and preparing food?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Even though the denial letter says home-delivered meals are not a covered benefit of the Florida Medicaid Long-term Care program, is there an exception or a second rule that covers home-delivered meals for a member who has difficulty shopping for and preparing food and who also has Medicare Part A and Part B, and when a member has both Medicare and Medicaid, may a provider bill the member for Medicare cost-sharing for home-delivered meals?"
+        },
+        {
+          "topic": "reason",
+          "question": "What do the Florida Medicaid Long-term Care program rules say about the denial reason that home-delivered meals, 1 meal per day, are not a covered benefit of the Long-term Care program?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the appeal process for the Florida Medicaid Long-term Care program, including what counts as an adverse benefit determination, how to file a grievance or appeal and request a Medicaid Fair Hearing, what the deadlines are, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f7",
+          "question": "Even though the denial letter says home-delivered meals are not a covered benefit of the Florida Medicaid Long-term Care program, is there an exception or a second rule that covers home-delivered meals for a member who has difficulty shopping for and preparing food and who also has Medicare Part A and Part B, and when a member has both Medicare and Medicaid, may a provider bill the member for Medicare cost-sharing for home-delivered meals?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f1, so it is the rule, not an exception"
+        },
+        {
+          "finding_id": "f8",
+          "question": "Even though the denial letter says home-delivered meals are not a covered benefit of the Florida Medicaid Long-term Care program, is there an exception or a second rule that covers home-delivered meals for a member who has difficulty shopping for and preparing food and who also has Medicare Part A and Part B, and when a member has both Medicare and Medicaid, may a provider bill the member for Medicare cost-sharing for home-delivered meals?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "the letter states no specific fact an exception could turn on (a procedure, what the drug is for, a program such as QMB), so the quote could not be checked against one"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-16",
+        "page": 7,
+        "reached": [],
+        "cited": []
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-013",
+      "program": "florida_medicaid_ltc",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_ltc",
+      "route_reason": "The letter is about Florida Medicaid Long-term Care, so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 4,
+        "not_settled": 2,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 5,
+        "verified": 5,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 1,
+        "issues_fixed": 1,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.074521,
+      "stage_cost_usd": {
+        "intake": 0.005211,
+        "investigation": 0.043979,
+        "verdict": 0.007256,
+        "letter": 0.008126,
+        "critique": 0.009949
+      },
+      "seconds": 28.1,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "Whether the billed S5165 home entry ramp is excluded as not covered",
+      "settled_by": "documents",
+      "relies_on_exception": true,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is a home entry ramp covered under Florida Medicaid Long-term Care for an adult who needs help entering their home?"
+        },
+        {
+          "topic": "limits",
+          "question": "Under Florida Medicaid Long-term Care, what are the limits on how much, how often, or how many times a home entry ramp can be covered for an adult?"
+        },
+        {
+          "topic": "conditions",
+          "question": "Under Florida Medicaid Long-term Care, what conditions such as prior authorization, medical necessity criteria, or documentation must be met for a home entry ramp to be covered for an adult?"
+        },
+        {
+          "topic": "reason",
+          "question": "Under Florida Medicaid Long-term Care, what do the rules say about the denial reason that home modifications such as ramps are not covered because ramps are excluded from durable medical equipment benefits?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Under Florida Medicaid Long-term Care, is there an exception or a second rule that covers a home entry ramp even though ramps are excluded from durable medical equipment, when the member uses a wheelchair and cannot enter the home without help?"
+        },
+        {
+          "topic": "appeal",
+          "question": "Under Florida Medicaid Long-term Care, what are the rules for an adverse benefit determination appeal, including a grievance or appeal, a Medicaid Fair Hearing, the deadline to file, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f5",
+          "question": "Under Florida Medicaid Long-term Care, is there an exception or a second rule that covers a home entry ramp even though ramps are excluded from durable medical equipment, when the member uses a wheelchair and cannot enter the home without help?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "the letter states no specific fact an exception could turn on (a procedure, what the drug is for, a program such as QMB), so the quote could not be checked against one"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-16",
+        "page": 7,
+        "reached": [
+          "f1"
+        ],
+        "cited": [
+          "f1"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-014",
+      "program": "florida_medicaid_ltc",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "not_settled",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_ltc",
+      "route_reason": "The letter is about Florida Medicaid Long-term Care, so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 1,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 5,
+        "verified": 5,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 2,
+        "issues_fixed": 2,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.081403,
+      "stage_cost_usd": {
+        "intake": 0.006944,
+        "investigation": 0.044749,
+        "verdict": 0.00747,
+        "letter": 0.0095,
+        "critique": 0.01274
+      },
+      "seconds": 27.7,
+      "error": null,
+      "proposed_outcome": "not_settled",
+      "decisive_fact": "whether the care manager's assessment shows a need for more than 3 days per week of adult day health care",
+      "settled_by": "payer_determination",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is adult day health care covered by Florida Medicaid Long-term Care?"
+        },
+        {
+          "topic": "limits",
+          "question": "What limits does Florida Medicaid Long-term Care place on how many days per week of adult day health care it will cover?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What conditions, such as prior authorization, medical necessity criteria, or documentation, does Florida Medicaid Long-term Care require for adult day health care to be covered?"
+        },
+        {
+          "topic": "reason",
+          "question": "What do the Florida Medicaid Long-term Care rules say about denying adult day health care when the reason given is that the care manager's assessment does not show a need for more than 3 days per week?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception or second rule that allows Florida Medicaid Long-term Care to cover more than 3 days per week of adult day health care even when the care manager's assessment does not show a need for more than 3 days per week, for example when there is a physician's order, a change in health condition, or other medical necessity documentation?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the appeal process for Florida Medicaid Long-term Care, including what an adverse benefit determination is, how to file a grievance or appeal and a Medicaid Fair Hearing, what the deadlines are, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f5",
+          "question": "Is there an exception or second rule that allows Florida Medicaid Long-term Care to cover more than 3 days per week of adult day health care even when the care manager's assessment does not show a need for more than 3 days per week, for example when there is a physician's order, a change in health condition, or other medical necessity documentation?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "the letter states no specific fact an exception could turn on (a procedure, what the drug is for, a program such as QMB), so the quote could not be checked against one"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-16",
+        "page": 6,
+        "reached": [
+          "f1",
+          "f2",
+          "f4",
+          "f5"
+        ],
+        "cited": [
+          "f1",
+          "f2",
+          "f4",
+          "f5"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-015",
+      "program": "florida_kidcare",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_kidcare",
+      "route_reason": "The letter is about Florida KidCare, so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 3,
+        "not_settled": 1,
+        "unsupported": 1,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 2,
+        "verified": 2,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.059075,
+      "stage_cost_usd": {
+        "intake": 0.005261,
+        "investigation": 0.033283,
+        "verdict": 0.005742,
+        "letter": 0.005607,
+        "critique": 0.009182
+      },
+      "seconds": 23.2,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "The annual limit for chiropractic visits under Florida KidCare is 24 visits per year, so a 13th visit is within the limit.",
+      "settled_by": "documents",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is a chiropractic visit covered by Florida KidCare?"
+        },
+        {
+          "topic": "limits",
+          "question": "What limits does Florida KidCare place on how many chiropractic visits are covered per year?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Florida KidCare say about the rule that chiropractic services are limited to 12 visits per year for a chiropractic visit?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception under Florida KidCare that allows coverage of a chiropractic visit beyond the 12-visit limit for a member under age 21 when additional visits are medically necessary?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the appeal process under Florida KidCare, including the adverse benefit determination, grievance or appeal, fair hearing, deadline to file, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Is there an exception under Florida KidCare that allows coverage of a chiropractic visit beyond the 12-visit limit for a member under age 21 when additional visits are medically necessary?",
+          "status": "not_settled",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "no verified quote (status not_settled)"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-27",
+        "page": 29,
+        "reached": [
+          "f2",
+          "f3"
+        ],
+        "cited": [
+          "f2",
+          "f3"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-016",
+      "program": "florida_kidcare",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_kidcare",
+      "route_reason": "The letter is about Florida KidCare, so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 4,
+        "not_settled": 2,
+        "unsupported": 1,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.062702,
+      "stage_cost_usd": {
+        "intake": 0.005463,
+        "investigation": 0.050488,
+        "verdict": 0.006751,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 18.3,
+      "error": null,
+      "proposed_outcome": "consistent",
+      "decisive_fact": "This request is for session 25 within the same 60-day period for the same injury.",
+      "settled_by": "letter",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is a physical therapy session covered by Florida KidCare?"
+        },
+        {
+          "topic": "limits",
+          "question": "What limits does Florida KidCare place on how many physical therapy sessions are covered within a 60-day period for the same injury or episode?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What conditions, such as prior authorization, medical necessity criteria, or documentation, does Florida KidCare require for a physical therapy session to be covered?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Does Florida KidCare exclude coverage for a physical therapy session that goes beyond a set number of sessions for the same injury?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the appeal process for an adverse benefit determination by Florida KidCare, including how to file a grievance or appeal, how to request a fair hearing, what the deadlines are, and where to file?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Florida KidCare say about the rule that short-term physical therapy is limited to 24 sessions within a 60-day period for each episode or injury, and that a 25th session within the same 60-day period for the same injury is not covered?"
+        },
+        {
+          "topic": "other",
+          "question": "Is there an exception under Florida KidCare that would still cover a physical therapy session even though it is the 25th session within the same 60-day period for the same knee injury from July 2026, such as for medical necessity, prior authorization, a new episode of care, or for members under age 21?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f7",
+          "question": "Is there an exception under Florida KidCare that would still cover a physical therapy session even though it is the 25th session within the same 60-day period for the same knee injury from July 2026, such as for medical necessity, prior authorization, a new episode of care, or for members under age 21?",
+          "status": "not_settled",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "no verified quote (status not_settled)"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-27",
+        "page": 29,
+        "reached": [
+          "f2",
+          "f6"
+        ],
+        "cited": [
+          "f2",
+          "f6"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-017",
+      "program": "florida_kidcare",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "inconsistent",
+      "correct": false,
+      "refused": null,
+      "route_program": "florida_kidcare",
+      "route_reason": "The letter is about Florida KidCare, so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 4,
+        "verified": 4,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 1,
+        "issues_fixed": 1,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.065143,
+      "stage_cost_usd": {
+        "intake": 0.006028,
+        "investigation": 0.03591,
+        "verdict": 0.006438,
+        "letter": 0.007143,
+        "critique": 0.009624
+      },
+      "seconds": 23.5,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "whether the prescriber wrote \"dispense as written\" on the prescription for the brand-name drug",
+      "settled_by": "letter",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is a brand-name prescription drug covered under Florida KidCare?"
+        },
+        {
+          "topic": "conditions",
+          "question": "Under Florida KidCare, what conditions must be met for a brand-name prescription drug to be covered when a generic version is available, such as prior authorization or documentation that the generic cannot be used?"
+        },
+        {
+          "topic": "reason",
+          "question": "Under Florida KidCare, what do the rules say about covering a brand-name prescription drug when the payer's stated reason is that a generic version is available and the brand-name drug is covered only when a generic cannot be used?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Under Florida KidCare, is there an exception that allows coverage of a brand-name prescription drug even when a generic is available, when the prescriber wrote \"dispense as written\" on the prescription?"
+        },
+        {
+          "topic": "appeal",
+          "question": "Under Florida KidCare, what are the rules for appealing an adverse benefit determination, including how to file a grievance or appeal, how to request a fair hearing, the deadline to do so, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Under Florida KidCare, is there an exception that allows coverage of a brand-name prescription drug even when a generic is available, when the prescriber wrote \"dispense as written\" on the prescription?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f1, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-27",
+        "page": 31,
+        "reached": [
+          "f1",
+          "f2",
+          "f3",
+          "f4"
+        ],
+        "cited": [
+          "f1",
+          "f2",
+          "f3",
+          "f4"
+        ]
+      },
+      "miss": {
+        "stage": "verdict",
+        "why": "the hinge page fl-27 p31 was quoted (f1, f2, f3, f4); the model proposed inconsistent, decisive fact \"whether the prescriber wrote \"dispense as written\" on the prescription for the brand-name drug\" (letter); exceptions: f4 unchecked"
+      }
+    },
+    {
+      "id": "dc-018",
+      "program": "medicare_b",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_b",
+      "route_reason": "The letter is about Medicare Part B, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.074805,
+      "stage_cost_usd": {
+        "intake": 0.004724,
+        "investigation": 0.044352,
+        "verdict": 0.007945,
+        "letter": 0.007919,
+        "critique": 0.009865
+      },
+      "seconds": 26.4,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "The frames were ordered after cataract surgery with insertion of an intraocular lens on July 30, 2026",
+      "settled_by": "letter",
+      "relies_on_exception": true,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Does Medicare Part B cover eyeglass frames for a member age 65 and older?"
+        },
+        {
+          "topic": "limits",
+          "question": "Under Medicare Part B, what are the limits on how many pairs of eyeglass frames or how often they are covered?"
+        },
+        {
+          "topic": "conditions",
+          "question": "Under Medicare Part B, what conditions such as prior authorization, medical necessity criteria, or documentation must be met for eyeglass frames to be covered?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception under Medicare Part B that covers eyeglass frames even though Medicare does not generally cover eyeglasses or contact lenses, when the frames were ordered after cataract surgery with insertion of an intraocular lens on July 30, 2026?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Medicare Part B say about the denial reason that Medicare does not cover eyeglasses or contact lenses when applied to eyeglass frames?"
+        },
+        {
+          "topic": "appeal",
+          "question": "Under Medicare Part B, what are the rules for an adverse benefit determination, a grievance or appeal, a fair hearing, the deadline to file, and where to file an appeal?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Is there an exception under Medicare Part B that covers eyeglass frames even though Medicare does not generally cover eyeglasses or contact lenses, when the frames were ordered after cataract surgery with insertion of an intraocular lens on July 30, 2026?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f1, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fed-16",
+        "page": 8,
+        "reached": [
+          "f4",
+          "f5"
+        ],
+        "cited": []
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-019",
+      "program": "medicare_b",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_b",
+      "route_reason": "The letter is about Medicare Part B, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.050926,
+      "stage_cost_usd": {
+        "intake": 0.00555,
+        "investigation": 0.038366,
+        "verdict": 0.00701,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 18.9,
+      "error": null,
+      "proposed_outcome": "consistent",
+      "decisive_fact": "The service billed on 2026-08-11 as V5261 is hearing aids, digital, behind the ear, both ears",
+      "settled_by": "letter",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Under Medicare Part B, are hearing aids, digital behind the ear for both ears, covered for a 65-year-old and older member?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Under Medicare Part B, are hearing aids or exams for fitting hearing aids excluded from coverage?"
+        },
+        {
+          "topic": "reason",
+          "question": "Under Medicare Part B, what do the rules say about the denial reason that Medicare does not cover hearing aids or exams for fitting hearing aids for code V5261 billed at $4,200.00?"
+        },
+        {
+          "topic": "appeal",
+          "question": "Under Medicare Part B, what are the rules for an adverse benefit determination appeal (redetermination), including the deadline and where to file, when a claim is denied?"
+        },
+        {
+          "topic": "other",
+          "question": "Under Medicare Part B, is there an exception, or a second rule or program, that covers hearing aids described as V5261 digital behind the ear both ears even though routine hearing aids or exams for fitting hearing aids are not covered, for example when the hearing aid is an implantable device or is related to a cochlear implant procedure?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f5",
+          "question": "Under Medicare Part B, is there an exception, or a second rule or program, that covers hearing aids described as V5261 digital behind the ear both ears even though routine hearing aids or exams for fitting hearing aids are not covered, for example when the hearing aid is an implantable device or is related to a cochlear implant procedure?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f1, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fed-22",
+        "page": 52,
+        "reached": [
+          "f1",
+          "f2",
+          "f3",
+          "f5"
+        ],
+        "cited": [
+          "f1",
+          "f2",
+          "f3",
+          "f5"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-020",
+      "program": "medicare_b",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "not_settled",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_b",
+      "route_reason": "The letter is about Medicare Part B, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 5,
+        "verified": 5,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 1,
+        "issues_fixed": 1,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.073889,
+      "stage_cost_usd": {
+        "intake": 0.004907,
+        "investigation": 0.038951,
+        "verdict": 0.008451,
+        "letter": 0.009355,
+        "critique": 0.012225
+      },
+      "seconds": 24.9,
+      "error": null,
+      "proposed_outcome": "not_settled",
+      "decisive_fact": "whether the member's condition made other transportation contraindicated and would endanger health, and whether the records and written doctor's order showed medical necessity for this transport",
+      "settled_by": "payer_determination",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Under Medicare Part B, is non-emergency basic life support ambulance transport from home to a dialysis facility a covered service?"
+        },
+        {
+          "topic": "conditions",
+          "question": "Under Medicare Part B, what conditions must be met for non-emergency basic life support ambulance transport from home to dialysis to be covered, including prior authorization, medical necessity criteria, and documentation?"
+        },
+        {
+          "topic": "reason",
+          "question": "Under Medicare Part B, what do the rules say about the denial reason that ambulance transport is covered only when other transportation would endanger your health and the records do not show you could not travel safely by other means for non-emergency basic life support ambulance transport from home to dialysis?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Under Medicare Part B, is there an exception or second rule that covers non-emergency basic life support ambulance transport from home to dialysis even though the stated reason applies, such as for a member age 65 and older traveling to a dialysis facility for regular dialysis?"
+        },
+        {
+          "topic": "appeal",
+          "question": "Under Medicare Part B, what is the appeal process for an adverse benefit determination, including redetermination, grievance or appeal, fair hearing, the deadline to file, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Under Medicare Part B, is there an exception or second rule that covers non-emergency basic life support ambulance transport from home to dialysis even though the stated reason applies, such as for a member age 65 and older traveling to a dialysis facility for regular dialysis?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f1, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fed-04",
+        "page": 5,
+        "reached": [],
+        "cited": []
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-021",
+      "program": "medicare_b",
+      "jurisdiction": "both",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": null,
+      "correct": false,
+      "refused": "not_a_denial_letter",
+      "route_program": null,
+      "route_reason": null,
+      "route_outside_corpus": null,
+      "stage_errors": [],
+      "findings": {
+        "supported": 0,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": null,
+      "critique": null,
+      "cost_usd": 0.0,
+      "stage_cost_usd": {
+        "intake": 0.0,
+        "investigation": 0.0,
+        "verdict": 0.0,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 4.8,
+      "error": null,
+      "proposed_outcome": null,
+      "decisive_fact": null,
+      "settled_by": null,
+      "relies_on_exception": null,
+      "plan_source": null,
+      "planned_questions": [],
+      "exceptions": [],
+      "hinge": {
+        "doc_id": "fed-20",
+        "page": 7,
+        "reached": [],
+        "cited": []
+      },
+      "miss": {
+        "stage": "intake",
+        "why": "intake refused the letter (not_a_denial_letter)"
+      }
+    },
+    {
+      "id": "dc-022",
+      "program": "medicare_advantage",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_advantage",
+      "route_reason": "The letter is about Medicare Advantage, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.066581,
+      "stage_cost_usd": {
+        "intake": 0.005939,
+        "investigation": 0.036439,
+        "verdict": 0.007381,
+        "letter": 0.009165,
+        "critique": 0.007657
+      },
+      "seconds": 25.3,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "The service billed was an emergency department visit (code 99284)",
+      "settled_by": "letter",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is an emergency department visit covered under Medicare Advantage?"
+        },
+        {
+          "topic": "conditions",
+          "question": "Does Medicare Advantage require prior authorization before an emergency department visit?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Medicare Advantage say about denying an emergency department visit as out-of-network and not approved in advance because out-of-network services require prior authorization?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception under Medicare Advantage that covers an emergency department visit at an out-of-network hospital even though the plan says out-of-network services require prior authorization?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the appeal process under Medicare Advantage for an adverse benefit determination, including how to request a reconsideration or appeal, the deadline to file, and where to file it?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Is there an exception under Medicare Advantage that covers an emergency department visit at an out-of-network hospital even though the plan says out-of-network services require prior authorization?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "the letter states no specific fact an exception could turn on (a procedure, what the drug is for, a program such as QMB), so the quote could not be checked against one"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fed-11",
+        "page": 30,
+        "reached": [
+          "f2",
+          "f3"
+        ],
+        "cited": [
+          "f2",
+          "f3"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-023",
+      "program": "medicare_advantage",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_advantage",
+      "route_reason": "The letter is about Medicare Advantage, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 2,
+        "issues_fixed": 2,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.081196,
+      "stage_cost_usd": {
+        "intake": 0.00552,
+        "investigation": 0.045612,
+        "verdict": 0.00783,
+        "letter": 0.007821,
+        "critique": 0.014413
+      },
+      "seconds": 30.1,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "Whether Medicare Advantage allows denial of an emergency department visit solely because the final diagnosis was not an emergency",
+      "settled_by": "documents",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is an emergency department visit covered by Medicare Advantage?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What conditions does Medicare Advantage require for an emergency department visit to be considered covered, such as how an emergency medical condition is defined?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Does Medicare Advantage have an exception that covers an emergency department visit even when the final diagnosis was not an emergency, for example when the member came in reporting severe chest pain?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Medicare Advantage say about denying an emergency department visit billed as procedure code 99285 because the final diagnosis was not an emergency medical condition and emergency room services for non-emergencies are not covered?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What are the appeal rules for Medicare Advantage, including what counts as an adverse benefit determination, how to file a grievance or appeal or reconsideration and request a fair hearing, the deadline to file, and where to file?"
+        },
+        {
+          "topic": "limits",
+          "question": "Does Medicare Advantage limit how much it pays or how many times it covers an emergency department visit billed under procedure code 99285?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f3",
+          "question": "Does Medicare Advantage have an exception that covers an emergency department visit even when the final diagnosis was not an emergency, for example when the member came in reporting severe chest pain?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f2, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fed-11",
+        "page": 29,
+        "reached": [
+          "f2",
+          "f3",
+          "f4"
+        ],
+        "cited": [
+          "f2",
+          "f3",
+          "f4"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-024",
+      "program": "medicare_advantage",
+      "jurisdiction": "Federal",
+      "trap": "yes",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_advantage",
+      "route_reason": "The letter is about Medicare Advantage, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.05548,
+      "stage_cost_usd": {
+        "intake": 0.006294,
+        "investigation": 0.042735,
+        "verdict": 0.006451,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 16.6,
+      "error": null,
+      "proposed_outcome": "consistent",
+      "decisive_fact": "The skin biopsy was for an unrelated non-emergency problem during emergency treatment for a fracture at an out-of-network hospital",
+      "settled_by": "letter",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "appeal",
+          "question": "Under Medicare Advantage, what are the rules for appealing an adverse benefit determination, including how to file a grievance or appeal or request a fair hearing, the deadline to do so, and where to file?"
+        },
+        {
+          "topic": "reason",
+          "question": "Under Medicare Advantage, what do the rules say about paying for a skin biopsy when it is described as not related to the emergency and provided as an unrelated non-emergency problem during emergency treatment at an out-of-network hospital?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Under Medicare Advantage, is there an exception that would still cover a skin biopsy performed during an emergency visit at an out-of-network hospital even though it was for an unrelated non-emergency problem, for example when the emergency care itself was approved and paid?"
+        },
+        {
+          "topic": "coverage",
+          "question": "Under Medicare Advantage, is a skin biopsy covered as a benefit?"
+        },
+        {
+          "topic": "conditions",
+          "question": "Under Medicare Advantage, what conditions such as prior authorization, medical necessity criteria, or documentation are required for a skin biopsy to be covered?"
+        },
+        {
+          "topic": "other",
+          "question": "Under Medicare Advantage, what are the rules about billing a member for a skin biopsy provided during emergency care at an out-of-network hospital?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f3",
+          "question": "Under Medicare Advantage, is there an exception that would still cover a skin biopsy performed during an emergency visit at an out-of-network hospital even though it was for an unrelated non-emergency problem, for example when the emergency care itself was approved and paid?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f2, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fed-11",
+        "page": 31,
+        "reached": [
+          "f2",
+          "f3",
+          "f6"
+        ],
+        "cited": [
+          "f2",
+          "f3",
+          "f6"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-025",
+      "program": "medicare_part_d",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_part_d",
+      "route_reason": "The letter is about Medicare Part D, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 4,
+        "not_settled": 1,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.050674,
+      "stage_cost_usd": {
+        "intake": 0.006299,
+        "investigation": 0.037006,
+        "verdict": 0.007369,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 18.0,
+      "error": null,
+      "proposed_outcome": "consistent",
+      "decisive_fact": "the drug was prescribed for hair loss and therefore used for cosmetic purposes or hair growth",
+      "settled_by": "letter",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is finasteride 1 mg tablets, 30-day supply covered under Medicare Part D?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception that allows Medicare Part D to cover finasteride 1 mg tablets even when it is prescribed for hair loss, for example if the prescription says it is for a different medical use and not for cosmetic purposes or hair growth?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Medicare Part D say about not covering drugs used for cosmetic purposes or hair growth when finasteride 1 mg tablets are prescribed for hair loss?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What conditions does Medicare Part D require for covering finasteride 1 mg tablets, such as prior authorization, medical necessity criteria, or documentation?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the appeal process under Medicare Part D, including the adverse benefit determination, how to file a redetermination or appeal or grievance, the fair hearing, the deadline to file, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f2",
+          "question": "Is there an exception that allows Medicare Part D to cover finasteride 1 mg tablets even when it is prescribed for hair loss, for example if the prescription says it is for a different medical use and not for cosmetic purposes or hair growth?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "the letter states no specific fact an exception could turn on (a procedure, what the drug is for, a program such as QMB), so the quote could not be checked against one"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fed-10",
+        "page": 13,
+        "reached": [],
+        "cited": []
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-026",
+      "program": "medicare_part_d",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_part_d",
+      "route_reason": "The letter is about Medicare Part D, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 4,
+        "not_settled": 2,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.070238,
+      "stage_cost_usd": {
+        "intake": 0.006141,
+        "investigation": 0.042847,
+        "verdict": 0.005366,
+        "letter": 0.006806,
+        "critique": 0.009078
+      },
+      "seconds": 25.9,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "The prescription says azelaic acid 15% gel is for rosacea, so it is not a cosmetic use under the rule.",
+      "settled_by": "letter",
+      "relies_on_exception": true,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Does Medicare Part D cover azelaic acid 15% gel when it is prescribed for rosacea?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Does Medicare Part D exclude skin products used for a cosmetic purpose from coverage?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Medicare Part D say about covering azelaic acid 15% gel when the stated reason for denial is that it is a skin product used for a cosmetic purpose?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception that allows Medicare Part D to cover azelaic acid 15% gel even though it is a skin product that could be used for a cosmetic purpose, when the prescription says the drug is for rosacea?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the Medicare Part D appeal process for an adverse benefit determination, including the redetermination, the deadline to file, and where to file the appeal?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What conditions does Medicare Part D require for covering azelaic acid 15% gel, such as prior authorization or documentation that it is for rosacea?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Is there an exception that allows Medicare Part D to cover azelaic acid 15% gel even though it is a skin product that could be used for a cosmetic purpose, when the prescription says the drug is for rosacea?",
+          "status": "not_settled",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "no verified quote (status not_settled)"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fed-10",
+        "page": 14,
+        "reached": [
+          "f1",
+          "f6"
+        ],
+        "cited": [
+          "f1",
+          "f6"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-027",
+      "program": "medicare_part_d",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_part_d",
+      "route_reason": "The letter is about Medicare Part D, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 4,
+        "verified": 4,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 3,
+        "issues_fixed": 3,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.091142,
+      "stage_cost_usd": {
+        "intake": 0.006619,
+        "investigation": 0.051087,
+        "verdict": 0.008559,
+        "letter": 0.009247,
+        "critique": 0.01563
+      },
+      "seconds": 31.6,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "The prescription was for a 30-day supply of a non-formulary drug filled on September 10, 2026, within the first 90 days of new plan coverage that started September 1, 2026, for a drug the member took before joining.",
+      "settled_by": "letter",
+      "relies_on_exception": true,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Under Medicare Part D, is a 30-day supply of a prescription drug covered when the drug is not on the plan's formulary?"
+        },
+        {
+          "topic": "reason",
+          "question": "Under Medicare Part D, what does the program say about denying coverage for a 30-day supply of a prescription drug because the drug is not on the plan's formulary and non-formulary drugs are not covered unless an exception is approved?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Under Medicare Part D, is there an exception that covers a 30-day supply of a prescription drug even when it is not on the formulary, when the drug is one the member took before joining the plan and the plan coverage started on September 1, 2026?"
+        },
+        {
+          "topic": "conditions",
+          "question": "Under Medicare Part D, what conditions must be met to get coverage for a 30-day supply of a prescription drug that is not on the formulary, such as getting an exception approved or showing medical necessity?"
+        },
+        {
+          "topic": "limits",
+          "question": "Under Medicare Part D, are there limits on how much of a 30-day supply of a prescription drug is covered, such as a transition supply for new members?"
+        },
+        {
+          "topic": "appeal",
+          "question": "Under Medicare Part D, what is the appeal process for an adverse benefit determination, including how to file a redetermination, grievance or appeal, request a fair hearing, the deadline to file, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f2",
+          "question": "Under Medicare Part D, what does the program say about denying coverage for a 30-day supply of a prescription drug because the drug is not on the plan's formulary and non-formulary drugs are not covered unless an exception is approved?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "the letter states no specific fact an exception could turn on (a procedure, what the drug is for, a program such as QMB), so the quote could not be checked against one"
+        },
+        {
+          "finding_id": "f3",
+          "question": "Under Medicare Part D, is there an exception that covers a 30-day supply of a prescription drug even when it is not on the formulary, when the drug is one the member took before joining the plan and the plan coverage started on September 1, 2026?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "the letter states no specific fact an exception could turn on (a procedure, what the drug is for, a program such as QMB), so the quote could not be checked against one"
+        },
+        {
+          "finding_id": "f4",
+          "question": "Under Medicare Part D, what conditions must be met to get coverage for a 30-day supply of a prescription drug that is not on the formulary, such as getting an exception approved or showing medical necessity?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "the letter states no specific fact an exception could turn on (a procedure, what the drug is for, a program such as QMB), so the quote could not be checked against one"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fed-10",
+        "page": 41,
+        "reached": [
+          "f1",
+          "f4",
+          "f5"
+        ],
+        "cited": [
+          "f1",
+          "f4",
+          "f5"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-028",
+      "program": "medicare_a",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_a",
+      "route_reason": "The letter is about Medicare Part A, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 4,
+        "verified": 4,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 1,
+        "issues_fixed": 1,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.084229,
+      "stage_cost_usd": {
+        "intake": 0.005057,
+        "investigation": 0.046834,
+        "verdict": 0.009548,
+        "letter": 0.009213,
+        "critique": 0.013577
+      },
+      "seconds": 27.3,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "Whether Medicare Part A limits hospice coverage to only two 90-day periods and one 60-day period with no further coverage.",
+      "settled_by": "documents",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Does Medicare Part A cover hospice care, routine home care for a member age 65 and older?"
+        },
+        {
+          "topic": "limits",
+          "question": "What limits does Medicare Part A set on how many benefit periods or days of hospice care, routine home care a member can receive?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Medicare Part A say about whether hospice care, routine home care is limited to only two 90-day periods and one 60-day period with no further coverage after those periods are used?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Under Medicare Part A, is there an exception that allows hospice care, routine home care to be covered in a fourth or later benefit period when the hospice has recertified the terminal illness for that period, even though the first two 90-day periods and one 60-day period have been used?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What conditions does Medicare Part A require for hospice care, routine home care to be covered in a subsequent benefit period, such as recertification of terminal illness?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What does Medicare Part A say about the appeal process, including the adverse benefit determination, the appeal and fair hearing, the deadline to file, and where to file an appeal?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Under Medicare Part A, is there an exception that allows hospice care, routine home care to be covered in a fourth or later benefit period when the hospice has recertified the terminal illness for that period, even though the first two 90-day periods and one 60-day period have been used?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f5, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fed-03",
+        "page": 4,
+        "reached": [
+          "f3",
+          "f4",
+          "f5"
+        ],
+        "cited": [
+          "f3",
+          "f4",
+          "f5"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-029",
+      "program": "medicare_a",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_a",
+      "route_reason": "The letter is about Medicare Part A, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.05885,
+      "stage_cost_usd": {
+        "intake": 0.005862,
+        "investigation": 0.044528,
+        "verdict": 0.00846,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 18.0,
+      "error": null,
+      "proposed_outcome": "consistent",
+      "decisive_fact": "The hospital records show only 1 qualifying inpatient day, with the other 2 days classified as outpatient observation, so the 3-day inpatient requirement is not met.",
+      "settled_by": "letter",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is a skilled nursing facility stay covered by Medicare Part A?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What conditions does Medicare Part A require for a skilled nursing facility stay to be covered, including any prior hospital stay requirements?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Medicare Part A say about whether outpatient observation days count toward the qualifying 3-day inpatient hospital stay required for a skilled nursing facility stay?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception that allows Medicare Part A to cover a skilled nursing facility stay even when the 3-day inpatient hospital stay requirement is not met because 2 of the days were outpatient observation, such as during an emergency waiver period?"
+        },
+        {
+          "topic": "limits",
+          "question": "What limits does Medicare Part A place on how many days of a skilled nursing facility stay are covered and what the member pays?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the appeal process under Medicare Part A, including the redetermination, the deadline to file, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Is there an exception that allows Medicare Part A to cover a skilled nursing facility stay even when the 3-day inpatient hospital stay requirement is not met because 2 of the days were outpatient observation, such as during an emergency waiver period?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f2, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fed-22",
+        "page": 105,
+        "reached": [
+          "f3",
+          "f4"
+        ],
+        "cited": [
+          "f3",
+          "f4"
+        ]
+      },
+      "miss": null
+    },
+    {
+      "id": "dc-030",
+      "program": "unknown",
+      "jurisdiction": "Federal",
+      "trap": "yes",
+      "demo": "no",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "not_settled",
+      "correct": true,
+      "refused": null,
+      "route_program": "unknown",
+      "route_reason": "The letter is from Sample Employer Health Plan, a plan outside the public programs in the corpus (Florida Medicaid, KidCare, Medicare). No document in the corpus governs it; the Florida Medicaid and federal Medicare rules are checked for reference only.",
+      "route_outside_corpus": true,
+      "stage_errors": [],
+      "findings": {
+        "supported": 8,
+        "not_settled": 4,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 1,
+        "issues_fixed": 1,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.104469,
+      "stage_cost_usd": {
+        "intake": 0.005813,
+        "investigation": 0.076943,
+        "verdict": 0.0,
+        "letter": 0.009807,
+        "critique": 0.011906
+      },
+      "seconds": 31.1,
+      "error": null,
+      "proposed_outcome": "not_settled",
+      "decisive_fact": null,
+      "settled_by": null,
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Does Florida Medicaid cover outpatient physical therapy visits for adults?"
+        },
+        {
+          "topic": "limits",
+          "question": "Does Medicare cover outpatient physical therapy visits and is there a limit on how many visits per year are covered?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What conditions does Medicare require for outpatient physical therapy visits to be covered, such as prior authorization, medical necessity criteria, or documentation?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception that allows Florida Medicaid or Medicare to cover additional outpatient physical therapy visits for adults even though a 20-visit per year limit has been reached, such as for medical necessity or after a related surgery or procedure?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Medicare say about denying coverage for outpatient physical therapy visits because the member has used all 20 covered visits for the calendar year?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the appeal process for Florida Medicaid, including what is an adverse benefit determination, how to file a grievance or appeal and request a fair hearing, what are the deadlines, and where do you file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f7",
+          "question": "Is there an exception that allows Florida Medicaid or Medicare to cover additional outpatient physical therapy visits for adults even though a 20-visit per year limit has been reached, such as for medical necessity or after a related surgery or procedure?",
+          "status": "supported",
+          "state": "not_relevant",
+          "relevant": false,
+          "reason": "it is for members under 21, and the member is 21 or older"
+        },
+        {
+          "finding_id": "f8",
+          "question": "Is there an exception that allows Florida Medicaid or Medicare to cover additional outpatient physical therapy visits for adults even though a 20-visit per year limit has been reached, such as for medical necessity or after a related surgery or procedure?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f2, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fed-21",
+        "page": 19,
+        "reached": [],
+        "cited": []
+      },
+      "miss": null
+    }
+  ]
+}

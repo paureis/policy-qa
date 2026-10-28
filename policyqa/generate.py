@@ -226,13 +226,15 @@ class Provider:
     set; an endpoint that rejects it with a 400 gets the same request without it.
     """
 
-    def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None, timeout: float = 120.0, transport=None, reasoning_effort: str | None = None):
+    def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None, timeout: float | None = None, transport=None, reasoning_effort: str | None = None):
         self.base_url = (base_url or os.environ.get("POLICYQA_LLM_BASE_URL", "")).rstrip("/")
         self.api_key = api_key or os.environ.get("POLICYQA_LLM_API_KEY", "")
         self.model = model or os.environ.get("POLICYQA_LLM_MODEL", "")
         self.in_price = float(os.environ.get("POLICYQA_LLM_INPUT_USD_PER_M", "0") or 0)
         self.out_price = float(os.environ.get("POLICYQA_LLM_OUTPUT_USD_PER_M", "0") or 0)
-        self.timeout = timeout
+        # HTTP timeout in seconds: the argument, else POLICYQA_LLM_TIMEOUT_S, else 120. The open-weights
+        # endpoints take 170 s and more on the verdict stage (three Fireworks cases timed out, Oct 27).
+        self.timeout = float(timeout if timeout is not None else (os.environ.get("POLICYQA_LLM_TIMEOUT_S") or 120.0))
         self.transport = transport  # an httpx transport, for tests (httpx.MockTransport); None means the network
         self._local = threading.local()
         self.reasoning_effort = reasoning_effort if reasoning_effort is not None else (os.environ.get("POLICYQA_LLM_REASONING_EFFORT") or None)

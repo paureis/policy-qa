@@ -163,6 +163,21 @@ Open-weights comparison, Oct 27 evening: the same code and the same 30 cases on 
 
 Read with care: three of the open model's seven misses are timeouts, not verdicts, so the honest comparison is the 85.2 percent on answered cases against 83.3, with a 3.7 times slower endpoint. Its four real misses: dc-003 (consistent, got inconsistent, the same over-found exception as Muse Spark 1.3), dc-015 and dc-026 (inconsistent, got not settled: the proof is an exception the open model did not rely on), dc-017 (not settled, got inconsistent, as on every run). The Baseten endpoint for the same model is still to be run.
 
+Open-weights comparison, second run, Oct 28 midday: the same code as the Oct 28 Meta run above (the second tuning pass) and the same 30 cases on Muse Spark Open at Baseten (`meta-models/muse-spark-open-1026`, the model API; reasoning effort low, critic 1 round, three at a time; HTTP timeout raised to 300 s through the new `POLICYQA_LLM_TIMEOUT_S`; `results/case-evals-2026-10-28-baseten.*`).
+
+| Measure | Muse Spark 1.3 (Meta Model API, Oct 28) | Muse Spark Open (Baseten, Oct 28) |
+|---|---|---|
+| Verdict accuracy | 26 of 30 (86.7%) | 27 of 30 (90.0%) |
+| Intended consistent, inconsistent, not settled | 9 of 10, 11 of 13, 5 of 6 | 9 of 10, 12 of 13, 5 of 6 |
+| Refusal on the medical question (dc-011) | correct | correct |
+| Letter claims verified | 81 of 81 over 20 letters | 71 of 71 over 19 letters |
+| Critic revisions accepted | 13 of 20 | 12 of 19 |
+| Cost per case | mean $0.097, $2.92 for the run | mean $0.068, $2.04 for the run |
+| Seconds per case | mean 47, p50 50; 8 minutes wall | mean 25, p50 26; 4 minutes wall |
+| Errors | 0 | 0 (no timeouts at 300 s) |
+
+Read with care: the two runs are one case apart, and a one-case delta is inside the run-to-run variance (about two cases). What the open model's three misses say: dc-002 and dc-017 miss on both models (dc-002 at the answer stage here, the hinge page reached the model but no verified quote came from it; dc-017 at the verdict, as on every run); dc-021 (QMB cost sharing, inconsistent) never reached the chain because the open model's intake refused the letter as not a denial letter, a scope-check miss the Meta model did not make. The open model is also the one that answered dc-026 and dc-027 right this run. For the second opinion (Thursday), only the verdict stage runs on the open model, so the intake refusal does not apply there; it matters for any deployment that puts the whole chain on open weights.
+
 What the Oct 26 misses said (recorded in DECISIONS.md, Oct 26): four "not settled" rows came out "consistent" because the model takes the payer's stated facts as given (dc-009, dc-014, dc-020 scored on its alternate, dc-002 the other way); three "inconsistent" rows whose proof is an exception elsewhere in the document came out "not settled" or "consistent" (dc-018 eyeglasses after cataract surgery, dc-026 rosacea not cosmetic, dc-021 QMB cost sharing); dc-017 is a close call either way; dc-030, the employer plan, was answered with an "inconsistent" verdict although the route said no corpus document governs it, a product bug fixed the same night. These are the tuning targets, measured before any change.
 
 ## Design notes
