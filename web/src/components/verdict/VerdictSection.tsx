@@ -43,10 +43,15 @@ function proofMarks(proof: string[]): { text: string; mark: "tick" | "strike" | 
   says", "The policy says"), then the rule and the gap under them, each
   under its exhibit, then what would change it and the steelman. Classes
   only, so the block never remounts when the letter lands.
+
+  changeInSheet: a finished case without a letter (not settled). At 1024 px
+  and up "What would change it" is read on the explanation sheet (section 2),
+  so here it is display: none from lg; on the phone it stays here as always.
 */
 export function VerdictSection({
   verdict,
   changeShownBelow = false,
+  changeInSheet = false,
   proof = [],
   first = false,
   annotated = false,
@@ -55,6 +60,7 @@ export function VerdictSection({
 }: {
   verdict: Verdict;
   changeShownBelow?: boolean;
+  changeInSheet?: boolean;
   proof?: string[];
   /* The page reads outcome first: the verdict sits right under the status line, a little closer. */
   first?: boolean;
@@ -128,13 +134,21 @@ export function VerdictSection({
 
         {/* For a denial that holds, Action shows this as "What would have made it covered"; it is not repeated here. */}
         {verdict.what_would_change?.trim() && !changeShownBelow ? (
-          <div className={`mt-5 border-t border-hairline pt-4 ${annotated ? "lg:col-span-2 lg:mt-8 lg:max-w-[70ch]" : ""}`} data-what-would-change="true">
+          <div
+            className={`mt-5 border-t border-hairline pt-4 ${annotated ? "lg:col-span-2 lg:mt-8 lg:max-w-[70ch]" : ""} ${changeInSheet ? "lg:hidden" : ""}`}
+            data-what-would-change="true"
+          >
             <h3 className={h3}>What would change it</h3>
             <p className="mt-2 text-[18px] leading-relaxed lg:text-[17px]">{verdict.what_would_change}</p>
           </div>
         ) : null}
 
-        <div className={`mt-5 border-y border-hairline py-2 ${annotated ? "lg:col-span-2 lg:max-w-[70ch]" : ""}`}>
+        {/* With nothing between them at desktop (a case without a letter), the steelman keeps the 32 px the grid gives what would change it. */}
+        <div
+          className={`mt-5 border-y border-hairline py-2 ${annotated ? "lg:col-span-2 lg:max-w-[70ch]" : ""} ${
+            annotated && (changeInSheet || changeShownBelow || !verdict.what_would_change?.trim()) ? "lg:mt-8" : ""
+          }`}
+        >
           <h3 className={h3}>
             <button
               type="button"

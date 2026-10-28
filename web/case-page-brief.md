@@ -270,3 +270,71 @@ the verdict stamp is 38 px at 1280 (the sketch's 46 px wraps the longer phrasing
 sits in the band's right; every section at tabs sizes (1280 px wide and 760 px tall and up) is a
 bond sheet whose head carries its title while the index tabs carry the numbers, and the receipt stays
 a slip; under 1024 px the structure of round 3 stands as it is.
+
+## 10. Piece 2 decisions (Oct 27, 2026)
+
+The siblings without a letter (consistent, not settled) in The Case File at 1024 px and up. Made by
+the orchestrator within this brief and DESIGN.md (D1 to D8), then by the builder where marked.
+
+- D1. The folder frame is every finished case at 1024 px and up. `annotated` now means "the chain has
+  finished" (the letter stage done); `hasLetter` says whether a letter exists. A sibling's sections:
+  1 Verdict, 2 the explanation sheet ("Why the denial holds" or "Why no letter was drafted"), 3 "If you
+  still want to appeal" (its own bond sheet, register layout), 4 Investigation record, 5 Receipt. No
+  self-check section and no evidence checklist; the index tabs carry exactly those five.
+- D2. The top sheet is the letter case's: band tab, status line in the band (the existing stage line,
+  "Verdict reached. No appeal letter was drafted."), reference block with the Lead deadline, the red
+  stamp as h1, the counts as marks, the exhibit pair, the rule and the gap under it, the steelman.
+  "What would change it" is not on the top sheet at desktop for either sibling.
+- D3. Section 2 is a document: a 620 px bond sheet, 1 px ink edge, 72 px inner margins, in the
+  letter's 620 : 420 : 48 grid. On it the h2, the explanation at 18 px / 1.6, then "What would have
+  made it covered" (consistent) or "What would change it" (not settled). In the margin, anchored to
+  the explanation paragraph, the rule's citations as sidenotes with the letter's mechanics and look;
+  the steelman's citations are not added. Not settled carries an open ring and "The documents do not
+  settle this" at the margin's head.
+- D4. Not settled stays ink everywhere (measured: explanation, what would change it, margin head and
+  quotes all #1b1b1b at full opacity); the only state signal is the open ring with its words.
+- D5. `c_dual` keeps its two record columns inside the 1,088 px record sheet; nothing else changes.
+- D6. Fixture `c_notsettled*` (kind `notsettled`): the sample route, findings, card and letter text, a
+  not-settled verdict on the sample's own facts (modeled on dc-010's pattern), rule citations
+  f_2[0] and f_1[0], no letter (explanation in LETTER_DUAL's register), FILING_SAMPLE, the self-check
+  skipped with the dual's reason. `c_dual` is unchanged.
+- D7. Under 1024 px nothing changes on any case; `c_sample` does not change at any width (captures
+  before and after are pixel-identical).
+- D8. The live run is piece 3. The no-remount rule holds: the top sheet, stamp, verdict, findings and
+  receipt are the same DOM nodes from drafting to reviewed on all four cases.
+
+Decided by the builder, with the reason:
+
+- The sidenote pieces (footnote number, margin note, the overlay placement) moved from
+  `AppealLetter.tsx` into `letter/Sidenotes.tsx` unchanged, so both sheets share one implementation
+  and one look; the letter case's captures are pixel-identical after the move.
+- The expanded quote needs a control in the text, as in the letter: the explanation paragraph ends in
+  one footnote number per margin note (desktop only), kept on one line with the paragraph's last word.
+- "Found on page N" with the tick shows for every rule citation unless the verifier struck the rule
+  (then "Could not verify", as a struck letter note). The tick means the verifier found the quote on
+  the cited page, as in the letter, not that the page image located the highlight.
+- Section 3's register in the letter's grid: the deadline (date, day count, source, note) in the
+  620 px column, the filing path (where, how, citations) label over value in the 420 px column, so
+  the sheet reads as the letter case's section 3 without the checklist. The date is 20 px at 600 at
+  desktop (24 px on the phone, unchanged).
+- The skipped self-check's one line ("Self-check skipped: ...") stays on the phone and is not shown
+  at desktop, where D1 says there is no self-check section; the receipt shows no self-check step.
+- The steelman disclosure keeps 32 px above it at desktop when nothing sits between it and the rule
+  and gap (both siblings), the spacing "What would change it" has on the letter case.
+- The band's status line may take two lines (it was cut to one with an ellipsis): the siblings' stage
+  line does not fit beside the folder tab at 1280 px and up. The letter case's line fits on one, so
+  it renders exactly as before.
+
+Fix pass after the evaluation (Oct 27, 2026):
+
+- The explanation sheet stands at least as tall as its margin notes: when the notes run past the
+  text, the sheet stretches (white space at its foot), so both columns end on one foot and the 96 px
+  gap to section 3 is measured from it. An open overlay still grows the frame below the sheet.
+- `VERDICT_CONSISTENT`'s rule citations are now f_2[0] then f_2[1], so the consistent case's policy
+  exhibit and note 1 show the located Rule 59G-4.261 page 5 crop; page 38 (not located on its image)
+  stays as note 2, where the "not located" state is still shown at desktop, as it is on the letter
+  case's steelman chip. Fixture data only.
+- Not changed, by decision: the footnote number's 14 by 16 px target (the letter case's since round 3;
+  the inline-text exception of WCAG 2.5.8 applies).
+- Not changed, by decision: the band's status line may wrap to two lines.
+- Not changed, by decision: an open page overlay that runs past the sheet grows the frame below it.

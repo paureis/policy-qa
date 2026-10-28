@@ -981,7 +981,7 @@ function startFixtureInvestigation(caseId: string, at: number = Date.now()): voi
   if (!fixtureStarts.has(caseId)) fixtureStarts.set(caseId, at);
 }
 
-const FIXTURE_ID = /^c_(sample\d*|dual\d*|fail\d*|error\d*|consistent\d*|rejected\d*|checkerror\d*)$/;
+const FIXTURE_ID = /^c_(sample\d*|dual\d*|fail\d*|error\d*|consistent\d*|notsettled\d*|rejected\d*|checkerror\d*)$/;
 
 /*
   Fixture ids never collide with the API's (c_ and six hex digits), so outside
@@ -996,6 +996,7 @@ function fixtureCase(caseId: string, now: number): CaseRecord | null {
   if (!FIXTURE_ID.test(caseId)) return null;
   const dual = caseId.startsWith("c_dual");
   const consistent = caseId.startsWith("c_consistent");
+  const notSettled = caseId.startsWith("c_notsettled");
   const fail = caseId.startsWith("c_fail");
   const withError = caseId.startsWith("c_error");
   const rejected = caseId.startsWith("c_rejected");
@@ -1023,7 +1024,17 @@ function fixtureCase(caseId: string, now: number): CaseRecord | null {
     card.member_age_group = { value: "65_plus", confidence: "high" };
   }
   /* After the last finding, the chain continues: deciding, decided, drafting, drafted, reviewing, reviewed. */
-  const kind = dual ? "dual" : consistent ? "consistent" : rejected ? "rejected" : checkError ? "checkerror" : "sample";
+  const kind = dual
+    ? "dual"
+    : consistent
+      ? "consistent"
+      : notSettled
+        ? "notsettled"
+        : rejected
+          ? "rejected"
+          : checkError
+            ? "checkerror"
+            : "sample";
   const chain = finished && !fail ? fixtureChain(kind, now - (startedAt + latency)) : null;
   const trace: TraceSpan[] = [
     { name: "route", ms: 2 },
@@ -1688,7 +1699,8 @@ const VERDICT_CONSISTENT = (): Verdict => ({
   rule: {
     statement:
       "Services rendered in excess of the authorized amount are subject to the plan's reimbursement limits, and the authorized hours are those stated on the authorization for the period.",
-    citations: [ref("f_2", 1), ref("f_2", 0)],
+    /* The located page first, so the policy exhibit shows its crop; page 38 (not located on its image) stays as note 2. */
+    citations: [ref("f_2", 0), ref("f_2", 1)],
   },
   gap: "There is no gap. The letter's reason is the rule: the hours billed for September exceeded the hours on the authorization, and no document found allows the plan to pay hours beyond it.",
   what_would_change:
@@ -1746,6 +1758,50 @@ const LETTER_DUAL = (): Letter => ({
     how: "Ask in writing which program processed the claim. The appeal path depends on the answer.",
     citation: null,
   },
+  verification: { claims: 0, verified: 0, struck: 0 },
+  ...usage(FIXTURE_DRAFT_MS),
+});
+
+/*
+  c_notsettled*: the common live not-settled case on a single route, so it has a
+  clean demo state. Modeled on case dc-010's pattern (the rule leaves the number
+  to a member-specific document outside the corpus), drafted Oct 27, 2026, on the
+  sample case's own facts: the letter says the hours exceed the authorized
+  amount; the policy sets the hours on the authorization after a medical
+  necessity review; the September authorization itself is not among the
+  documents, so they do not settle whether the denial holds. Fixture data only.
+*/
+const VERDICT_NOT_SETTLED = (): Verdict => ({
+  status: "done",
+  steelman: {
+    argument:
+      "Services rendered in excess of the authorized amount are subject to the plan's reimbursement limits, so the plan may refuse to pay for hours billed beyond the authorization.",
+    citations: [ref("f_2", 1)],
+  },
+  outcome: "not_settled",
+  headline: VERDICT_HEADLINES.not_settled,
+  rule: {
+    statement:
+      "The number of private duty nursing hours is set through the medical necessity review and stated on the authorization for each period. The service is covered for members under 21 as ordered by the treating physician.",
+    citations: [ref("f_2", 0), ref("f_1", 0)],
+  },
+  gap: "The letter says the hours billed exceed the authorized amount. Under the policy, that amount is the number stated on the September authorization after a medical necessity review, and the authorization is a document issued for this member, not one of the policy documents. Nothing found states how many hours it approved, so the documents do not settle whether the denial holds.",
+  what_would_change:
+    "A copy of the September authorization stating the number of hours approved would show whether the hours billed exceed it.",
+  ...usage(FIXTURE_DECIDE_MS),
+});
+
+const LETTER_NOT_SETTLED = (): Letter => ({
+  status: "done",
+  applicable: false,
+  explanation:
+    "The documents do not settle whether the denial holds, so no appeal letter is drafted. Ask the plan for a copy of the September authorization that states the approved hours, then start a new case with it.",
+  to: "",
+  re: "",
+  paragraphs: [],
+  evidence_checklist: [],
+  deadline: fixtureDeadline(),
+  filing: FILING_SAMPLE,
   verification: { claims: 0, verified: 0, struck: 0 },
   ...usage(FIXTURE_DRAFT_MS),
 });
@@ -1927,11 +1983,12 @@ const CRITIQUE_RUNNING = (): Critique => ({
   error: null,
 });
 
-type FixtureKind = "sample" | "consistent" | "dual" | "rejected" | "checkerror";
+type FixtureKind = "sample" | "consistent" | "dual" | "notsettled" | "rejected" | "checkerror";
 
 /* The letter as drafted, then as GET /case/{id} returns it once reviewed. */
 function draftedLetter(kind: FixtureKind): Letter {
-  const letter = kind === "dual" ? LETTER_DUAL() : kind === "consistent" ? LETTER_CONSISTENT() : LETTER_SAMPLE();
+  const letter =
+    kind === "dual" ? LETTER_DUAL() : kind === "consistent" ? LETTER_CONSISTENT() : kind === "notsettled" ? LETTER_NOT_SETTLED() : LETTER_SAMPLE();
   return { ...letter, draft_paragraphs: structuredClone(letter.paragraphs) };
 }
 
@@ -1951,6 +2008,7 @@ function reviewed(kind: FixtureKind): { status: CaseStatus; letter: Letter; crit
     case "consistent":
       return { status: "reviewed", letter, critique: CRITIQUE_SKIPPED("No letter was drafted for a consistent denial.") };
     case "dual":
+    case "notsettled":
       return { status: "reviewed", letter, critique: CRITIQUE_SKIPPED("No letter was drafted because the documents do not settle the denial.") };
   }
 }
@@ -1960,7 +2018,8 @@ function fixtureChain(
   kind: FixtureKind,
   t: number,
 ): { status: CaseStatus; verdict: Verdict | null; letter: Letter | null; critique: Critique | null } {
-  const verdict = kind === "dual" ? VERDICT_DUAL() : kind === "consistent" ? VERDICT_CONSISTENT() : VERDICT_SAMPLE();
+  const verdict =
+    kind === "dual" ? VERDICT_DUAL() : kind === "consistent" ? VERDICT_CONSISTENT() : kind === "notsettled" ? VERDICT_NOT_SETTLED() : VERDICT_SAMPLE();
   const draftedAt = FIXTURE_DECIDE_MS + FIXTURE_DECIDED_MS + FIXTURE_DRAFT_MS;
   if (t < 0) return { status: "investigated", verdict: null, letter: null, critique: null };
   if (t < FIXTURE_DECIDE_MS) return { status: "deciding", verdict: null, letter: null, critique: null };

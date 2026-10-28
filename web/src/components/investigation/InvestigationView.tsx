@@ -172,15 +172,29 @@ export function InvestigationView({ caseId }: { caseId: string }) {
     DOM order must change with the visual order. Under 1024px the page is the
     phone column. At 1280 px and up the folder's index tabs repeat the
     numbered sections down the folder's right edge.
+
+    Since Oct 27, 2026 (piece 2) the folder is every finished case, with or
+    without a letter: annotated is "the chain has finished" (the letter
+    stage done), and hasLetter says whether a letter exists. A finished case
+    without a letter (consistent, not settled) has the same top sheet, then
+    2 the explanation sheet ("Why the denial holds" or "Why no letter was
+    drafted", the rule's citations in the margin), 3 "If you still want to
+    appeal" on its own sheet, 4 Investigation record, 5 Receipt; no
+    self-check section (it is skipped when no letter is drafted).
   */
-  const annotated = letterDone && letter.applicable;
+  const annotated = letterDone;
+  const hasLetter = letterDone && letter.applicable;
   const desk = annotated && desktop;
   /* The self-check opens a numbered section only when it ran (or failed); skipped or still running, it does not. */
   const selfCheckSection =
-    letterDone && critique !== null && (selfCheckFailed || critiqueError(critique) !== null || (critique.status === "done" && !critique.skipped));
-  const numbers = annotated
-    ? { verdict: 1, letter: 2, send: 3, record: 4, selfCheck: selfCheckSection ? 5 : null, receipt: selfCheckSection ? 6 : 5 }
-    : null;
+    hasLetter && critique !== null && (selfCheckFailed || critiqueError(critique) !== null || (critique.status === "done" && !critique.skipped));
+  const numbers = hasLetter
+    ? { verdict: 1, main: 2, filing: 3, record: 4, selfCheck: selfCheckSection ? 5 : null, receipt: selfCheckSection ? 6 : 5 }
+    : annotated
+      ? { verdict: 1, main: 2, filing: 3, record: 4, selfCheck: null, receipt: 5 }
+      : null;
+  /* Section 2 without a letter: the explanation sheet's head, as ActionSection words it. */
+  const explanationTitle = verdict?.outcome === "consistent" ? "Why the denial holds" : "Why no letter was drafted";
   /* The band and the page share one width, so the wordmark and the content share an edge. */
   const width = annotated
     ? "max-w-[640px] lg:max-w-[1152px] lg:px-8"
@@ -195,8 +209,15 @@ export function InvestigationView({ caseId }: { caseId: string }) {
   const tabs: IndexTab[] = numbers
     ? [
         { n: numbers.verdict, label: "Verdict", target: "verdict-heading" },
-        { n: numbers.letter, label: "Appeal letter", target: "action-heading" },
-        { n: numbers.send, label: "What to send and where to file", target: "send-heading" },
+        ...(hasLetter
+          ? [
+              { n: numbers.main, label: "Appeal letter", target: "action-heading" },
+              { n: numbers.filing, label: "What to send and where to file", target: "send-heading" },
+            ]
+          : [
+              { n: numbers.main, label: explanationTitle, target: "action-heading" },
+              { n: numbers.filing, label: "If you still want to appeal", target: "deadline-heading" },
+            ]),
         { n: numbers.record, label: "Investigation record", target: "findings-heading" },
         ...(numbers.selfCheck !== null ? [{ n: numbers.selfCheck, label: "Self-check", target: "selfcheck-heading" }] : []),
         { n: numbers.receipt, label: "Receipt", target: "trust-heading" },
@@ -220,10 +241,11 @@ export function InvestigationView({ caseId }: { caseId: string }) {
 
   const verdictBlock =
     record && verdictDone ? (
-      <div className={dual ? "lg:max-w-[640px]" : ""}>
+      <div className={dual && !annotated ? "lg:max-w-[640px]" : ""}>
         <VerdictSection
           verdict={verdict}
           changeShownBelow={letterDone && !letter.applicable && verdict.outcome === "consistent"}
+          changeInSheet={annotated && !hasLetter}
           proof={proof}
           first={outcomeFirst}
           annotated={annotated}
@@ -235,7 +257,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
 
   const outcome =
     record && letterDone ? (
-      <div className={dual ? "lg:max-w-[640px]" : ""}>
+      <div className={dual && !annotated ? "lg:max-w-[640px]" : ""}>
         <ActionSection
           letter={letter}
           verdict={verdictDone ? verdict : null}
@@ -245,7 +267,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
           critiqueFailure={selfCheckFailed ? critique?.error?.trim() || "The service reported an error and gave no reason." : null}
           annotated={annotated}
           desk={desk}
-          n={numbers ? { letter: numbers.letter, send: numbers.send } : null}
+          n={numbers ? { main: numbers.main, filing: numbers.filing } : null}
         />
       </div>
     ) : null;
@@ -279,7 +301,8 @@ export function InvestigationView({ caseId }: { caseId: string }) {
             <p
               aria-live="polite"
               aria-atomic="true"
-              className="hidden min-w-0 truncate text-[14px] leading-snug lg:block"
+              /* Two lines at most: the stage line of a case without a letter is longer than the band's room beside the folder tab. */
+              className="hidden min-w-0 text-[14px] leading-snug lg:line-clamp-2"
               title={bandStatus}
               data-band-status="true"
             >
@@ -411,7 +434,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                     />
 
                     {/* At desktop the self-check follows the record (on the phone it sits under the letter, inside Action). */}
-                    {desk && letterDone ? (
+                    {desk && hasLetter ? (
                       <SelfCheck
                         critique={critique}
                         letter={letter}
@@ -441,7 +464,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                     ) : null}
 
                     {done && investigation ? (
-                      <div className={dual ? "lg:max-w-[640px]" : ""}>
+                      <div className={dual && !annotated ? "lg:max-w-[640px]" : ""}>
                         <TrustPanel
                           investigation={investigation}
                           verdict={verdict}

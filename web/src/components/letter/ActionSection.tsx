@@ -5,6 +5,7 @@ import { IN_SHEET, OPENING, OPENING_H2, PHONE_SHEET, PHONE_SHEET_ONLY, SHEET, SH
 import { AppealLetter } from "./AppealLetter";
 import { DeadlineFiling } from "./DeadlineFiling";
 import { EvidenceChecklist } from "./EvidenceChecklist";
+import { ExplanationSheet } from "./ExplanationSheet";
 import { SelfCheck } from "./SelfCheck";
 
 /* The anchor the status line "Appeal letter ready." links to. */
@@ -26,14 +27,22 @@ function deadlineLine(letter: Letter, today: Date): string {
   service covered, then the deadline and path in case the person appeals
   anyway. The self-check sits between the letter and the checklist.
 
-  annotated: the finished case with a letter; its classes take the desktop
-  layout at 1024px and up (CSS only, so nothing remounts): the letter is
-  section 2 of the page, with its numbered opening. desk: the same at desktop
-  width as the script sees it; the letter becomes the Annotated Letter (US
-  Letter pages, sidenotes, Copy, Download and the deadline in the margin
-  beside the sheet head), the checklist and the filing path become section 3
-  ("What to send and where to file") under the sheet, and the self-check is
-  left to the page, which places it after the investigation record.
+  annotated: the finished case (the letter stage done), with or without a
+  letter; its classes take the desktop layout at 1024px and up (CSS only, so
+  nothing remounts). With a letter: the letter is section 2 of the page, with
+  its numbered opening. desk: the same at desktop width as the script sees
+  it; the letter becomes the Annotated Letter (US Letter pages, sidenotes,
+  Copy, Download and the deadline in the margin beside the sheet head), the
+  checklist and the filing path become section 3 ("What to send and where to
+  file") under the sheet, and the self-check is left to the page, which
+  places it after the investigation record.
+
+  Without a letter (consistent, not settled), at 1024 px and up: section 2 is
+  the explanation sheet (ExplanationSheet: a 620 px bond sheet with the rule's
+  citations as sidenotes in the margin), section 3 is "If you still want to
+  appeal" on its own bond sheet in the register layout (DeadlineFiling). There
+  is no self-check section: the self-check is skipped when no letter is
+  drafted, and its one line stays on the phone only.
 */
 export function ActionSection({
   letter,
@@ -54,22 +63,26 @@ export function ActionSection({
   critiqueFailure?: string | null;
   annotated?: boolean;
   desk?: boolean;
-  /* The numbers of the letter section and of "What to send and where to file" at desktop. */
-  n?: { letter: number; send: number } | null;
+  /*
+    The numbers of sections 2 and 3 at desktop: the letter and "What to send and where to file",
+    or, without a letter, the explanation sheet and "If you still want to appeal".
+  */
+  n?: { main: number; filing: number } | null;
 }) {
-  const settledAgainst = verdict?.outcome === "consistent";
   const sheet = desk && letter.applicable;
+  /* The finished case without a letter, at 1024 px and up (classes only). */
+  const sibling = annotated && !letter.applicable;
   return (
     <>
       <section
         id={letter.applicable ? APPEAL_LETTER_ID : undefined}
         aria-labelledby="action-heading"
-        className={`land mt-10 scroll-mt-4 ${annotated ? `${PHONE_SHEET_ONLY} ${OPENING}` : PHONE_SHEET}`}
+        className={`land mt-10 scroll-mt-4 ${annotated ? `${PHONE_SHEET_ONLY} ${letter.applicable ? OPENING : "lg:mt-24 tabs:mt-20"}` : PHONE_SHEET}`}
         data-action={letter.applicable ? "letter" : "explanation"}>
         {letter.applicable ? (
           <>
             <h2 id="action-heading" className={`mt-1 text-[22px] leading-tight font-bold ${annotated ? OPENING_H2 : ""}`}>
-              <SectionTitle title="Your appeal letter" short="Appeal letter" n={annotated ? (n?.letter ?? null) : null} />
+              <SectionTitle title="Your appeal letter" short="Appeal letter" n={annotated ? (n?.main ?? null) : null} />
             </h2>
             <p className={`mt-2 text-[16px] text-muted ${annotated ? "lg:mt-3" : ""}`}>
               {sheet
@@ -85,18 +98,7 @@ export function ActionSection({
             />
           </>
         ) : (
-          <>
-            <h2 id="action-heading" className="mt-1 text-[22px] leading-tight font-bold">
-              {settledAgainst ? "Why the denial holds" : "Why no letter was drafted"}
-            </h2>
-            <p className="mt-3 text-[18px] leading-relaxed lg:text-[17px]">{letter.explanation?.trim() || "The service gave no explanation."}</p>
-            {settledAgainst && verdict?.what_would_change?.trim() ? (
-              <div className="mt-5 border-t border-hairline pt-4">
-                <h3 className="text-[18px] font-bold">What would have made it covered</h3>
-                <p className="mt-2 text-[18px] leading-relaxed lg:text-[17px]">{verdict.what_would_change}</p>
-              </div>
-            ) : null}
-          </>
+          <ExplanationSheet letter={letter} verdict={verdict} sheet={sibling} desk={desk} n={n?.main ?? null} />
         )}
       </section>
       {sheet ? (
@@ -109,7 +111,7 @@ export function ActionSection({
         <div className={`land mt-10 ${SHEET}`} data-sheet-section="send">
           <section aria-labelledby="send-heading" className={`lg:border-t-4 lg:border-ink lg:pt-4 ${IN_SHEET}`} data-send="true">
             <h2 id="send-heading" className={`mt-1 text-[22px] leading-tight font-bold ${OPENING_H2} ${SHEET_HEAD}`}>
-              <SectionTitle title="What to send and where to file" short="What to send and where to file" n={n?.send ?? null} />
+              <SectionTitle title="What to send and where to file" short="What to send and where to file" n={n?.filing ?? null} />
             </h2>
             <div className="mt-8 grid desk-cols items-start">
               <EvidenceChecklist items={letter.evidence_checklist ?? []} register />
@@ -117,6 +119,15 @@ export function ActionSection({
             </div>
           </section>
         </div>
+      ) : sibling ? (
+        <>
+          {/* The skipped self-check's one line on the phone; at desktop there is no self-check section. */}
+          {desk ? null : <SelfCheck critique={critique} letter={letter} failedReason={critiqueFailure} />}
+          {/* Section 3 at desktop: "If you still want to appeal" on its own bond sheet, in the register layout. */}
+          <div className={`land mt-10 ${SHEET}`} data-sheet-section="appeal">
+            <DeadlineFiling letter={letter} today={today} sheet n={n?.filing ?? null} />
+          </div>
+        </>
       ) : (
         <>
           <SelfCheck critique={critique} letter={letter} failedReason={critiqueFailure} />
