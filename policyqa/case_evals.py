@@ -25,9 +25,14 @@ Scoring (`score`):
   document in the corpus governs the plan; added Oct 26 for employer and commercial payers).
 
 Reported per case: verdict, refusal, route, findings by status, letter verification, the critic's
-rounds and issues, cost per stage and in total, and seconds. The summary adds accuracy overall and
-by intended outcome, program, and jurisdiction, the refusal result, the letter verification and
-struck rates, critic acceptance, mean and p50 cost and seconds, and the list of wrong cases.
+rounds and issues, cost per stage and in total, and seconds. Since Oct 27 (second tuning pass) also,
+so every miss traces to a stage: `proposed_outcome` (the model's call before any code guard), the
+verdict's `decisive_fact` and `settled_by`, `relies_on_exception`, the plan's source and
+`planned_questions`, `exceptions` (each exception finding, relevant or not, and why:
+policyqa.relevance), `hinge` (which findings' passages reached the case's hinge page and which quote
+it), and `miss` ({stage, why}: miss_stage). The summary adds accuracy overall and by intended
+outcome, program, and jurisdiction, the refusal result, the letter verification and struck rates,
+critic acceptance, mean and p50 cost and seconds, the list of wrong cases, and the misses by stage.
 """
 from __future__ import annotations
 
@@ -210,6 +215,88 @@ def stage_errors(case: dict) -> list[dict]:
     return out
 
 
+def planned_questions(inv: dict) -> list[dict]:
+    """The planner's questions, once each and in planned order ({topic, question}); a dual route asks each twice."""
+    out, seen = [], set()
+    for f in (inv or {}).get("findings") or []:
+        if not isinstance(f, dict):
+            continue
+        key = (f.get("topic"), f.get("question"))
+        if key not in seen:
+            seen.add(key)
+            out.append({"topic": f.get("topic"), "question": f.get("question")})
+    return out
+
+
+def _page(v) -> int | None:
+    try:
+        return int(str(v).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def hinge_trace(row: dict, inv: dict) -> dict | None:
+    """Where the case's hinge page (cases.csv hinge_doc_id, hinge_page) went: the findings whose passages
+    reached it, and the supported findings that quote it. None when the case has no hinge page."""
+    doc, page = (row.get("hinge_doc_id") or "").strip(), _page(row.get("hinge_page"))
+    if not doc or page is None:
+        return None
+    fs = [f for f in (inv or {}).get("findings") or [] if isinstance(f, dict)]
+
+    def hit(items) -> bool:
+        return any(i.get("doc_id") == doc and _page(i.get("page")) == page for i in items or [])
+
+    return {"doc_id": doc, "page": page, "reached": [f.get("id") for f in fs if hit(f.get("passages"))],
+            "cited": [f.get("id") for f in fs if f.get("status") == "supported" and hit(f.get("citations"))]}
+
+
+GUARDED = {"payer_determination": "the decisive fact is the payer's own determination", "outside_documents": "the decisive fact is in a document outside the corpus"}
+
+
+def miss_stage(rec: dict) -> dict | None:
+    """The stage a wrong row traces to, with one line why ({stage, why}); None for a right row.
+
+    In order: an error names its failed stage (or "harness" when the chain itself raised or timed out); a
+    refusal is "intake"; a model proposal that was right before a code guard changed it is "verdict" (the
+    guard); then by the hinge page: quoted in a supported finding means the evidence was there ("verdict"),
+    reached but never quoted is "answer", never reached is "retrieval", or "planning" when no planned
+    question asked for an exception or a second rule either. Without a hinge page the miss is "verdict"."""
+    from .relevance import is_exception_finding
+
+    if rec.get("correct"):
+        return None
+    if rec.get("error"):
+        stages = [e["stage"] for e in rec.get("stage_errors") or []]
+        return {"stage": stages[0] if stages else "harness", "why": f"error: {rec['error']}"[:300]}
+    if rec.get("refused"):
+        return {"stage": "intake", "why": f"intake refused the letter ({rec['refused']})"}
+    got, proposed, intended = rec.get("got"), rec.get("proposed_outcome"), rec.get("intended")
+    if got is None:
+        return {"stage": "verdict", "why": "no verdict"}
+    exc = ", ".join(f"{e['finding_id']} {str(e.get('state') or 'unchecked').replace('_', ' ')}" for e in rec.get("exceptions") or [] if e.get("status") == "supported")
+    exc_part = f"; exceptions: {exc}" if exc else "; no exception finding was supported"
+    fact = f"decisive fact \"{rec.get('decisive_fact')}\" ({rec.get('settled_by')})" if rec.get("decisive_fact") else "no decisive fact named"
+    if proposed and proposed != got and score(rec["id"], intended, proposed):
+        if rec.get("settled_by") in GUARDED:
+            how = GUARDED[rec["settled_by"]]
+        elif rec.get("relies_on_exception"):
+            how = "the exception it relied on does not name the letter's facts"
+        else:
+            how = "the rule had no valid citation"
+        return {"stage": "verdict", "why": f"code guard: the model proposed {proposed}, and a guard made it {got} because {how}{exc_part}"}
+    hinge = rec.get("hinge")
+    if hinge:
+        where = f"{hinge['doc_id']} p{hinge['page']}"
+        if hinge["cited"]:
+            return {"stage": "verdict", "why": f"the hinge page {where} was quoted ({', '.join(hinge['cited'])}); the model proposed {proposed}, {fact}{exc_part}"}
+        if hinge["reached"]:
+            return {"stage": "answer", "why": f"the hinge page {where} reached the model ({', '.join(hinge['reached'])}) but no verified quote came from it"}
+        if not any(is_exception_finding(q) for q in rec.get("planned_questions") or []):
+            return {"stage": "planning", "why": f"no question's passages reached the hinge page {where}, and no planned question asked for an exception or a second rule"}
+        return {"stage": "retrieval", "why": f"no question's passages reached the hinge page {where} ({len(rec.get('planned_questions') or [])} questions planned, plan from the {rec.get('plan_source')})"}
+    return {"stage": "verdict", "why": f"the model proposed {proposed}, {fact}{exc_part}"}
+
+
 def build_row(row: dict, result: dict | None, seconds: float, error: str | None = None) -> dict:
     case = (result or {}).get("case") or None
     refused = (result or {}).get("refused")
@@ -221,6 +308,8 @@ def build_row(row: dict, result: dict | None, seconds: float, error: str | None 
         "correct": False, "refused": refused, "route_program": None, "route_reason": None, "route_outside_corpus": None, "stage_errors": [],
         "findings": {s: 0 for s in FINDING_STATUSES}, "letter": None, "critique": None, "cost_usd": 0.0,
         "stage_cost_usd": {s: 0.0 for s in STAGES}, "seconds": round(seconds, 1), "error": error,
+        "proposed_outcome": None, "decisive_fact": None, "settled_by": None, "relies_on_exception": None, "plan_source": None,
+        "planned_questions": [], "exceptions": [], "hinge": hinge_trace(row, {}), "miss": None,
     }
     if case:
         route = case.get("route") or {}
@@ -252,7 +341,19 @@ def build_row(row: dict, result: dict | None, seconds: float, error: str | None 
         fatal = [e for e in errs if e["fatal"]]
         if fatal and not rec["error"]:
             rec["error"] = "; ".join(f"{e['stage']}: {e['error']}" for e in fatal)[:500]
+        from .relevance import mark_exceptions
+
+        df = verdict.get("decisive_fact") if isinstance(verdict.get("decisive_fact"), dict) else {}
+        rec["proposed_outcome"] = verdict.get("proposed_outcome")
+        rec["decisive_fact"] = df.get("fact") or None
+        rec["settled_by"] = df.get("settled_by") or None
+        rec["relies_on_exception"] = verdict.get("relies_on_exception")
+        rec["plan_source"] = (inv.get("plan") or {}).get("source")
+        rec["planned_questions"] = planned_questions(inv)
+        rec["exceptions"] = [{k: m[k] for k in ("finding_id", "question", "status", "state", "relevant", "reason")} for m in mark_exceptions(inv, case)]
+        rec["hinge"] = hinge_trace(row, inv)
     rec["correct"] = score(row["id"], rec["intended"], rec["got"], refused=rec["refused"], error=rec["error"])
+    rec["miss"] = miss_stage(rec)
     return rec
 
 
@@ -366,6 +467,8 @@ def summarize(rows: list[dict]) -> dict:
     confusion: dict[str, Counter] = defaultdict(Counter)
     for r in rows:
         confusion[r["intended"]][_got_label(r)] += 1
+    misses = [{"id": r["id"], "intended": r["intended"], "got": r.get("got"), "stage": r["miss"]["stage"], "why": r["miss"]["why"]}
+              for r in rows if not r["correct"] and isinstance(r.get("miss"), dict)]
     return {
         "n": overall["n"],
         "correct": overall["correct"],
@@ -392,6 +495,8 @@ def summarize(rows: list[dict]) -> dict:
         "errors": [{"id": r["id"], "error": r["error"]} for r in rows if r.get("error")],
         "wrong": [{"id": r["id"], "intended": r["intended"], "got": r["got"], "refused": r.get("refused"), "error": r.get("error")}
                   for r in rows if not r["correct"]],
+        "misses": misses,
+        "misses_by_stage": dict(Counter(m["stage"] for m in misses)),
     }
 
 
@@ -451,6 +556,13 @@ def render_markdown(res: dict) -> str:
         for w in s["wrong"]:
             why = f"error: {w['error']}" if w.get("error") else (f"refused ({w['refused']})" if w.get("refused") else f"got {w['got']}")
             lines.append(f"- {w['id']}: intended {w['intended']}, {why}")
+        lines.append("")
+    if s.get("misses"):
+        lines += ["Misses by stage (the stage each wrong case traces to; rule in policyqa/case_evals.py, miss_stage):", "",
+                  "| Case | Intended | Got | Stage | Why |", "|---|---|---|---|---|"]
+        for m in s["misses"]:
+            why = str(m["why"]).replace("|", "/")
+            lines.append(f"| {m['id']} | {m['intended']} | {m.get('got') or 'none'} | {m['stage']} | {why} |")
         lines.append("")
     for o in s["outside_corpus"]:
         lines.append(f"{o['id']} route: program {o['route_program']} ({'unknown, as expected outside the corpus' if o['route_unknown'] else 'not unknown'}; {'the router said no corpus document governs it' if o['route_outside_corpus'] else 'the router did not say no corpus document governs it'}). Reason given: {o['route_reason']}")

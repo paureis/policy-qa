@@ -102,7 +102,9 @@ def fixture_api(monkeypatch, tmp_path):
 
 
 ROW_KEYS = {"id", "program", "jurisdiction", "trap", "demo", "intended", "got", "correct", "refused", "route_program",
-            "route_reason", "stage_errors", "findings", "letter", "critique", "cost_usd", "stage_cost_usd", "seconds", "error"}
+            "route_reason", "stage_errors", "findings", "letter", "critique", "cost_usd", "stage_cost_usd", "seconds", "error",
+            # Oct 27, second pass: each miss traces to a stage
+            "proposed_outcome", "decisive_fact", "settled_by", "relies_on_exception", "plan_source", "planned_questions", "exceptions", "hinge", "miss"}
 
 
 def test_three_cases_end_to_end_through_the_cli(fixture_api, tmp_path):
@@ -143,8 +145,10 @@ def test_three_cases_end_to_end_through_the_cli(fixture_api, tmp_path):
         assert key in s
 
     text = md.read_text(encoding="utf-8")
-    case_lines = [ln for ln in text.splitlines() if ln.startswith("| dc-")]
+    per_case, misses = text.split("Misses by stage")
+    case_lines = [ln for ln in per_case.splitlines() if ln.startswith("| dc-")]
     assert len(case_lines) == 3
+    assert [ln.split(" | ")[0] for ln in misses.splitlines() if ln.startswith("| dc-")] == ["| dc-002"]
     assert "| dc-002 | consistent | inconsistent | no |" in text
     assert "Accuracy" in text
 
@@ -291,6 +295,111 @@ def test_a_result_with_neither_case_nor_refusal_is_an_error():
     row = {"id": "dc-001", "program": "florida_medicaid_mma", "jurisdiction": "Florida", "trap": "no", "demo": "yes", "intended_outcome": "inconsistent"}
     r = ce.build_row(row, {"refused": None, "case": None}, 0.0)
     assert r["correct"] is False and r["error"] == "no result"
+
+
+# ---- Oct 27, second pass: rows say which stage each miss traces to ---------------------------------------
+
+DC002_ROW = {"id": "dc-002", "program": "florida_medicaid_mma", "jurisdiction": "Florida", "trap": "yes", "demo": "yes", "intended_outcome": "consistent",
+             "hinge_doc_id": "fl-04", "hinge_page": "4"}
+UNDER_21 = "As such, services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary."
+PDN_RULE = "Florida Medicaid recipients under the age of 21 years requiring medically necessary PDN."
+EXC_Q = "Is there an exception under Florida Medicaid (MMA) that covers private duty nursing even though it is only for members under 21?"
+
+
+def _f(fid, topic, status, question, cites=(), passages=(), jurisdiction="Florida"):
+    return {"id": fid, "topic": topic, "status": status, "question": question, "jurisdiction": jurisdiction, "answer": "a", "error": None,
+            "citations": [{"doc_id": d, "title": f"Title of {d}", "page": p, "quote": q, "overlap": 1.0} for d, p, q in cites],
+            "passages": [{"chunk_id": f"{d}:p{p:03d}:0", "doc_id": d, "title": f"Title of {d}", "page": p} for d, p in passages], "struck": []}
+
+
+def fake_case(verdict_over=None, findings=None, plan_source="model"):
+    """A finished case as api_chain returns it, shaped like dc-002 on Oct 27 (consistent, called inconsistent)."""
+    card = {"program": {"value": "florida_medicaid_mma"}, "member_age_group": {"value": "adult"}, "service": {"value": "Private duty nursing, 12 hours per day"},
+            "denial_reason": {"value": "Private duty nursing is covered only for members under the age of 21."}, "payer_name": {"value": "Sample Health Plan"}}
+    findings = findings if findings is not None else [
+        _f("f1", "coverage", "supported", "Is private duty nursing covered under Florida Medicaid (MMA)?", [("fl-04", 4, PDN_RULE)], [("fl-04", 4), ("fl-04", 6)]),
+        _f("f2", "appeal", "supported", "How does a member appeal under Florida Medicaid (MMA)?", [("fl-21", 41, "An enrollee may file an appeal within sixty (60) days.")], [("fl-21", 41)]),
+        _f("f3", "exclusions", "supported", EXC_Q, [("fl-04", 6, UNDER_21)], [("fl-04", 6)]),
+        _f("f4", "reason", "not_settled", "What do the rules say when private duty nursing is covered only for members under 21?", (), [("fl-04", 5)]),
+    ]
+    verdict = {"status": "done", "outcome": "inconsistent", "proposed_outcome": "inconsistent", "cost_usd": 0.01, "error": None,
+               "decisive_fact": {"fact": "The member's age on the dates of service.", "settled_by": "letter"}, "relies_on_exception": True, "exceptions": []}
+    verdict.update(verdict_over or {})
+    return {"status": "reviewed", "card": card, "summary": None, "cost_usd": 0.0,
+            "route": {"program": "florida_medicaid_mma", "jurisdictions": ["Florida"], "reason": "r", "outside_corpus": False},
+            "investigation": {"status": "done", "cost_usd": 0.02, "plan": {"source": plan_source, "questions": 4}, "findings": findings},
+            "verdict": verdict, "letter": None, "critique": None}
+
+
+def test_a_row_records_the_proposed_outcome_the_decisive_fact_the_plan_and_the_exceptions():
+    r = ce.build_row(DC002_ROW, {"refused": None, "case": fake_case()}, 1.0)
+    assert r["got"] == "inconsistent" and r["correct"] is False
+    assert r["proposed_outcome"] == "inconsistent"
+    assert r["decisive_fact"] == "The member's age on the dates of service." and r["settled_by"] == "letter" and r["relies_on_exception"] is True
+    assert r["plan_source"] == "model"
+    assert r["planned_questions"][0] == {"topic": "coverage", "question": "Is private duty nursing covered under Florida Medicaid (MMA)?"}
+    assert [q["topic"] for q in r["planned_questions"]] == ["coverage", "appeal", "exclusions", "reason"]
+    assert r["exceptions"] == [{"finding_id": "f3", "question": EXC_Q, "status": "supported", "state": "not_relevant", "relevant": False,
+                                "reason": "it is for members under 21, and the member is 21 or older"}]
+    assert r["hinge"] == {"doc_id": "fl-04", "page": 4, "reached": ["f1"], "cited": ["f1"]}
+    assert r["miss"]["stage"] == "verdict"
+    assert "fl-04 p4" in r["miss"]["why"] and "f3 not relevant" in r["miss"]["why"]
+
+
+def test_planned_questions_are_listed_once_on_a_dual_route():
+    q = "Is the service covered under Medicare Part B?"
+    findings = [_f("f1", "coverage", "supported", q, jurisdiction="Florida"), _f("f2", "coverage", "not_settled", q, jurisdiction="Federal")]
+    r = ce.build_row(DC002_ROW, {"refused": None, "case": fake_case(findings=findings)}, 1.0)
+    assert r["planned_questions"] == [{"topic": "coverage", "question": q}]
+
+
+@pytest.mark.parametrize("verdict_over, findings_keep, expected_stage, phrase", [
+    # the model was right and a code guard changed it
+    ({"outcome": "not_settled", "proposed_outcome": "consistent", "decisive_fact": {"fact": "x", "settled_by": "payer_determination"}}, None, "verdict", "guard"),
+    # the hinge page reached the model but no verified quote came from it
+    (None, ["f2", "f3", "f4"], "answer", "reached"),
+    # no question's passages reached the hinge page, and an exception question was planned
+    (None, ["f2", "f3"], "retrieval", "no question"),
+])
+def test_each_miss_traces_to_one_stage(verdict_over, findings_keep, expected_stage, phrase):
+    case = fake_case(verdict_over)
+    if findings_keep is not None:
+        fs = [f for f in case["investigation"]["findings"] if f["id"] in findings_keep]
+        for f in fs:  # drop the hinge page from what was cited; keep it in the passages only where the case says so
+            f["citations"] = [c for c in f["citations"] if c["page"] != 4]
+            if expected_stage == "retrieval":
+                f["passages"] = [p for p in f["passages"] if p["page"] != 4]
+        if expected_stage == "answer":
+            fs[-1]["passages"].append({"chunk_id": "fl-04:p004:0", "doc_id": "fl-04", "title": "t", "page": 4})
+        case["investigation"]["findings"] = fs
+    r = ce.build_row(DC002_ROW, {"refused": None, "case": case}, 1.0)
+    assert r["correct"] is False and r["miss"]["stage"] == expected_stage and phrase in r["miss"]["why"]
+
+
+def test_a_plan_without_an_exception_question_that_never_reaches_the_hinge_is_a_planning_miss():
+    findings = [_f("f1", "appeal", "supported", "How does a member appeal under Florida Medicaid (MMA)?", [("fl-21", 41, "An enrollee may file an appeal within sixty (60) days.")], [("fl-21", 41)])]
+    r = ce.build_row(DC002_ROW, {"refused": None, "case": fake_case(findings=findings)}, 1.0)
+    assert r["miss"]["stage"] == "planning"
+
+
+def test_a_right_row_has_no_miss_and_an_error_row_names_its_stage():
+    ok = ce.build_row({**DC002_ROW, "intended_outcome": "inconsistent"}, {"refused": None, "case": fake_case()}, 1.0)
+    assert ok["correct"] is True and ok["miss"] is None
+    err = ce.build_row(DC002_ROW, None, 900.0, error="TimeoutError: the chain did not finish in 900 s")
+    assert err["miss"]["stage"] == "harness" and "TimeoutError" in err["miss"]["why"]
+    assert err["planned_questions"] == [] and err["exceptions"] == [] and err["hinge"]["reached"] == []
+
+
+def test_the_summary_and_the_markdown_list_misses_by_stage():
+    rows = [ce.build_row(DC002_ROW, {"refused": None, "case": fake_case()}, 1.0),
+            ce.build_row({**DC002_ROW, "id": "dc-001", "intended_outcome": "inconsistent"}, {"refused": None, "case": fake_case()}, 1.0)]
+    s = ce.summarize(rows)
+    assert s["misses"] == [{"id": "dc-002", "intended": "consistent", "got": "inconsistent", "stage": "verdict", "why": rows[0]["miss"]["why"]}]
+    assert s["misses_by_stage"] == {"verdict": 1}
+    md = ce.render_markdown({"config": {"date": "2026-10-28", "model": "m", "critic_rounds": 1}, "summary": s, "rows": rows})
+    assert "Misses by stage" in md
+    assert "| Case | Intended | Got | Stage | Why |" in md
+    assert "| dc-002 | consistent | inconsistent | verdict | " in md
 
 
 def test_limit_zero_is_rejected():

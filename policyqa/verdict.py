@@ -20,10 +20,20 @@ Failure: a model error, a truncated reply (TruncatedResponse) or bad JSON gives 
 back but could not be used are still recorded. No supported finding at all gives the
 same template without a model call and without an error.
 
+Exceptions (Oct 27, second pass): the model sees a code check of every exception finding
+(policyqa.relevance: does its verified quote name a fact the letter states?) and says whether
+its outcome relies on an exception. Each exception is "relevant", "not_relevant" or
+"unchecked" (the letter states no specific fact, or the quote is the rule itself). An
+inconsistent outcome that relies on an exception, where no validated rule quote is relevant
+and one is not_relevant, becomes `not_settled` (proposed_outcome keeps the model's call); an
+unchecked case is never guarded. Nothing is hidden: the findings and the rule's citations stay.
+
 Verdict shape: {status, steelman: {argument, citations, unsupported}, outcome,
 proposed_outcome, headline, rule: {statement, citations, unsupported}, gap,
-what_would_change, model, input_tokens, output_tokens, reasoning_tokens, latency_ms,
-cost_usd, error}. CitationRef: {finding_id, doc_id, title, page, quote}.
+what_would_change, decisive_fact: {fact, settled_by} or null, relies_on_exception,
+exceptions: [{finding_id, question, status, relevant, reason, named}], model,
+input_tokens, output_tokens, reasoning_tokens, latency_ms, cost_usd, error}.
+CitationRef: {finding_id, doc_id, title, page, quote}.
 
 FixtureVerdict: no network. The Sunshine Health sample decided `inconsistent` with
 synthetic text marked "[fixture]", citing the investigation's own supported findings
@@ -95,11 +105,12 @@ VERDICT_SCHEMA: dict = {
             "required": ["fact", "settled_by"],
             "additionalProperties": False,
         },
+        "relies_on_exception": {"type": "boolean"},
         "outcome": {"type": "string", "enum": list(OUTCOMES)},
         "gap": {"type": "string"},
         "what_would_change": {"type": ["string", "null"]},
     },
-    "required": ["steelman", "rule", "decisive_fact", "outcome", "gap", "what_would_change"],
+    "required": ["steelman", "rule", "decisive_fact", "relies_on_exception", "outcome", "gap", "what_would_change"],
     "additionalProperties": False,
 }
 
@@ -107,12 +118,13 @@ VERDICT_SYSTEM_PROMPT = f"""You decide whether a health coverage denial holds ag
 
 Work in this order.
 1. Steelman. First argue the payer's side: write the strongest honest case, in two to four plain sentences, that the denial follows the policy, using only the supported findings. Cite them.
-2. Rule. State the rule that governs this service and this stated reason, in one or two plain sentences a reader with no insurance background understands. Cite it. When the letter cites an exclusion or a limit, look in the supported findings for an exception to it: policies often state an exclusion on one page and its exception on the next, or a second program's rule protects the member (for example a member in the Qualified Medicare Beneficiary (QMB) program cannot be billed Medicare cost-sharing). An exception that covers the letter's own facts is part of the rule.
+2. Rule. State the rule that governs this service and this stated reason, in one or two plain sentences a reader with no insurance background understands. Cite it. When the letter cites an exclusion or a limit, look in the supported findings for an exception to it: policies often state an exclusion on one page and its exception on the next, or a second program's rule protects the member (for example a member in the Qualified Medicare Beneficiary (QMB) program cannot be billed Medicare cost-sharing). An exception that covers the letter's own facts is part of the rule. An exception counts against the letter only when its quoted words name the letter's own fact (the procedure or surgery, what the drug is for, the member's other coverage, the member's age group). The findings end with an exception check done in code: an exception marked as not naming the letter's facts shows that exceptions exist, not that this denial is wrong.
 3. Decisive fact. Name the one fact the letter's reason turns on, and who settles it (settled_by):
    - "documents": a supported finding states it.
    - "letter": the letter states it as a fact about the claim: the member's age, the dates, the service or quantity billed, what the prescription says the drug is for, a related surgery, other coverage on file. Take the letter's own facts as given.
    - "payer_determination": the rule leaves it to an individual decision (a prior authorization decision, an assessment, a plan of care, the authorized amount, medical necessity for this member) and the letter only reports the payer's own conclusion about it. The payer's conclusion is not proof that the rule was met or not met.
    - "outside_documents": it is set by a document the findings refer to but do not contain (a plan's preferred drug list or formulary, a form a contract requires, the plan's own policy) or by a rule outside these documents.
+   relies_on_exception: true when the denial would be inconsistent because an exception covers the letter's facts (the rule the letter cites is real, but an exception to it applies); then cite the exception's quote in the rule. False otherwise, including when a cited rule itself contradicts the letter's reason or the letter misstates the rule. Citations are checked: an inconsistent outcome that relies on an exception whose cited quotes do not name the letter's facts becomes "not_settled".
 4. Outcome. Only then decide, choosing exactly one:
    - "consistent": {HEADLINES["consistent"]}
    - "inconsistent": {HEADLINES["inconsistent"]}
@@ -126,7 +138,7 @@ Citations: each citation names a supported finding by its id (for example "f2") 
 Never give medical advice. Do not say whether the care was needed, whether it was medically necessary for this member, or anything about treatment, diagnosis, or the member's health. Argue only from the written rules and the letter's own facts. You may repeat what a rule says about medical necessity, as a rule.
 
 Write plain English, short sentences, no legal jargon. Return JSON only, matching the schema:
-{{"steelman": {{"argument": "...", "citations": [{{"finding_id": "f1", "quote": "..."}}]}}, "rule": {{"statement": "...", "citations": [...]}}, "decisive_fact": {{"fact": "...", "settled_by": "documents" | "letter" | "payer_determination" | "outside_documents"}}, "outcome": "consistent" | "inconsistent" | "not_settled", "gap": "...", "what_would_change": "..." or null}}"""
+{{"steelman": {{"argument": "...", "citations": [{{"finding_id": "f1", "quote": "..."}}]}}, "rule": {{"statement": "...", "citations": [...]}}, "decisive_fact": {{"fact": "...", "settled_by": "documents" | "letter" | "payer_determination" | "outside_documents"}}, "relies_on_exception": true | false, "outcome": "consistent" | "inconsistent" | "not_settled", "gap": "...", "what_would_change": "..." or null}}"""
 
 
 # ---- helpers shared with letter.py ---------------------------------------------
@@ -222,8 +234,25 @@ def case_facts(card) -> str:
     return "Case card:\n" + "\n".join(lines) + f'\n\nThe letter\'s stated reason for the denial: "{reason}"'
 
 
-def findings_block(investigation) -> str:
-    """Supported findings with their verified quotes, then the other questions by question only."""
+def exception_check_block(marks: list[dict] | None) -> str:
+    """The code's exception check as the verdict reads it: one line per supported exception finding."""
+    lines = []
+    for m in marks or []:
+        if m.get("status") != "supported":
+            continue
+        if m.get("state") == "relevant":
+            lines.append(f"- [{m['finding_id']}] names the letter's facts: {m['reason']}. It can count against the denial.")
+        elif m.get("state") == "unchecked":
+            lines.append(f"- [{m['finding_id']}] was not checked: {m['reason']}. Decide from its quotes.")
+        else:
+            lines.append(f"- [{m['finding_id']}] does not name the letter's facts: {m['reason']}. It shows that exceptions exist, not that this denial is wrong; do not rely on it for an inconsistent outcome.")
+    if not lines:
+        return ""
+    return "Exception check (done in code, no model: does each exception finding's verified quote name a fact the letter states?):\n" + "\n".join(lines)
+
+
+def findings_block(investigation, exception_marks: list[dict] | None = None) -> str:
+    """Supported findings with their verified quotes, the exception check when given, then the other questions by question only."""
     parts = ["Supported findings (verified quotes from public policy documents; the only facts you may use):"]
     sup = supported_findings(investigation)
     if not sup:
@@ -231,6 +260,9 @@ def findings_block(investigation) -> str:
     for f in sup:
         quotes = "\n".join(f'- "{c.get("quote")}" ({c.get("title") or c.get("doc_id")}, page {c.get("page")})' for c in f.get("citations") or [])
         parts.append(f"[{f['id']}] topic: {f.get('topic')}, jurisdiction: {f.get('jurisdiction')}\nQuestion: {f.get('question')}\nAnswer: {f.get('answer')}\nVerified quotes:\n{quotes}")
+    check = exception_check_block(exception_marks)
+    if check:
+        parts.append(check)
     rest = unsettled_findings(investigation)
     if rest:
         parts.append("Not settled by the documents (no verified quote; each is an open question: if the letter's reason turns on one, the decisive fact is not in the documents; do not argue from these, do not cite them):\n" + "\n".join(f"- [{f.get('id')}] {f.get('question')}" for f in rest))
@@ -239,8 +271,10 @@ def findings_block(investigation) -> str:
 
 def verdict_user_message(case: dict, investigation) -> str:
     from .investigate import letter_summary_block
+    from .relevance import mark_exceptions
 
-    return case_facts(case.get("card") or {}) + letter_summary_block(case.get("summary")) + "\n\n" + findings_block(investigation) + "\n\nArgue the payer's side first, then decide. Return JSON only."
+    marks = mark_exceptions(investigation, case)
+    return case_facts(case.get("card") or {}) + letter_summary_block(case.get("summary")) + "\n\n" + findings_block(investigation, marks) + "\n\nArgue the payer's side first, then decide. Return JSON only."
 
 
 # ---- verdict ---------------------------------------------------------------------
@@ -250,7 +284,8 @@ def _meta(model: str, n_in: int = 0, n_out: int = 0, reasoning: int = 0, latency
     return {"model": model, "input_tokens": int(n_in), "output_tokens": int(n_out), "reasoning_tokens": int(reasoning), "latency_ms": round(float(latency_ms), 1), "cost_usd": float(cost_usd), "error": error}
 
 
-def _verdict(steelman: dict, outcome: str, proposed: str, rule: dict, gap: str, wwc, meta: dict) -> dict:
+def _verdict(steelman: dict, outcome: str, proposed: str, rule: dict, gap: str, wwc, meta: dict, decisive_fact: dict | None = None,
+             relies_on_exception: bool = False, exceptions: list[dict] | None = None) -> dict:
     return {
         "status": "done",
         "steelman": steelman,
@@ -260,13 +295,17 @@ def _verdict(steelman: dict, outcome: str, proposed: str, rule: dict, gap: str, 
         "rule": rule,
         "gap": gap,
         "what_would_change": wwc,
+        "decisive_fact": decisive_fact,
+        "relies_on_exception": bool(relies_on_exception),
+        "exceptions": list(exceptions or []),
         **meta,
     }
 
 
 def empty_verdict(model: str, status: str = "running", error: str | None = None) -> dict:
     """The verdict while it runs, or after an exception outside the model step: every key, no content."""
-    return {"status": status, "steelman": None, "outcome": None, "proposed_outcome": None, "headline": None, "rule": None, "gap": None, "what_would_change": None, **_meta(model, error=error)}
+    return {"status": status, "steelman": None, "outcome": None, "proposed_outcome": None, "headline": None, "rule": None, "gap": None, "what_would_change": None,
+            "decisive_fact": None, "relies_on_exception": False, "exceptions": [], **_meta(model, error=error)}
 
 
 def template_verdict(meta: dict, no_findings: bool = False) -> dict:
@@ -317,8 +356,18 @@ def outside_corpus_verdict(meta: dict, route_reason: str = "") -> dict:
     )
 
 
-def verdict_from_data(data, investigation, meta: dict) -> dict:
-    """Validate a model-shaped reply into the verdict. Raises ValueError when the reply is malformed."""
+EXCEPTION_GAP = "The only exception cited against the denial does not name the letter's facts: {reason}. It shows that exceptions exist, not that this denial is wrong, so the documents found do not settle it."
+EXCEPTION_SETTLE = "An exception whose own words name the letter's facts (the procedure or surgery, what the drug is for, the member's other coverage or age group), quoted word for word; without one, the rule the letter cites, read against the letter's own facts."
+
+
+def verdict_from_data(data, investigation, meta: dict, case: dict | None = None) -> dict:
+    """Validate a model-shaped reply into the verdict. Raises ValueError when the reply is malformed.
+
+    With `case` (the card and the intake summary), the exception check runs (policyqa.relevance): every
+    exception finding is marked relevant or not and recorded in `exceptions`, and an inconsistent outcome
+    the model says relies on an exception (`relies_on_exception`) becomes not_settled when none of the
+    rule's validated quotes is "relevant" and at least one is "not_relevant". A case whose letter states no
+    specific fact leaves its quotes "unchecked" and is never guarded. Without `case` there is no check."""
     if not isinstance(data, dict):
         raise ValueError("reply is not a JSON object")
     outcome = str(data.get("outcome") or "").strip().lower()
@@ -349,6 +398,27 @@ def verdict_from_data(data, investigation, meta: dict) -> dict:
         outcome = "not_settled"
         gap = OPEN_FACT_GAPS[settled_by].format(fact=fact or "the fact the letter's reason turns on.")
         wwc = fact or DEFAULT_SETTLE
+    relies = data.get("relies_on_exception") is True
+    marks: list[dict] = []
+    if case is not None:
+        from .relevance import citation_relevance, mark_exceptions
+
+        marks = mark_exceptions(investigation, case)
+        if outcome == "inconsistent" and relies:
+            # Oct 27, second pass (dc-002, dc-003): an exception counts against the letter only when its quoted
+            # words name the letter's fact. The cited rule stays as written; only the outcome changes.
+            # Three states (fix round): the guard fires only when no cited rule quote names a letter fact and at
+            # least one fails the check. A case with no specific fact leaves every quote "unchecked" (dc-022,
+            # dc-027), so it is never guarded; an age or program contradiction fails it with or without facts (dc-002).
+            rels = citation_relevance(rule_refs, case)
+            failed = [r for r in rels if r["state"] == "not_relevant"]
+            if failed and not any(r["state"] == "relevant" for r in rels):
+                exc_ids = {m["finding_id"] for m in marks}
+                pick = next((r for r in failed if r["finding_id"] in exc_ids), failed[0])
+                reason = pick["reason"]
+                outcome = "not_settled"
+                gap = EXCEPTION_GAP.format(reason=reason)
+                wwc = EXCEPTION_SETTLE
     if outcome == "inconsistent":
         wwc = None
     elif wwc is None:
@@ -363,6 +433,9 @@ def verdict_from_data(data, investigation, meta: dict) -> dict:
         gap,
         wwc,
         meta,
+        decisive_fact={"fact": fact, "settled_by": settled_by} if (fact or settled_by) else None,
+        relies_on_exception=relies,
+        exceptions=marks,
     )
 
 
@@ -379,7 +452,7 @@ def build_steelman_verdict(case: dict, investigation, provider) -> dict:
         text, n_in, n_out = provider.complete_parts(VERDICT_SYSTEM_PROMPT, [{"type": "text", "text": verdict_user_message(case, investigation)}], schema=VERDICT_SCHEMA, max_tokens=VERDICT_MAX_TOKENS)
         reply = (int(n_in or 0), int(n_out or 0))
         data = parse_model_json(text)
-        return verdict_from_data(data, investigation, _reply_meta(provider, model, reply, t))
+        return verdict_from_data(data, investigation, _reply_meta(provider, model, reply, t), case=case)
     except Exception as e:  # noqa: BLE001 - any failure is the not_settled template, with the reason recorded
         meta = _reply_meta(provider, model, reply, t) if reply else _meta(model, latency_ms=(time.perf_counter() - t) * 1000)
         meta["error"] = f"{type(e).__name__}: {e}"[:300]
@@ -454,4 +527,4 @@ class FixtureVerdict:
         data = self.reply(investigation)
         if data is None:
             return template_verdict(_meta(self.model), no_findings=True)
-        return verdict_from_data(json.loads(json.dumps(data)), investigation, _meta(self.model, latency_ms=self.delay * 1000))
+        return verdict_from_data(json.loads(json.dumps(data)), investigation, _meta(self.model, latency_ms=self.delay * 1000), case=case)

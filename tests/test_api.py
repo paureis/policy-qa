@@ -418,7 +418,9 @@ def test_claim_for_investigation_store_method():
 
 # ---- steelman, verdict, letter (one POST drives the chain) ------------------------------
 
-VERDICT_KEYS = {"status", "steelman", "outcome", "proposed_outcome", "headline", "rule", "gap", "what_would_change", "model", "input_tokens", "output_tokens", "reasoning_tokens", "latency_ms", "cost_usd", "error"}
+VERDICT_KEYS = {"status", "steelman", "outcome", "proposed_outcome", "headline", "rule", "gap", "what_would_change",
+                "decisive_fact", "relies_on_exception", "exceptions",  # Oct 27, second tuning pass
+                "model", "input_tokens", "output_tokens", "reasoning_tokens", "latency_ms", "cost_usd", "error"}
 LETTER_KEYS = {"status", "applicable", "explanation", "to", "re", "paragraphs", "evidence_checklist", "evidence_note", "deadline", "filing", "verification", "draft_paragraphs", "model", "input_tokens", "output_tokens", "reasoning_tokens", "latency_ms", "cost_usd", "error"}
 REF_KEYS = {"finding_id", "doc_id", "title", "page", "quote"}
 

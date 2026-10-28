@@ -381,3 +381,198 @@ def test_the_verdict_sees_the_intake_summary_but_never_the_raw_letter():
     build_steelman_verdict(c, inv, p)
     user = "".join(part["text"] for part in p.calls[0]["parts"])
     assert c["summary"] in user and "Member ID" not in user
+
+
+# ---- Oct 27, second pass: an exception counts only when its quote names the letter's fact ----------------
+
+UNDER_21_EXCEPTION = "As such, services for recipients under the age of 21 years exceeding the coverage described within this policy or the associated fee schedule may be approved, if medically necessary."
+PDN_RULE = "Florida Medicaid recipients under the age of 21 years requiring medically necessary PDN."
+CATARACT = "1 pair of eyeglasses or contact lenses after each cataract surgery with insertion of an intraocular lens"
+EYEGLASS_RULE = "Eyeglasses or contact lenses are not covered under Original Medicare."
+PDN_EXCEPTION_Q = "Is there an exception under Florida Medicaid (MMA) that covers private duty nursing, 12 hours per day even though private duty nursing is covered only for members under the age of 21?"
+EYE_EXCEPTION_Q = "Is there an exception under Medicare Part B that covers eyeglass frames after cataract surgery even though medicare does not cover eyeglasses or contact lenses?"
+
+
+def dc002_case():
+    """dc-002 shape: an adult member; the exception the planner found is for recipients under 21."""
+    inv = investigation(
+        finding("f1", "coverage", "supported", "PDN is covered for recipients under 21.", [cite("fl-04", 4, PDN_RULE)]),
+        finding("f2", "exclusions", "supported", "Services above the policy may be approved for recipients under 21.", [cite("fl-04", 6, UNDER_21_EXCEPTION)], question=PDN_EXCEPTION_Q),
+    )
+    c = case_with(inv, member_age_group="adult", service="Private duty nursing, 12 hours per day", denial_reason="Private duty nursing is covered only for members under the age of 21. Our records show the member turned 21 before the dates of service.")
+    return c, inv
+
+
+def dc018_case():
+    inv = investigation(
+        finding("f1", "exclusions", "supported", "Medicare does not cover eyeglasses.", [cite("fed-16", 7, EYEGLASS_RULE)], jurisdiction="Federal"),
+        finding("f2", "exclusions", "supported", "Medicare covers one pair after each cataract surgery with a lens.", [cite("fed-16", 8, CATARACT)], jurisdiction="Federal", question=EYE_EXCEPTION_Q),
+    )
+    c = case_with(inv, program="medicare_b", payer_name="Medicare", member_age_group="65_plus", service="Eyeglass frames after cataract surgery", denial_reason="Medicare does not cover eyeglasses or contact lenses.")
+    return c, inv
+
+
+def exception_reply(rule_quotes, relies=True, outcome="inconsistent", settled_by="letter"):
+    return {
+        "steelman": {"argument": "The policy limits the benefit and the letter applies that limit.", "citations": [{"finding_id": rule_quotes[0][0], "quote": rule_quotes[0][1]}]},
+        "rule": {"statement": "The rule the letter cites, and an exception to it.", "citations": [{"finding_id": f, "quote": q} for f, q in rule_quotes]},
+        "decisive_fact": {"fact": "The fact the exception turns on, as the letter states it.", "settled_by": settled_by},
+        "relies_on_exception": relies,
+        "outcome": outcome,
+        "gap": "An exception covers the letter's facts.",
+        "what_would_change": None,
+    }
+
+
+def _live_verdict_on(case, inv, reply):
+    """_live_verdict with the case and investigation given (the real Provider over a fake HTTP transport)."""
+    import httpx
+
+    from policyqa.generate import Provider
+    from policyqa.verdict import LiveVerdict
+
+    sent = []
+
+    def handler(request):
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(reply)}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 2000, "completion_tokens": 900}})
+
+    p = Provider(base_url="https://api.meta.ai/v1", api_key="k", model="muse-spark-1.3", transport=httpx.MockTransport(handler))
+    return LiveVerdict(p).decide(case, inv), sent
+
+
+def test_the_schema_asks_whether_the_outcome_relies_on_an_exception_and_the_prompt_says_when_one_counts():
+    props = list(VERDICT_SCHEMA["properties"])
+    assert props.index("decisive_fact") < props.index("relies_on_exception") < props.index("outcome")
+    assert VERDICT_SCHEMA["properties"]["relies_on_exception"] == {"type": "boolean"}
+    assert "relies_on_exception" in VERDICT_SCHEMA["required"]
+    s = VERDICT_SYSTEM_PROMPT.lower()
+    assert "name the letter's" in s and "relies_on_exception" in s
+
+
+def test_the_verdict_is_told_which_exceptions_name_the_letters_facts():
+    c, inv = dc002_case()
+    p = FakeProvider(good_reply())
+    build_steelman_verdict(c, inv, p)
+    user = "".join(part["text"] for part in p.calls[0]["parts"])
+    assert UNDER_21_EXCEPTION in user  # nothing is hidden: the finding and its quote are still shown
+    block = user[user.index("Exception check"):]
+    assert "[f2] does not name the letter's facts" in block and "under 21" in block and "21 or older" in block
+    c, inv = dc018_case()
+    p = FakeProvider(good_reply())
+    build_steelman_verdict(c, inv, p)
+    user = "".join(part["text"] for part in p.calls[0]["parts"])
+    assert "[f2] names the letter's facts" in user and '"cataract surgery"' in user
+
+
+def test_an_inconsistent_outcome_resting_only_on_an_irrelevant_exception_becomes_not_settled():
+    """dc-002: the verdict counted the under-21 exception for a member who is 21."""
+    c, inv = dc002_case()
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f1", PDN_RULE), ("f2", UNDER_21_EXCEPTION)]))
+    assert v["outcome"] == "not_settled" and v["proposed_outcome"] == "inconsistent"
+    assert "does not name the letter's facts" in v["gap"] and "under 21" in v["gap"]
+    assert v["what_would_change"]
+    assert v["relies_on_exception"] is True
+    assert v["rule"]["unsupported"] is False and len(v["rule"]["citations"]) == 2  # the cited rule is kept, struck nowhere
+    assert [e["finding_id"] for e in v["exceptions"]] == ["f2"] and v["exceptions"][0]["relevant"] is False
+
+
+def test_an_inconsistent_outcome_resting_on_a_relevant_exception_stands():
+    """dc-018: the exception names the cataract surgery the letter states."""
+    c, inv = dc018_case()
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f1", EYEGLASS_RULE), ("f2", CATARACT)]))
+    assert v["outcome"] == "inconsistent" and v["proposed_outcome"] == "inconsistent"
+    assert v["exceptions"][0]["relevant"] is True and v["exceptions"][0]["named"] == ["cataract surgery"]
+
+
+def test_an_exception_relied_on_but_not_cited_cannot_make_the_denial_inconsistent():
+    c, inv = dc018_case()
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f1", EYEGLASS_RULE)]))
+    assert v["outcome"] == "not_settled" and v["proposed_outcome"] == "inconsistent"
+
+
+def test_an_inconsistent_outcome_that_does_not_rely_on_an_exception_is_untouched():
+    """dc-001 and dc-007 shape: the cited rule itself contradicts the letter's reason; no exception is involved."""
+    c, inv = dc002_case()
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f1", PDN_RULE), ("f2", UNDER_21_EXCEPTION)], relies=False, settled_by="documents"))
+    assert v["outcome"] == "inconsistent"
+    # a reply without the field (older replies, fixtures) is treated as not relying on an exception
+    reply = exception_reply([("f1", PDN_RULE)])
+    reply.pop("relies_on_exception")
+    v, _ = _live_verdict_on(c, inv, reply)
+    assert v["outcome"] == "inconsistent" and v["relies_on_exception"] is False
+
+
+def test_the_guard_never_touches_a_consistent_or_not_settled_outcome():
+    c, inv = dc002_case()
+    for outcome in ("consistent", "not_settled"):
+        v, _ = _live_verdict_on(c, inv, {**exception_reply([("f1", PDN_RULE)], outcome=outcome), "what_would_change": "Coverage under another program."})
+        assert v["outcome"] == outcome
+
+
+# ---- fix round after the evaluation: a case with no letter fact is unchecked, never guarded ----------------
+
+DC022_HINGE = "The MAO is financially responsible for emergency services and urgently needed services: Regardless of whether services are obtained within or outside the plan's network"
+DC027_HINGE = "Within the first 90 days of coverage under a new plan, plans must provide a transition supply when the beneficiary requests a non-formulary drug."
+
+
+def _hinge_case(card_over, rule_quote, hinge, exc_question):
+    inv = investigation(
+        finding("f1", "reason", "supported", "The rule the letter cites.", [cite("fed-11", 30, rule_quote)], jurisdiction="Federal"),
+        finding("f2", "exclusions", "supported", "An exception applies.", [cite("fed-11", 30, hinge)], jurisdiction="Federal", question=exc_question),
+    )
+    return case_with(inv, **card_over), inv
+
+
+DC022 = ({"program": "medicare_advantage", "payer_name": "Sample Medicare Advantage Plan", "member_age_group": "65_plus",
+          "service": "Emergency department visit at an out-of-network hospital",
+          "denial_reason": "The emergency room visit was at an out-of-network hospital and was not approved in advance. Out-of-network services require prior authorization."},
+         "Out-of-network services require prior authorization under the plan's rules.", DC022_HINGE,
+         "Is there an exception under Medicare Advantage that covers an emergency department visit at an out-of-network hospital even though it was not approved?")
+DC027 = ({"program": "medicare_part_d", "payer_name": "Sample Prescription Drug Plan", "member_age_group": "65_plus",
+          "service": "Non-formulary drug, first fill after joining the plan",
+          "denial_reason": "This drug is not on the plan's formulary (list of covered drugs). Non-formulary drugs are not covered unless an exception is approved."},
+         "Non-formulary drugs are not covered unless an exception is approved by the plan.", DC027_HINGE,
+         "Is there an exception under Medicare Part D that covers a non-formulary drug, first fill after joining the plan?")
+
+
+@pytest.mark.parametrize("shape", [DC022, DC027], ids=["dc-022", "dc-027"])
+def test_a_case_with_no_letter_fact_keeps_an_inconsistent_outcome_that_relies_on_an_exception(shape):
+    """Evaluator, fix round: dc-022 (emergency care regardless of network) and dc-027 (a transition supply) were right
+    on Oct 27. Their letters state no fact a cue picks up, so the check cannot judge the exception: it is unchecked,
+    and the guard never fires on an unchecked case."""
+    c, inv = _hinge_case(*shape)
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f1", shape[1]), ("f2", shape[2])]))
+    assert v["outcome"] == "inconsistent" and v["relies_on_exception"] is True
+    assert v["exceptions"][0]["state"] == "unchecked"
+
+
+def test_the_prompt_block_for_an_unchecked_case_has_no_do_not_rely_wording():
+    c, inv = _hinge_case(*DC022)
+    p = FakeProvider(good_reply())
+    build_steelman_verdict(c, inv, p)
+    user = "".join(part["text"] for part in p.calls[0]["parts"])
+    block = user[user.index("Exception check"):]
+    assert "[f2] was not checked" in block and "states no specific fact" in block
+    assert "do not rely" not in user.lower()
+
+
+def test_a_case_with_a_fact_still_guards_an_exception_that_does_not_name_it():
+    """dc-018 with a real fact (the cataract surgery) and an exception about something else."""
+    inv = investigation(
+        finding("f1", "exclusions", "supported", "Medicare does not cover eyeglasses.", [cite("fed-16", 7, EYEGLASS_RULE)], jurisdiction="Federal"),
+        finding("f2", "exclusions", "supported", "Prosthetic lenses are covered for aphakia.", [cite("fed-16", 8, "Prosthetic lenses are covered for patients with aphakia who lack the natural lens.")], jurisdiction="Federal", question=EYE_EXCEPTION_Q),
+    )
+    c = case_with(inv, program="medicare_b", payer_name="Medicare", member_age_group="65_plus", service="Eyeglass frames after cataract surgery", denial_reason="Medicare does not cover eyeglasses or contact lenses.")
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f1", EYEGLASS_RULE), ("f2", "Prosthetic lenses are covered for patients with aphakia who lack the natural lens.")]))
+    assert v["outcome"] == "not_settled" and v["proposed_outcome"] == "inconsistent"
+    assert v["exceptions"][0]["state"] == "not_relevant"
+
+
+def test_the_verdict_records_the_decisive_fact_and_who_settles_it():
+    c, inv = dc018_case()
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f2", CATARACT)]))
+    assert v["decisive_fact"] == {"fact": "The fact the exception turns on, as the letter states it.", "settled_by": "letter"}
+    # templates carry the same keys, empty
+    v = build_steelman_verdict(case_with(investigation()), investigation(), FakeProvider(good_reply()))
+    assert v["decisive_fact"] is None and v["relies_on_exception"] is False and v["exceptions"] == []

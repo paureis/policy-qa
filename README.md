@@ -131,22 +131,22 @@ Scoring rule:
 - A critic failure leaves the verdict's score alone, because the product keeps the letter as drafted by design, and is counted as `critic_failures`.
 - `--limit` must be 1 or more; leave it out to run every case.
 
-Current numbers: Oct 27, 2026, after the verdict tuning (`results/case-evals-2026-10-27.json` and `.md`). The Oct 26 baseline is the first live run, before any tuning (`results/case-evals-2026-10-26.*`). Both runs: Muse Spark 1.3, reasoning effort low, critic 1 round, three cases at a time.
+Current numbers: Oct 28, 2026, after the second verdict tuning pass (`results/case-evals-2026-10-28.json` and `.md`); the Oct 27 column is the first tuning pass (`results/case-evals-2026-10-27.*`); the Oct 26 baseline is the first live run, before any tuning (`results/case-evals-2026-10-26.*`: 22 of 30, 73.3%, letter claims 61 of 61 over 16 letters, $0.084 and 34 s a case). All runs: Muse Spark 1.3, reasoning effort low, critic 1 round, three cases at a time.
 
-| Measure | Oct 27 (current) | Oct 26 (baseline) | Change |
+| Measure | Oct 28 (current) | Oct 27 | Change |
 |---|---|---|---|
-| Verdict accuracy | 25 of 30 (83.3%) | 22 of 30 (73.3%) | +3 cases, +10.0 points |
-| Intended consistent | 7 of 10 | 9 of 10 | -2 |
-| Intended inconsistent | 12 of 13 | 10 of 13 | +2 |
-| Intended not settled | 5 of 6 | 2 of 6 | +3 |
+| Verdict accuracy | 26 of 30 (86.7%) | 25 of 30 (83.3%) | +1 case, +3.3 points |
+| Intended consistent | 9 of 10 | 7 of 10 | +2 |
+| Intended inconsistent | 11 of 13 | 12 of 13 | -1 |
+| Intended not settled | 5 of 6 | 5 of 6 | same |
 | Refusal on the medical question (dc-011) | correct | correct | same |
-| Letter claims verified | 81 of 81 over 22 letters; 0 struck | 61 of 61 over 16 letters; 0 struck | +6 letters |
-| Critic revisions accepted | 11 of 22 | 9 of 16 | +2 |
-| Cost per case | mean $0.095, p50 $0.098, $2.84 for the run | mean $0.084, p50 $0.088, $2.50 for the run | +$0.011 mean |
-| Seconds per case | mean 47, p50 51 | mean 34, p50 38 | +13 mean |
+| Letter claims verified | 81 of 81 over 20 letters; 0 struck | 81 of 81 over 22 letters; 0 struck | same rate |
+| Critic revisions accepted | 13 of 20 | 11 of 22 | +2 |
+| Cost per case | mean $0.097, p50 $0.104, $2.92 for the run | mean $0.095, p50 $0.098, $2.84 for the run | +$0.002 mean |
+| Seconds per case | mean 47, p50 50 | mean 47, p50 51 | same |
 | Errors, template letters, critic failures | 0, 0, 0 | 0, 0, 0 | same |
 
-Oct 27 misses (5): dc-002 and dc-003, consistent, came out inconsistent; dc-007, inconsistent, came out not settled; dc-017, not settled, came out inconsistent again; dc-025, consistent, came out not settled. DECISIONS.md (Oct 27) reads each one and names the next tuning target.
+Oct 28 misses (4): dc-002, consistent, came out inconsistent again (the verdict reads the 24-hour rule as cover for an adult member; the exception check had no letter fact to test); dc-017, not settled, came out inconsistent as on every run; dc-026 and dc-027, inconsistent, came out not settled (dc-026: no planned question reached its exception page this run; dc-027: the model called the formulary a document outside the corpus). Against Oct 27: dc-003, dc-007 and dc-025 are now right, dc-026 and dc-027 are not, and the new guard fired once, on dc-008, which is scored right through its accepted alternate. Every row now records `proposed_outcome`, the decisive fact and who settles it, the planned questions, each exception finding's relevance state, and the stage the miss traces to; DECISIONS.md (Oct 28) reads the run.
 
 Open-weights comparison, Oct 27 evening: the same code and the same 30 cases on Muse Spark Open (`accounts/fireworks/models/muse-spark-open` on Fireworks, serverless, list price $1.25 and $4.25 per million tokens, the same as Muse Spark 1.3's; reasoning effort low, critic 1 round, three at a time; `results/case-evals-2026-10-27-fireworks.*`).
 
