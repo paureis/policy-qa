@@ -4,7 +4,7 @@ A coverage denial becomes a case, and the case works itself.
 
 Drop in a denial letter or an explanation of benefits, as a photo, a PDF, or text. Recourse reads it, works out which program and policy govern the service, investigates the written rules, argues the payer's side first, and then says one of three things with the rule quoted and cited to the page: the denial matches the policy, the denial appears inconsistent with the policy, or the documents do not settle it. For an inconsistent denial it drafts the appeal letter, with every sentence carrying a verified citation, plus the evidence checklist the policy itself implies, the filing deadline with a day count, and where to file. It never gives medical advice; questions about treatment or diagnosis are refused with an explanation of what the product does instead.
 
-Built for the Meta Global AI Developer Hackathon (indie track, Oct 26 to Nov 4, 2026) on Muse Spark through the Meta Model API, with Muse Spark Open on Baseten for the open-weights comparison. Corpus: 64 public Florida Medicaid, Medicare, Medicaid, and HIPAA documents, 2,589 pages.
+Built for the Meta Global AI Developer Hackathon (indie track, Oct 26 to Nov 4, 2026) on Muse Spark through the Meta Model API, with Muse Spark Open on Fireworks and Baseten for the open-weights comparison. Corpus: 64 public Florida Medicaid, Medicare, Medicaid, and HIPAA documents, 2,589 pages.
 
 Why it matters: KFF's 2025 analysis of prior authorization data puts denial rates at about 12% in Medicare Advantage, 14% in Medicaid managed care, and 18% in ACA marketplace plans, finds that denials are rarely appealed, and that 67%, 47%, and 43% of appealed denials respectively were overturned. Most people never file. The letter, the deadline, and the rule are the hard part, and they are what this does.
 
@@ -147,6 +147,21 @@ Current numbers: Oct 27, 2026, after the verdict tuning (`results/case-evals-202
 | Errors, template letters, critic failures | 0, 0, 0 | 0, 0, 0 | same |
 
 Oct 27 misses (5): dc-002 and dc-003, consistent, came out inconsistent; dc-007, inconsistent, came out not settled; dc-017, not settled, came out inconsistent again; dc-025, consistent, came out not settled. DECISIONS.md (Oct 27) reads each one and names the next tuning target.
+
+Open-weights comparison, Oct 27 evening: the same code and the same 30 cases on Muse Spark Open (`accounts/fireworks/models/muse-spark-open` on Fireworks, serverless, list price $1.25 and $4.25 per million tokens, the same as Muse Spark 1.3's; reasoning effort low, critic 1 round, three at a time; `results/case-evals-2026-10-27-fireworks.*`).
+
+| Measure | Muse Spark 1.3 (Meta Model API) | Muse Spark Open (Fireworks) |
+|---|---|---|
+| Verdict accuracy | 25 of 30 (83.3%) | 23 of 30 (76.7%); 23 of the 27 cases that answered (85.2%) |
+| Intended consistent, inconsistent, not settled | 7 of 10, 12 of 13, 5 of 6 | 9 of 10, 9 of 13, 4 of 6 |
+| Refusal on the medical question (dc-011) | correct | correct |
+| Letter claims verified | 81 of 81 over 22 letters | 67 of 67 over 19 letters |
+| Critic revisions accepted | 11 of 22 | 5 of 19 |
+| Cost per case | mean $0.095, $2.84 for the run | mean $0.067, $2.01 for the run |
+| Seconds per case | mean 47, p50 51; 8 minutes wall | mean 174, p50 146; 30 minutes wall |
+| Errors | 0 | 3 read timeouts in the verdict stage (dc-009, dc-018, dc-022) |
+
+Read with care: three of the open model's seven misses are timeouts, not verdicts, so the honest comparison is the 85.2 percent on answered cases against 83.3, with a 3.7 times slower endpoint. Its four real misses: dc-003 (consistent, got inconsistent, the same over-found exception as Muse Spark 1.3), dc-015 and dc-026 (inconsistent, got not settled: the proof is an exception the open model did not rely on), dc-017 (not settled, got inconsistent, as on every run). The Baseten endpoint for the same model is still to be run.
 
 What the Oct 26 misses said (recorded in DECISIONS.md, Oct 26): four "not settled" rows came out "consistent" because the model takes the payer's stated facts as given (dc-009, dc-014, dc-020 scored on its alternate, dc-002 the other way); three "inconsistent" rows whose proof is an exception elsewhere in the document came out "not settled" or "consistent" (dc-018 eyeglasses after cataract surgery, dc-026 rosacea not cosmetic, dc-021 QMB cost sharing); dc-017 is a close call either way; dc-030, the employer plan, was answered with an "inconsistent" verdict although the route said no corpus document governs it, a product bug fixed the same night. These are the tuning targets, measured before any change.
 

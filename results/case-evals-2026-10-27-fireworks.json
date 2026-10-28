@@ -1,0 +1,1640 @@
+{
+  "config": {
+    "date": "2026-10-27",
+    "model": "accounts/fireworks/models/muse-spark-open",
+    "reasoning_effort": "low",
+    "prices": {
+      "input_usd_per_m": 1.25,
+      "output_usd_per_m": 4.25
+    },
+    "modes": {
+      "intake": "accounts/fireworks/models/muse-spark-open",
+      "investigation": "accounts/fireworks/models/muse-spark-open",
+      "verdict": "accounts/fireworks/models/muse-spark-open",
+      "critic": "accounts/fireworks/models/muse-spark-open"
+    },
+    "critic_rounds": 1,
+    "concurrency": 3,
+    "cases": "C:\\Users\\pau\\recourse\\cases\\cases.csv",
+    "ids": null,
+    "limit": null,
+    "alternates": {
+      "dc-008": [
+        "not_settled"
+      ],
+      "dc-020": [
+        "consistent"
+      ]
+    },
+    "refusal_ids": [
+      "dc-011"
+    ],
+    "wall_s": 1778.8
+  },
+  "summary": {
+    "n": 30,
+    "correct": 23,
+    "accuracy": 0.7667,
+    "by_intended": {
+      "consistent": {
+        "n": 10,
+        "correct": 9,
+        "accuracy": 0.9
+      },
+      "inconsistent": {
+        "n": 13,
+        "correct": 9,
+        "accuracy": 0.6923
+      },
+      "not_settled": {
+        "n": 6,
+        "correct": 4,
+        "accuracy": 0.6667
+      },
+      "out_of_scope": {
+        "n": 1,
+        "correct": 1,
+        "accuracy": 1.0
+      }
+    },
+    "by_program": {
+      "florida_kidcare": {
+        "n": 3,
+        "correct": 1,
+        "accuracy": 0.3333
+      },
+      "florida_medicaid_ltc": {
+        "n": 3,
+        "correct": 3,
+        "accuracy": 1.0
+      },
+      "florida_medicaid_mma": {
+        "n": 11,
+        "correct": 9,
+        "accuracy": 0.8182
+      },
+      "medicare_a": {
+        "n": 2,
+        "correct": 2,
+        "accuracy": 1.0
+      },
+      "medicare_advantage": {
+        "n": 3,
+        "correct": 2,
+        "accuracy": 0.6667
+      },
+      "medicare_b": {
+        "n": 4,
+        "correct": 3,
+        "accuracy": 0.75
+      },
+      "medicare_part_d": {
+        "n": 3,
+        "correct": 2,
+        "accuracy": 0.6667
+      },
+      "unknown": {
+        "n": 1,
+        "correct": 1,
+        "accuracy": 1.0
+      }
+    },
+    "by_jurisdiction": {
+      "Federal": {
+        "n": 12,
+        "correct": 9,
+        "accuracy": 0.75
+      },
+      "Florida": {
+        "n": 16,
+        "correct": 12,
+        "accuracy": 0.75
+      },
+      "both": {
+        "n": 2,
+        "correct": 2,
+        "accuracy": 1.0
+      }
+    },
+    "refusal_correct": true,
+    "letter_failures": 0,
+    "critic_failures": 0,
+    "outside_corpus": [
+      {
+        "id": "dc-030",
+        "got": "not_settled",
+        "correct": true,
+        "route_program": "unknown",
+        "route_reason": "The letter is from Sample Employer Health Plan, a plan outside the public programs in the corpus (Florida Medicaid, KidCare, Medicare). No document in the corpus governs it; the Florida Medicaid and federal Medicare rules are checked for reference only.",
+        "route_unknown": true,
+        "route_outside_corpus": true
+      }
+    ],
+    "letters": {
+      "applicable": 19,
+      "claims": 67,
+      "verified": 67,
+      "struck": 0,
+      "verification_rate": 1.0,
+      "struck_rate": 0.0
+    },
+    "critic": {
+      "reviewed": 19,
+      "accepted": 5,
+      "skipped": 9,
+      "errors": 0,
+      "issues_found": 10,
+      "issues_fixed": 8
+    },
+    "cost_usd": {
+      "total": 2.006824,
+      "mean": 0.066894,
+      "p50": 0.07078
+    },
+    "seconds": {
+      "total": 5215.6,
+      "mean": 173.9,
+      "p50": 145.8
+    },
+    "confusion": {
+      "consistent": {
+        "consistent": 9,
+        "inconsistent": 1
+      },
+      "inconsistent": {
+        "inconsistent": 9,
+        "not_settled": 2,
+        "error": 2
+      },
+      "not_settled": {
+        "error": 1,
+        "not_settled": 4,
+        "inconsistent": 1
+      },
+      "out_of_scope": {
+        "refused:out_of_scope": 1
+      }
+    },
+    "errors": [
+      {
+        "id": "dc-009",
+        "error": "verdict: ReadTimeout: The read operation timed out"
+      },
+      {
+        "id": "dc-018",
+        "error": "ReadTimeout: The read operation timed out"
+      },
+      {
+        "id": "dc-022",
+        "error": "verdict: ReadTimeout: The read operation timed out"
+      }
+    ],
+    "wrong": [
+      {
+        "id": "dc-003",
+        "intended": "consistent",
+        "got": "inconsistent",
+        "refused": null,
+        "error": null
+      },
+      {
+        "id": "dc-009",
+        "intended": "not_settled",
+        "got": "not_settled",
+        "refused": null,
+        "error": "verdict: ReadTimeout: The read operation timed out"
+      },
+      {
+        "id": "dc-015",
+        "intended": "inconsistent",
+        "got": "not_settled",
+        "refused": null,
+        "error": null
+      },
+      {
+        "id": "dc-017",
+        "intended": "not_settled",
+        "got": "inconsistent",
+        "refused": null,
+        "error": null
+      },
+      {
+        "id": "dc-018",
+        "intended": "inconsistent",
+        "got": null,
+        "refused": null,
+        "error": "ReadTimeout: The read operation timed out"
+      },
+      {
+        "id": "dc-022",
+        "intended": "inconsistent",
+        "got": "not_settled",
+        "refused": null,
+        "error": "verdict: ReadTimeout: The read operation timed out"
+      },
+      {
+        "id": "dc-026",
+        "intended": "inconsistent",
+        "got": "not_settled",
+        "refused": null,
+        "error": null
+      }
+    ]
+  },
+  "rows": [
+    {
+      "id": "dc-001",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 2,
+        "verified": 2,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.073993,
+      "stage_cost_usd": {
+        "intake": 0.006741,
+        "investigation": 0.043363,
+        "verdict": 0.007346,
+        "letter": 0.008383,
+        "critique": 0.00816
+      },
+      "seconds": 140.3,
+      "error": null
+    },
+    {
+      "id": "dc-002",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "yes",
+      "demo": "yes",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 1,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.068591,
+      "stage_cost_usd": {
+        "intake": 0.006598,
+        "investigation": 0.053052,
+        "verdict": 0.008941,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 129.0,
+      "error": null
+    },
+    {
+      "id": "dc-003",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "inconsistent",
+      "correct": false,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 4,
+        "verified": 4,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.067949,
+      "stage_cost_usd": {
+        "intake": 0.005225,
+        "investigation": 0.038593,
+        "verdict": 0.007076,
+        "letter": 0.008019,
+        "critique": 0.009036
+      },
+      "seconds": 144.7,
+      "error": null
+    },
+    {
+      "id": "dc-004",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 1
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.049019,
+      "stage_cost_usd": {
+        "intake": 0.006655,
+        "investigation": 0.035929,
+        "verdict": 0.006435,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 298.3,
+      "error": null
+    },
+    {
+      "id": "dc-005",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 1
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.048978,
+      "stage_cost_usd": {
+        "intake": 0.006015,
+        "investigation": 0.036464,
+        "verdict": 0.006499,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 220.3,
+      "error": null
+    },
+    {
+      "id": "dc-006",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.062226,
+      "stage_cost_usd": {
+        "intake": 0.006222,
+        "investigation": 0.048162,
+        "verdict": 0.007842,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 69.0,
+      "error": null
+    },
+    {
+      "id": "dc-007",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 1
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 1,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.073745,
+      "stage_cost_usd": {
+        "intake": 0.007101,
+        "investigation": 0.039426,
+        "verdict": 0.007582,
+        "letter": 0.007838,
+        "critique": 0.011798
+      },
+      "seconds": 283.2,
+      "error": null
+    },
+    {
+      "id": "dc-008",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.083542,
+      "stage_cost_usd": {
+        "intake": 0.006347,
+        "investigation": 0.046538,
+        "verdict": 0.008722,
+        "letter": 0.009797,
+        "critique": 0.012138
+      },
+      "seconds": 150.0,
+      "error": null
+    },
+    {
+      "id": "dc-009",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "not_settled",
+      "correct": false,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [
+        {
+          "stage": "verdict",
+          "error": "ReadTimeout: The read operation timed out"
+        }
+      ],
+      "findings": {
+        "supported": 7,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 5,
+        "verified": 5,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.075033,
+      "stage_cost_usd": {
+        "intake": 0.006518,
+        "investigation": 0.052136,
+        "verdict": 0.0,
+        "letter": 0.007806,
+        "critique": 0.008573
+      },
+      "seconds": 267.2,
+      "error": "verdict: ReadTimeout: The read operation timed out"
+    },
+    {
+      "id": "dc-010",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "not_settled",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 1
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 1,
+        "issues_fixed": 1,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.07377,
+      "stage_cost_usd": {
+        "intake": 0.006772,
+        "investigation": 0.036814,
+        "verdict": 0.007502,
+        "letter": 0.0109,
+        "critique": 0.011782
+      },
+      "seconds": 232.9,
+      "error": null
+    },
+    {
+      "id": "dc-011",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "yes",
+      "demo": "no",
+      "intended": "out_of_scope",
+      "intended_csv": "not_settled",
+      "got": null,
+      "correct": true,
+      "refused": "out_of_scope",
+      "route_program": null,
+      "route_reason": null,
+      "route_outside_corpus": null,
+      "stage_errors": [],
+      "findings": {
+        "supported": 0,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": null,
+      "critique": null,
+      "cost_usd": 0.0,
+      "stage_cost_usd": {
+        "intake": 0.0,
+        "investigation": 0.0,
+        "verdict": 0.0,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 0.0,
+      "error": null
+    },
+    {
+      "id": "dc-012",
+      "program": "florida_medicaid_ltc",
+      "jurisdiction": "both",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_ltc",
+      "route_reason": "The letter is from a Florida Medicaid Long-term Care plan and the member is 65 or older, so Medicare may also cover this service; both sets of rules are checked side by side.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 7,
+        "not_settled": 2,
+        "unsupported": 0,
+        "error": 3
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 5,
+        "verified": 5,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.097677,
+      "stage_cost_usd": {
+        "intake": 0.005906,
+        "investigation": 0.064209,
+        "verdict": 0.007196,
+        "letter": 0.00931,
+        "critique": 0.011056
+      },
+      "seconds": 378.2,
+      "error": null
+    },
+    {
+      "id": "dc-013",
+      "program": "florida_medicaid_ltc",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_ltc",
+      "route_reason": "The letter is about Florida Medicaid Long-term Care, so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 1,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.078875,
+      "stage_cost_usd": {
+        "intake": 0.006153,
+        "investigation": 0.04701,
+        "verdict": 0.007492,
+        "letter": 0.007397,
+        "critique": 0.010823
+      },
+      "seconds": 135.2,
+      "error": null
+    },
+    {
+      "id": "dc-014",
+      "program": "florida_medicaid_ltc",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "not_settled",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_ltc",
+      "route_reason": "The letter is about Florida Medicaid Long-term Care, so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 3,
+        "not_settled": 2,
+        "unsupported": 0,
+        "error": 1
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 4,
+        "verified": 4,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.07079,
+      "stage_cost_usd": {
+        "intake": 0.005469,
+        "investigation": 0.03852,
+        "verdict": 0.006959,
+        "letter": 0.009486,
+        "critique": 0.010356
+      },
+      "seconds": 252.5,
+      "error": null
+    },
+    {
+      "id": "dc-015",
+      "program": "florida_kidcare",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "not_settled",
+      "correct": false,
+      "refused": null,
+      "route_program": "florida_kidcare",
+      "route_reason": "The letter is about Florida KidCare, so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 2,
+        "not_settled": 3,
+        "unsupported": 0,
+        "error": 1
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.061758,
+      "stage_cost_usd": {
+        "intake": 0.006348,
+        "investigation": 0.032661,
+        "verdict": 0.006557,
+        "letter": 0.007884,
+        "critique": 0.008308
+      },
+      "seconds": 278.4,
+      "error": null
+    },
+    {
+      "id": "dc-016",
+      "program": "florida_kidcare",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_kidcare",
+      "route_reason": "The letter is about Florida KidCare, so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 3,
+        "not_settled": 2,
+        "unsupported": 1,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.052312,
+      "stage_cost_usd": {
+        "intake": 0.005483,
+        "investigation": 0.040384,
+        "verdict": 0.006445,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 93.6,
+      "error": null
+    },
+    {
+      "id": "dc-017",
+      "program": "florida_kidcare",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "inconsistent",
+      "correct": false,
+      "refused": null,
+      "route_program": "florida_kidcare",
+      "route_reason": "The letter is about Florida KidCare, so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 4,
+        "verified": 4,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.078706,
+      "stage_cost_usd": {
+        "intake": 0.005619,
+        "investigation": 0.045053,
+        "verdict": 0.006988,
+        "letter": 0.009105,
+        "critique": 0.011941
+      },
+      "seconds": 188.9,
+      "error": null
+    },
+    {
+      "id": "dc-018",
+      "program": "medicare_b",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": null,
+      "correct": false,
+      "refused": null,
+      "route_program": null,
+      "route_reason": null,
+      "route_outside_corpus": null,
+      "stage_errors": [],
+      "findings": {
+        "supported": 0,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": null,
+      "critique": null,
+      "cost_usd": 0.0,
+      "stage_cost_usd": {
+        "intake": 0.0,
+        "investigation": 0.0,
+        "verdict": 0.0,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 120.4,
+      "error": "ReadTimeout: The read operation timed out"
+    },
+    {
+      "id": "dc-019",
+      "program": "medicare_b",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_b",
+      "route_reason": "The letter is about Medicare Part B, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.055023,
+      "stage_cost_usd": {
+        "intake": 0.004665,
+        "investigation": 0.043037,
+        "verdict": 0.007321,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 85.3,
+      "error": null
+    },
+    {
+      "id": "dc-020",
+      "program": "medicare_b",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "not_settled",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_b",
+      "route_reason": "The letter is about Medicare Part B, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 1
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 5,
+        "verified": 5,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.073581,
+      "stage_cost_usd": {
+        "intake": 0.006363,
+        "investigation": 0.0392,
+        "verdict": 0.007955,
+        "letter": 0.009386,
+        "critique": 0.010677
+      },
+      "seconds": 138.8,
+      "error": null
+    },
+    {
+      "id": "dc-021",
+      "program": "medicare_b",
+      "jurisdiction": "both",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "unknown",
+      "route_reason": "The letter does not say which program paid for the care, so the Florida Medicaid rules and the federal Medicare rules are checked side by side.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 3,
+        "not_settled": 9,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.106295,
+      "stage_cost_usd": {
+        "intake": 0.007696,
+        "investigation": 0.074866,
+        "verdict": 0.007304,
+        "letter": 0.007583,
+        "critique": 0.008846
+      },
+      "seconds": 147.0,
+      "error": null
+    },
+    {
+      "id": "dc-022",
+      "program": "medicare_advantage",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "not_settled",
+      "correct": false,
+      "refused": null,
+      "route_program": "medicare_advantage",
+      "route_reason": "The letter is about Medicare Advantage, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [
+        {
+          "stage": "verdict",
+          "error": "ReadTimeout: The read operation timed out"
+        }
+      ],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.063647,
+      "stage_cost_usd": {
+        "intake": 0.00587,
+        "investigation": 0.041557,
+        "verdict": 0.0,
+        "letter": 0.008629,
+        "critique": 0.007591
+      },
+      "seconds": 240.4,
+      "error": "verdict: ReadTimeout: The read operation timed out"
+    },
+    {
+      "id": "dc-023",
+      "program": "medicare_advantage",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_advantage",
+      "route_reason": "The letter is about Medicare Advantage, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 1
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 3,
+        "verified": 3,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 2,
+        "issues_fixed": 2,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.07077,
+      "stage_cost_usd": {
+        "intake": 0.007414,
+        "investigation": 0.035682,
+        "verdict": 0.007368,
+        "letter": 0.007938,
+        "critique": 0.012368
+      },
+      "seconds": 242.1,
+      "error": null
+    },
+    {
+      "id": "dc-024",
+      "program": "medicare_advantage",
+      "jurisdiction": "Federal",
+      "trap": "yes",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_advantage",
+      "route_reason": "The letter is about Medicare Advantage, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.055868,
+      "stage_cost_usd": {
+        "intake": 0.006382,
+        "investigation": 0.043495,
+        "verdict": 0.005991,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 83.9,
+      "error": null
+    },
+    {
+      "id": "dc-025",
+      "program": "medicare_part_d",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "no",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_part_d",
+      "route_reason": "The letter is about Medicare Part D, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 3,
+        "not_settled": 3,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.055274,
+      "stage_cost_usd": {
+        "intake": 0.00546,
+        "investigation": 0.04352,
+        "verdict": 0.006294,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 88.0,
+      "error": null
+    },
+    {
+      "id": "dc-026",
+      "program": "medicare_part_d",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "not_settled",
+      "correct": false,
+      "refused": null,
+      "route_program": "medicare_part_d",
+      "route_reason": "The letter is about Medicare Part D, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 4,
+        "not_settled": 3,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 2,
+        "verified": 2,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 2,
+        "issues_fixed": 2,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.084598,
+      "stage_cost_usd": {
+        "intake": 0.007678,
+        "investigation": 0.046707,
+        "verdict": 0.008502,
+        "letter": 0.009081,
+        "critique": 0.01263
+      },
+      "seconds": 300.7,
+      "error": null
+    },
+    {
+      "id": "dc-027",
+      "program": "medicare_part_d",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_part_d",
+      "route_reason": "The letter is about Medicare Part D, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 4,
+        "verified": 4,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 1,
+        "issues_fixed": 1,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.072962,
+      "stage_cost_usd": {
+        "intake": 0.006091,
+        "investigation": 0.038777,
+        "verdict": 0.007038,
+        "letter": 0.010442,
+        "critique": 0.010614
+      },
+      "seconds": 127.2,
+      "error": null
+    },
+    {
+      "id": "dc-028",
+      "program": "medicare_a",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_a",
+      "route_reason": "The letter is about Medicare Part A, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 4,
+        "verified": 4,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 2,
+        "issues_fixed": 2,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.081941,
+      "stage_cost_usd": {
+        "intake": 0.004967,
+        "investigation": 0.047487,
+        "verdict": 0.008942,
+        "letter": 0.008407,
+        "critique": 0.012138
+      },
+      "seconds": 156.5,
+      "error": null
+    },
+    {
+      "id": "dc-029",
+      "program": "medicare_a",
+      "jurisdiction": "Federal",
+      "trap": "no",
+      "demo": "yes",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "consistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "medicare_a",
+      "route_reason": "The letter is about Medicare Part A, so the federal Medicare rules decide this case.",
+      "route_outside_corpus": false,
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.055822,
+      "stage_cost_usd": {
+        "intake": 0.004773,
+        "investigation": 0.043074,
+        "verdict": 0.007975,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 92.0,
+      "error": null
+    },
+    {
+      "id": "dc-030",
+      "program": "unknown",
+      "jurisdiction": "Federal",
+      "trap": "yes",
+      "demo": "no",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "not_settled",
+      "correct": true,
+      "refused": null,
+      "route_program": "unknown",
+      "route_reason": "The letter is from Sample Employer Health Plan, a plan outside the public programs in the corpus (Florida Medicaid, KidCare, Medicare). No document in the corpus governs it; the Florida Medicaid and federal Medicare rules are checked for reference only.",
+      "route_outside_corpus": true,
+      "stage_errors": [],
+      "findings": {
+        "supported": 9,
+        "not_settled": 3,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 4,
+        "verified": 4,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.114079,
+      "stage_cost_usd": {
+        "intake": 0.004567,
+        "investigation": 0.087685,
+        "verdict": 0.0,
+        "letter": 0.009759,
+        "critique": 0.012068
+      },
+      "seconds": 131.6,
+      "error": null
+    }
+  ]
+}
