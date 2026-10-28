@@ -123,7 +123,7 @@ export function CaseHeader({
         ))}
       </dl>
 
-      {register ? <Register record={record} today={today} deadline={deadline ?? { iso: deadlineIso, daysLeft: null }} lead={!titled} /> : null}
+      {register ? <Register record={record} today={today} deadline={deadline ?? { iso: deadlineIso, daysLeft: null }} /> : null}
 
       <button
         ref={toggleRef}
@@ -173,14 +173,15 @@ function Register({
   record,
   today,
   deadline,
-  lead,
 }: {
   record: CaseRecord;
   today: Date;
   deadline: { iso: string | null; daysLeft: number | null };
-  /* The Lead deadline line shows once the verdict exists; before it the slot is held, unseen (the deadline is the sheet's stamp). */
-  lead: boolean;
 }) {
+  /* The Lead deadline line shows from the first poll (Alvaro's choice, Oct 28, 2026): the deadline is
+     known at intake, so the rows never move at decided and the sheet is not empty during the run. While
+     the case runs it repeats the deadline stamp on the sheet's left; once the verdict lands it is the
+     sheet's only deadline. */
   const { card } = record;
   const program = card.program.value;
   const programLabel = program && program !== "unknown" ? PROGRAM_LABELS[program as Program] : null;
@@ -196,8 +197,8 @@ function Register({
   ];
   return (
     <div className="hidden lg:block" data-notice-register="true">
-      <DeadlineLine deadlineIso={deadline.iso} daysLeft={deadline.daysLeft} today={today} size="lead" className={lead ? "" : "invisible"} />
-      <dl className={`mt-5 grid grid-cols-[120px_minmax(0,1fr)] gap-x-3 gap-y-1.5 border-t pt-4 tabular-nums ${lead ? "border-ink/25" : "border-transparent"}`}>
+      <DeadlineLine deadlineIso={deadline.iso} daysLeft={deadline.daysLeft} today={today} size="lead" />
+      <dl className="mt-5 grid grid-cols-[120px_minmax(0,1fr)] gap-x-3 gap-y-1.5 border-t border-ink/25 pt-4 tabular-nums">
         {rows.map((r) => (
           <div key={r.key} className="contents" data-register-row={r.key}>
             <dt className="pt-px text-[14px] leading-5 text-muted">{r.label}</dt>

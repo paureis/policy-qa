@@ -92,10 +92,13 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
   const pageOpen = viewer?.state.open?.key === viewKey;
   const onCropLoad = () => requestAnimationFrame(() => requestAnimationFrame(() => setDrawn(true)));
 
+  /* Keyed on the citation's fields, not the object: every poll rebuilds the record, and an effect
+     keyed on the object re-ran the highlight and the Muse Spark vision check on each poll (nine
+     checks on one live case, Oct 28, 2026). */
+  const { doc_id, page, quote } = citation;
   useEffect(() => {
     if (unsupported) return;
     const controller = new AbortController();
-    const { doc_id, page, quote } = citation;
     (async () => {
       let highlight: PageHighlight;
       try {
@@ -119,7 +122,7 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
       }
     })();
     return () => controller.abort();
-  }, [citation, unsupported]);
+  }, [doc_id, page, quote, unsupported]);
 
   const folio = (
     <p className="mt-4 font-mono text-[14px] leading-snug text-ink" data-exhibit-folio="true">

@@ -23,6 +23,7 @@ import { Band } from "./Band";
 import { CaseCard } from "./CaseCard";
 import { EntryForm } from "./EntryForm";
 import { ErrorNotice } from "./ErrorNotice";
+import { FRAME_MAIN, FRAME_WIDTH, INTRO, TOP_SHEET } from "./Frame";
 import { ProgressStages, STAGES } from "./ProgressStages";
 import { SourcePanel } from "./SourcePanel";
 
@@ -228,7 +229,7 @@ export function IntakeFlow() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <Band sample={sample}>
+      <Band sample={sample} widthClass={FRAME_WIDTH}>
         {phase !== "entry" ? (
           <button
             type="button"
@@ -261,18 +262,43 @@ export function IntakeFlow() {
         onChange={onFilePicked}
       />
 
-      <main
-        className={`mx-auto w-full flex-1 px-4 pt-6 pb-10 ${
-          showSource ? "max-w-[640px] lg:grid lg:max-w-[1120px] lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:gap-12" : "max-w-[640px]"
-        }`}
-      >
+      {/*
+        At 1024 px and up the case page's folder frame: one bond top sheet on the
+        manila ground (section 12, E1). The entry state lays out its own desk
+        inside the sheet; from processing on the sheet holds the letter's grid,
+        620 : 420 across 48 px: the letter as given in the wide column and the
+        stages or the notice in the narrow one (E5, E6), then for the review the
+        card in the wide column and the letter as read clipped beside it (E7).
+        Under 1024 px the wrappers carry no styles: the one column stands.
+      */}
+      <main className={`mx-auto w-full max-w-[640px] flex-1 px-4 pt-6 pb-10 ${FRAME_MAIN}`}>
+        <div className={TOP_SHEET} data-top-sheet="intake">
+        {phase === "processing" || phase === "error" ? (
+          /*
+            The sheet keeps its head, and the page its h1, while the letter is read. On the phone the head is
+            display: none, so the stages' or the notice's h2 is the first heading there.
+          */
+          <div className="hidden lg:mb-6 lg:block" data-sheet-head="true">
+            <h1 className="text-[28px] leading-tight font-bold">Start with your letter</h1>
+            <p className={INTRO}>
+              Recourse reads a coverage denial letter into a case card. You check the card before anything else happens.
+            </p>
+          </div>
+        ) : null}
+        <div className={showSource ? "lg:grid lg:desk-cols lg:items-start" : ""}>
         {showSource && input ? (
-          <div className="mb-6 lg:mb-0 lg:self-start lg:sticky lg:top-6">
+          <div
+            className={`mb-6 lg:mb-0 lg:row-start-1 lg:self-start ${
+              rawText !== null
+                ? "lg:col-start-2 [@media(min-width:1024px)_and_(min-height:701px)]:sticky [@media(min-width:1024px)_and_(min-height:701px)]:top-8"
+                : "lg:col-start-1"
+            }`}
+          >
             <SourcePanel input={input} rawText={rawText} />
           </div>
         ) : null}
 
-        <div className="min-w-0">
+        <div className={`min-w-0 ${showSource ? `lg:row-start-1 ${rawText !== null ? "lg:col-start-1" : "lg:col-start-2"}` : ""}`}>
           {phase === "entry" ? (
             <EntryForm
               text={text}
@@ -316,7 +342,7 @@ export function IntakeFlow() {
               />
 
               {!locked ? (
-                <div className="sticky bottom-0 -mx-4 mt-6 border-t border-hairline bg-bond px-4 py-3 lg:static lg:mx-0 lg:border-0 lg:px-0">
+                <div className="sticky bottom-0 -mx-4 mt-6 border-t border-hairline bg-bond px-4 py-3 lg:static lg:mx-0 lg:mt-8 lg:border-0 lg:px-0 lg:py-0">
                   {saveError ? (
                     <p role="alert" className="mb-3 text-[16px] font-semibold text-ink">
                       {saveError}
@@ -327,11 +353,11 @@ export function IntakeFlow() {
                     onClick={confirm}
                     disabled={flagged.size > 0 || phase === "confirming"}
                     aria-describedby="confirm-help"
-                    className="inline-flex min-h-12 w-full items-center justify-center bg-ink px-5 text-[18px] font-semibold text-bond disabled:cursor-not-allowed disabled:bg-hairline disabled:text-muted"
+                    className="inline-flex min-h-12 w-full items-center justify-center bg-ink px-5 text-[18px] font-semibold text-bond disabled:cursor-not-allowed disabled:bg-hairline disabled:text-muted lg:w-auto"
                   >
                     {phase === "confirming" ? "Opening the case…" : "Confirm"}
                   </button>
-                  <p id="confirm-help" className="mt-2 text-center text-[15px] text-muted" aria-live="polite">
+                  <p id="confirm-help" className="mt-2 text-center text-[15px] text-muted lg:text-left" aria-live="polite">
                     {flagged.size > 0
                       ? `${flagged.size} ${flagged.size === 1 ? "detail" : "details"} still to check before you can confirm.`
                       : "Confirm opens the case and starts the investigation."}
@@ -362,6 +388,8 @@ export function IntakeFlow() {
               )}
             </>
           ) : null}
+        </div>
+        </div>
         </div>
       </main>
     </div>

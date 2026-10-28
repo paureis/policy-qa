@@ -255,10 +255,11 @@ function PageViewerPanel({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const placedRef = useRef(false);
 
-  /* The highlight first, then the vision check on the highlighted area. Both abort on close. */
+  /* The highlight first, then the vision check on the highlighted area. Both abort on close. Keyed on
+     the citation's fields, not the object, so a poll that rebuilds the record does not re-run them. */
+  const { doc_id, page, quote } = citation;
   useEffect(() => {
     const controller = new AbortController();
-    const { doc_id, page, quote } = citation;
     (async () => {
       let highlight: PageHighlight;
       try {
@@ -282,7 +283,7 @@ function PageViewerPanel({
       }
     })();
     return () => controller.abort();
-  }, [citation, attempt]);
+  }, [doc_id, page, quote, attempt]);
 
   /* Focus moves into the panel on open; Escape closes it. */
   useEffect(() => {

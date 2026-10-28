@@ -66,6 +66,10 @@
 
 html {
   color-scheme: light only;
+  /* The world sets every size in px; only Tailwind's rem spacing followed the browser's font-size
+     setting. At Chrome's "Large" (20 px) the sheet's insets grew, the stamp wrapped to three lines and
+     dropped under the reference block (Oct 28, 2026). Pinned, so spacing matches the px type. */
+  font-size: 16px;
 }
 
 body {

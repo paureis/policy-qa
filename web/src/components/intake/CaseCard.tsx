@@ -26,7 +26,12 @@ export interface CaseCardProps {
 /*
   The case card: one plain-language reading of the letter, the deadline stamp,
   then the ten contract fields in contract order.
+
+  On the intake at 1024 px and up the card is the top sheet's document in the
+  620 px column (case-page-brief section 12, E7): no sheet of its own (the top
+  sheet is the bond and the edge), its heading at the sheet head's 28 px.
 */
+const IN_DESK = "lg:border-0 lg:bg-transparent lg:px-0 lg:pt-0 lg:pb-0";
 export function CaseCard({
   card,
   summary,
@@ -47,10 +52,10 @@ export function CaseCard({
   const toCheck = flagged.size;
 
   return (
-    <section aria-labelledby="case-card-heading" className={bare ? "" : PHONE_SHEET} data-locked={locked ? "true" : "false"}>
+    <section aria-labelledby="case-card-heading" className={bare ? "" : `${PHONE_SHEET} ${IN_DESK}`} data-locked={locked ? "true" : "false"}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <Heading id="case-card-heading" className="text-[26px] leading-tight font-bold">
+          <Heading id="case-card-heading" className={`text-[26px] leading-tight font-bold ${bare ? "" : "lg:text-[28px]"}`}>
             {payer ? String(payer) : "Denial letter"}
           </Heading>
           {caseId ? (

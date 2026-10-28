@@ -2,19 +2,27 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { formatBytes, type IntakeInput } from "@/lib/case";
+import { CornerMarks, PaperClip } from "@/components/investigation/Marks";
 
 /*
   The letter stays on screen from submit onward: an image thumbnail, the
   PDF name and size, or a text excerpt. Once the card exists, "Show the
   letter as read" reveals the raw text.
+
+  At 1024 px and up, once the card exists, the letter is beside the card for
+  the whole review (case-page-brief section 12, E7): a clipped exhibit, "The
+  letter as read", with the raw text in a scrolling frame, and the panel
+  with its "Show the letter as read" button is not shown there.
 */
 export function SourcePanel({ input, rawText }: { input: IntakeInput; rawText: string | null }) {
   const [open, setOpen] = useState(false);
   const rawId = useId();
 
   return (
-    <aside aria-label="Your letter" className="border border-hairline bg-paper p-4">
-      <p className="text-[14px] font-semibold tracking-wide text-muted uppercase">Your letter</p>
+    <>
+    {rawText !== null ? <LetterExhibit rawText={rawText} /> : null}
+    <aside aria-label="Your letter" className={`border border-hairline bg-paper p-4 ${rawText !== null ? "lg:hidden" : ""}`}>
+      <p className="text-[14px] font-semibold tracking-wide text-muted uppercase lg:font-normal lg:tracking-normal lg:normal-case">Your letter</p>
       <div className="mt-3">
         {input.kind === "text" ? <TextExcerpt text={input.text} /> : <FilePreview file={input.file} />}
       </div>
@@ -40,6 +48,39 @@ export function SourcePanel({ input, rawText }: { input: IntakeInput; rawText: s
         </div>
       ) : null}
     </aside>
+    </>
+  );
+}
+
+/*
+  The letter as read, clipped beside the card at desktop: bond, 1 px ink
+  edge, the paper clip over its top edge and the corner marks, as the case
+  page's exhibits are; the text at 15 px in a frame that scrolls (capped at
+  about 60 vh) and takes the keyboard, so the whole letter can be read.
+*/
+function LetterExhibit({ rawText }: { rawText: string }) {
+  const headId = useId();
+  return (
+    <figure
+      className="relative hidden min-w-0 border border-ink bg-bond px-7 pt-6 pb-5 lg:flex lg:flex-col"
+      aria-labelledby={headId}
+      data-exhibit="letter-as-read"
+    >
+      <PaperClip className="-top-[22px] left-8" />
+      <CornerMarks />
+      <p id={headId} className="text-[21px] leading-tight font-semibold tracking-[-0.01em] text-ink">
+        The letter as read
+      </p>
+      <pre
+        tabIndex={0}
+        role="region"
+        aria-labelledby={headId}
+        /* Its own scrollbar (thin, ink on bond) and 8 px inside the frame, so the 3 px focus ring clears the text; scoped here, not global. */
+        className="mt-3 max-h-[60vh] overflow-auto border-t border-hairline px-2 pt-3 pb-2 font-sans text-[15px] leading-relaxed whitespace-pre-wrap text-ink [scrollbar-color:var(--ink)_var(--bond)] [scrollbar-width:thin]"
+      >
+        {rawText}
+      </pre>
+    </figure>
   );
 }
 

@@ -450,3 +450,193 @@ Not changing, by decision (fix pass):
   moves to the explanation sheet when the letter stage reports no letter; the page does not guess.
 - `c_dual` keeps its two record columns during the run.
 - The strike draws on every mount, including a finished case opened fresh.
+
+Decided after Alvaro's look and the first live run in the folder (Oct 28, 2026, session 8):
+
+- The Lead deadline line shows from the first poll (Alvaro's choice among three: keep the empty slot,
+  show the line, let the rows drop). The deadline is known at intake, the rows never move at decided,
+  and the top sheet is not empty while the case runs; during the run it repeats the deadline stamp on
+  the sheet's left, and once the verdict lands it is the sheet's only deadline. `Register` in
+  `CaseHeader.tsx` no longer takes a `lead` flag.
+- The policy exhibit and the page viewer key their highlight-and-vision effect on the citation's
+  `doc_id`, `page` and `quote`, not on the citation object. Every poll rebuilds the record, and the
+  object-keyed effect re-ran the highlight and the Muse Spark vision check on each poll: nine vision
+  calls (about $0.006 and 6 s each) on the first live case, and the exhibit's caption flickered between
+  "Checking the highlight…" and the result, its height moving 41 px each time. One check per exhibit
+  now; the caption settles once.
+- The root font size is pinned to 16 px in `globals.css`. The world sets every size in px, so only
+  Tailwind's rem spacing followed a reader's font-size setting; at Chrome's "Large" (20 px) the sheet's
+  insets grew to 50 px, the stamp wrapped to three lines and dropped under the reference block. Found
+  on Alvaro's own browser, reproduced in Playwright at 20 px.
+- Recorded, not changed: the Lead line's mark is the open ring, not the calendar mark DESIGN.md names;
+  the `c_notsettled` fixture's chain runs about 24 s before the slip folds (the letter case's runs 12).
+
+## 12. Piece 4 decisions (Oct 28, 2026)
+
+The intake and the landing at desktop in The Case File. Section 4 item 4 sets the shape (the paste box
+as the main surface, photo and file as two doors beside it, the postmark and the band stay, the three
+stacked cards go at desktop; the landing gets the same frame and one sample case link, no marketing
+copy added), section 9 the world, `web/intake-brief.md` the structure, states, ranges and copy (its
+world paragraph is superseded). Made by the orchestrator within those and DESIGN.md (E1 to E12), then
+by the builder where marked. Under 1024 px nothing changes on either page (E12).
+
+- E1. Frame. Both pages use the case page's folder frame at 1024 px and up: the kraft band with the
+  wordmark (no folder tab: there is no case yet), the manila ground, one bond top sheet 1,088 px wide
+  with the 32 / 40 / 40 insets, 1 px ink edge, square corners, starting about 100 px from the top of
+  the window. The band's right keeps the page's links as today. `Band` is shared with the case page
+  and must render there exactly as before (full-page captures of `c_sample` pixel-identical).
+- E2. The intake's entry state is the desk. The sheet's head is the h1 "Start with your letter"
+  (Headline, 28 px, 600) with the intro paragraph under it (body, 70ch cap), copy as today. Under them
+  the letter's grid, 620 : 420 across a 48 px gutter: the paste box in the 620 px column, open from the
+  start (no "Paste text" door at desktop), with its label ("Text of the letter"), the textarea at
+  about 14 rows, the character count line and the "Read this letter" primary button (ink, 48 px, auto
+  width) under it. The textarea is a square field on bond: 1 px pencil-edge border at rest, ink on
+  focus with the 3 px ink focus ring, ink caret, 17 px Archivo. No wash and no gold: the gold field is
+  the letter's fill-in, not this box.
+- E3. The two doors sit in the 420 px column, level with the paste box's top: "Take a photo" and
+  "Choose a PDF or image" as secondary buttons (bond, 1 px ink border, 48 px, full width of the column,
+  ink text at 600), each with its one-line hint under it in 14 px faded ink (the hints are today's
+  copy). A short label over the pair in 14 px faded ink: "Or add the letter as a file". The camera
+  and file inputs stay the hidden inputs they are.
+- E4. The scope line ("Recourse reads coverage denials and drafts appeals. It does not give medical
+  advice.") closes the sheet at its foot, 15 px faded ink over a hairline, as today.
+- E5. Processing. The sheet keeps its head; the 620 column shows the letter as given (the source
+  panel: the text excerpt or the thumbnail) on the sheet; the 420 column shows the three stages
+  (reading the letter, finding the program, filling the card) as the routing slip's idiom from
+  `investigation/RoutingSlip.tsx`: a mark and a word per stage, an open ring for a stage not reached,
+  a tick stepped in for a stage done, the running stage at 600; one polite live region; "Cancel" as a
+  text action under them; at 30 s the timeout line with "Retry" in the same column. Copy as today.
+- E6. Errors. The notice takes the 420 column (where the stages were) with the letter still in the
+  620 column, so the reader sees what was read beside what went wrong; copy, headings and actions as
+  today (retake, choose again, the scope refusal with what the product does instead, unreachable).
+  No red: the notice is ink on bond with a 4 px ink left rule.
+- E7. Reviewing. "Desktop shows the letter beside the card" (intake brief, decided): the letter as read
+  in the 420 px column as a clipped exhibit ("The letter as read", the paper clip, the text at 15 px
+  in a scrolling frame capped at about 60 vh, sticky from 1024 and up when the window is over 700 px
+  tall); the case card in the 620 px column as the sheet's document: the one-paragraph reading, the
+  postmark (the deadline stamp as today, dashed until confirmed), "Check these details" with the ten
+  rows, the gold Check bar and label on flagged rows (the reader's own mark), "Show the letter as
+  read" hidden at desktop since the letter is beside the card, and "Confirm" as the primary button at
+  the card's foot, auto width, not sticky. The row layout, selects, inputs and validation are unchanged.
+- E8. Confirming and confirmed. As today: the card locks, the postmark lands solid and turned, the
+  investigation call fires and the page goes to the case, where piece 3 takes over. The save-error
+  copy stays.
+- E9. The landing. The same frame and the same top sheet. On the sheet: the h1 (Lead, 30 px, 600), the
+  paragraph (body, 70ch), the scope line (15 px faded ink), then the primary button "Start with your
+  letter" and beside it one text action to the sample case, "See a sample case" to `/case/c_sample`
+  (the fixture opens in both intake modes; the builder confirms). Copy decided by Alvaro by prompt
+  (Oct 28): today's h1, paragraph and scope line stay word for word; the link reads "See a sample
+  case". Nothing else: no second sheet, no stamp, no feature list, no screenshots.
+- E10. Motion. State changes step, nothing fades (intake brief). The stages' ticks step in as on the
+  slip; reduced motion stops them. No land on the sheet.
+- E11. Accessibility. Every control at least 44 by 44 px; focus rings as the world's; the stages' live
+  region polite and atomic; the textarea labelled; the doors are buttons with their hints read as
+  descriptions; contrast as DESIGN.md measures (pencil edge is a control boundary at 3:1, never text).
+- E12. Untouched: the phone and tablet layouts (under 1024 px: today's one column, three stacked ways,
+  the paste panel that opens, the sticky foot actions); all copy and the ten-field contract in
+  `src/lib/case.ts`; fixture mode and its ids; the API; the case page.
+
+Verification the builder owes before reporting: `tsc --noEmit` and `npm run lint` clean; Playwright
+full-page captures at 390, 768, 1024 and 1280 by 800 of the landing and of every intake state (entry,
+processing, each of the four errors, reviewing with flagged rows, confirming, confirmed) in fixture
+mode; `c_sample`, `c_notsettled` and `c_consistent` at 1280 pixel-identical to captures taken before
+the change; the live flow driven once through the real API in fixture mode is not required (no
+credits). A fresh evaluator grades E1 to E12 with the captures before the orchestrator looks.
+
+Decided by the builder, with the reason:
+
+- The frame is shared, not copied: `components/intake/Frame.ts` holds the case page's numbers (band and
+  page 1,152 px with 32 px padding, so 1,088 px of content; 36 px of ground under the 65 px band, so the
+  sheet starts at 101 px; the 32 / 40 / 40 insets), every class `lg:`-prefixed. `Band` is not edited:
+  both pages pass the case page's width to its existing `widthClass`, so the wordmark and the sheet share
+  one edge (measured x = 96 at 1280, 32 at 1024).
+- The letter's grid on the sheet is the `desk-cols` utility (620 : 420 across 48 px) inside the sheet's
+  1,008 px, so the columns measure 571 and 387 px at 1280: the ratio the case page keeps below 1,088 px,
+  not two fixed widths that would overflow the insets.
+- The sheet keeps its head through processing and the errors: "Start with your letter" and the intro stay
+  at the top of the sheet (desktop only) and the desk under them changes, so the step from entry to
+  processing moves nothing above the desk. The head is a paragraph in those states, not a second h1:
+  the stages' "Reading your letter" and the error's title stay the page's one h1, as on the phone.
+- In the 420 px column the stages' and the notice's headings are 20 px (the Title size of a sheet's head,
+  DESIGN.md), not the phone's 26 px: one 28 px head per sheet.
+- The doors' label uses the paste box label's style (14 px, 600, uppercase, faded ink), so "Text of the
+  letter" and "Or add the letter as a file" read as one row and the first door is level with the
+  textarea's top (both measured at y 289 at 1280).
+- The doors are named by their title alone (`aria-label`) and described by their hint (`aria-describedby`
+  to the hint under the button) at every width; on the phone the hint inside the panel is `aria-hidden`
+  so it is not read twice. Pixels under 1024 px are unchanged.
+- The source order stays the phone's (the ways, then the paste panel they open), so at desktop the
+  keyboard reaches the two doors before the paste box. Moving the panel first would have put it ahead of
+  the "Paste text" door that opens it on the phone, the primary device.
+- The paste box is 14 lines tall by CSS (`calc(14lh + 18px)`, 405 px) at desktop; the `rows` attribute
+  stays 9 for the phone. On focus its border goes ink under the world's 3 px ink ring.
+- The stages at desktop draw the slip's marks (`Mark`: open ring for a stage not reached or running, a
+  tick with the slip's `tick-step` for a stage done) and sit between two hairlines like the slip; the
+  phone's squares are `lg:hidden` and the marks `hidden lg:block`, so the phone renders as before. Every
+  stage is ink at desktop (the phone keeps faded ink for stages not current).
+- The notice's 4 px ink left rule replaces its sheet edge at desktop, with 24 px between rule and text;
+  its actions keep their sizes.
+- The case card's heading is 28 px at desktop on the intake (the sheet's head size); `bare` (the case
+  page's full card) is unchanged.
+- "The letter as read" exhibit has the paper clip and the corner marks but no "Exhibit N" folio: the
+  letter is not yet an exhibit of a case, and the spec adds only the head. Its hairline under the head is
+  the sheet head's rule. The scrolling frame is a focusable region (`tabIndex=0`, labelled by the head),
+  so the keyboard can scroll it.
+- The exhibit's sticky offset is 32 px, not the page image's 16 px, so the paper clip (22 px above the
+  edge) stays on screen while it sticks; sticky only at 1024 px and up when the window is over 700 px
+  tall (measured: y 32 after scrolling at 1280 by 800; static at 1280 by 680).
+- Confirm sits 32 px under the last row at desktop, auto width, with its help line left-aligned under it
+  (centered on the phone, as before).
+- The landing's "See a sample case" is shown at 1024 px and up only (E12: nothing changes under 1024 px),
+  44 px tall, 32 px right of the button. The scope line is 15 px at desktop (16 px on the phone).
+
+Recorded, not changed:
+
+- `/case/c_sample` opens in fixture mode and in live mode on the dev server (`isFixtureCase`), but a
+  production build in live mode serves it from the API, which answers 404 ("No case c_sample"). The fix
+  is in `src/lib/case.ts`, outside this piece.
+- A file of the wrong type shows a broken image in "Your letter" (the preview treats every non-PDF as an
+  image) at every width; fixing it changes the phone, which E12 forbids in this piece.
+- The list's label "Three ways to add the letter" stays as copy while desktop shows two doors (the third
+  is display: none there, so a screen reader hears two items).
+- The confirmed card shows two rules (the last row's and the "Case opened" block's) at every width, as
+  before.
+- In reviewing, focus reaches the letter before the card at desktop: the source order is the phone's
+  (the letter, then the card), and reading the letter before checking the card is the job.
+- The deadline stamp turns -2.6 degrees both before and after Confirm (`DeadlineStamp` is untouched);
+  DESIGN.md's -1.4 then -2.6 describes the sketch, not the code.
+
+Fix pass after the evaluation (Oct 28, 2026):
+
+1. World labels at desktop (Alvaro's decision). From 1024 px every field label and hint on the desk
+   and the card is DESIGN.md's label: "Text of the letter", "Or add the letter as a file", "Your
+   letter", the ten field labels, "First day" and "Last day", and the help lines (measured at 1280:
+   14 px, 400, text-transform none, letter-spacing normal, #4e493d). The flagged row's mark is the word
+   "Check" in sentence case, 14 px, 600, in ink, underlined 2 px in the gold #ffbe2e (offset 4 px); the
+   6 px gold bar stays (measured 6 px, #ffbe2e). The word is ink, not gold, because gold text on the
+   wash measures about 1.5:1; the gold is the reader's-pen mark under it, as on the letter's fill-in
+   fields. The phone keeps the uppercase register and the gold tag (lg: overrides only).
+2. The fixture cases are served in a production build: `isFixtureCase` and the synthetic-quote gate
+   in `src/lib/case.ts` no longer check NODE_ENV (`FIXTURE_ID` still excludes real ids, c_ plus six
+   hex). Proved with `npm run build` (NEXT_PUBLIC_INTAKE_MODE=live, exit 0) and `next start -p 3100`:
+   the landing's link reads /case/c_sample; the page renders "Sunshine Health", the band's "sample
+   case", the stamp "The denial appears inconsistent with the policy." and the policy exhibit's crop,
+   with zero calls to the API. The server on 3100 was stopped after.
+3. Heading levels: "Start with your letter" is the h1 in every pre-review state where it is in the
+   DOM (the sheet's head in processing and the errors is now an h1, display: none under 1024 px);
+   "Reading your letter" and the error notice's title are h2 at every width, same classes. This
+   replaces the builder bullet above that made the head a paragraph. Accessibility tree: at 1280,
+   processing and the scope error expose heading level 1 "Start with your letter" then level 2; at
+   390, the level 2 heading alone.
+4. The letter-as-read frame has its own scrollbar (scrollbar-color ink on bond, thin; scoped to the
+   frame) and 8 px of padding at its sides and foot inside the 1 px hairline, so the 3 px ink focus ring
+   (offset 2 px) clears the text (captured focused by keyboard at 1280).
+
+Phone and tablet captures of every intake state and the landing (33 with the three cases at 1280) are
+pixel-identical to the captures taken at HEAD before piece 4.
+
+Recorded after the re-check (Oct 28, 2026, orchestrator): `FieldRow` is shared with the case page's
+"Show the full case card" panel, so that panel's labels now read in the world's register too (14 px,
+sentence case, 400) instead of the old uppercase eyebrows. Accepted as the intended outcome of
+Alvaro's label decision, not a regression: the finish review had removed that register from every
+other part of the case page. The collapsed case page is pixel-identical; only the expanded panel changes.

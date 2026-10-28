@@ -19,7 +19,8 @@ import {
 
 const INPUT =
   "block w-full min-h-11 border border-edge bg-bond px-3 py-2 text-[18px] leading-snug text-ink placeholder:text-muted lg:text-[17px]";
-const LABEL = "block text-[14px] font-semibold uppercase tracking-wide text-muted";
+/* Uppercase on the phone; DESIGN.md's label at desktop (14 px, 400, sentence case, no tracking, faded ink). */
+const LABEL = "block text-[14px] font-semibold uppercase tracking-wide text-muted lg:font-normal lg:tracking-normal lg:normal-case";
 
 export interface FieldRowProps {
   fieldKey: FieldKey;
@@ -51,13 +52,18 @@ export function FieldRow({ fieldKey, value, flagged, locked, onChange, onLooksRi
           {label}
         </label>
         {flagged ? (
-          <span className="bg-gold px-2 py-0.5 text-[13px] font-bold tracking-wide text-ink uppercase">
+          /*
+            On the phone a gold tag; at desktop the word in sentence case, 14 px, 600, ink, underlined in
+            the reader's-pen gold (2 px, the letter's fill-in mark): gold text on the wash measures about
+            1.5:1, so the gold is the mark and the ink is the word.
+          */
+          <span className="bg-gold px-2 py-0.5 text-[13px] font-bold tracking-wide text-ink uppercase lg:bg-transparent lg:px-0 lg:py-0 lg:text-[14px] lg:tracking-normal lg:normal-case lg:underline lg:decoration-gold lg:decoration-2 lg:underline-offset-4">
             Check
           </span>
         ) : null}
       </div>
       {hintId && !locked ? (
-        <p id={hintId} className="mt-0.5 text-[15px] text-muted">
+        <p id={hintId} className="mt-0.5 text-[15px] text-muted lg:text-[14px]">
           {FIELD_HINTS[fieldKey]}
         </p>
       ) : null}
@@ -122,7 +128,7 @@ function Control({
       return (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label htmlFor={id} className="mb-1 block text-[15px] text-muted">
+            <label htmlFor={id} className="mb-1 block text-[15px] text-muted lg:text-[14px]">
               First day
             </label>
             <input
@@ -135,7 +141,7 @@ function Control({
             />
           </div>
           <div>
-            <label htmlFor={`${id}-to`} className="mb-1 block text-[15px] text-muted">
+            <label htmlFor={`${id}-to`} className="mb-1 block text-[15px] text-muted lg:text-[14px]">
               Last day (if a range)
             </label>
             <input

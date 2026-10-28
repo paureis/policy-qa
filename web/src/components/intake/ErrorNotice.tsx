@@ -16,17 +16,25 @@ const PRIMARY =
 const SECONDARY =
   "inline-flex min-h-12 w-full items-center justify-center border border-ink bg-bond px-5 text-[18px] font-semibold text-ink sm:w-auto";
 
+/*
+  At 1024 px and up the notice sits in the desk's 420 px column on the top
+  sheet, where the stages were, with the letter still beside it
+  (case-page-brief section 12, E6): ink on bond with a 4 px ink rule at its
+  left, no sheet of its own, no red.
+*/
+const IN_DESK = "lg:border-y-0 lg:border-r-0 lg:border-l-4 lg:bg-transparent lg:py-1 lg:pr-0 lg:pl-6";
+
 /* Each error in plain words, with the one action that fixes it first. */
 export function ErrorNotice({ error, actions }: { error: IntakeError; actions: ErrorActions }) {
   const copy = ERROR_COPY[error.code];
   const body = error.message || copy.body;
 
   return (
-    <section role="alert" aria-labelledby="error-heading" className={PHONE_SHEET} data-error={error.code}>
-      <h1 id="error-heading" className="text-[26px] leading-tight font-bold">
+    <section role="alert" aria-labelledby="error-heading" className={`${PHONE_SHEET} ${IN_DESK}`} data-error={error.code}>
+      <h2 id="error-heading" className="text-[26px] leading-tight font-bold lg:text-[20px] lg:leading-[1.25]">
         {copy.title}
-      </h1>
-      <p className="mt-4 text-[18px] leading-relaxed lg:text-[17px]">{body}</p>
+      </h2>
+      <p className="mt-4 text-[18px] leading-relaxed lg:mt-3 lg:text-[17px]">{body}</p>
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         {copy.action === "retake" ? (
           <>

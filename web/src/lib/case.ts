@@ -984,12 +984,14 @@ function startFixtureInvestigation(caseId: string, at: number = Date.now()): voi
 const FIXTURE_ID = /^c_(sample\d*|dual\d*|fail\d*|error\d*|consistent\d*|notsettled\d*|rejected\d*|checkerror\d*)$/;
 
 /*
-  Fixture ids never collide with the API's (c_ and six hex digits), so outside
-  a production build they render from the fixture in live mode too: every
-  state stays reachable for screenshots on the live dev server.
+  Fixture ids never collide with the API's (c_ and six hex digits), so they
+  render from the fixture in live mode too: every state stays reachable for
+  screenshots on the live dev server.
+  Production as well since Oct 28, 2026 (Alvaro's decision): the landing's
+  "See a sample case" opens c_sample on the deployed site, where the API has no such case.
 */
 export function isFixtureCase(caseId: string): boolean {
-  return INTAKE_MODE !== "live" || (process.env.NODE_ENV !== "production" && FIXTURE_ID.test(caseId));
+  return INTAKE_MODE !== "live" || FIXTURE_ID.test(caseId);
 }
 
 function fixtureCase(caseId: string, now: number): CaseRecord | null {
@@ -2147,9 +2149,13 @@ async function pageFetch(path: string, init: RequestInit, signal?: AbortSignal):
   }
 }
 
-/* Fixture mode, or a fixture case's synthetic quote on the live dev server. */
+/*
+  Fixture mode, or a fixture case's synthetic quote in live mode.
+  Production as well since Oct 28, 2026 (Alvaro's decision): the sample case's exhibits must
+  load on the deployed site; a real finding's quote never starts with the synthetic marker.
+*/
 function fixtureQuote(quote: string): boolean {
-  return INTAKE_MODE !== "live" || (process.env.NODE_ENV !== "production" && quote.startsWith(SYNTHETIC));
+  return INTAKE_MODE !== "live" || quote.startsWith(SYNTHETIC);
 }
 
 function checkQuote(quote: string): void {
