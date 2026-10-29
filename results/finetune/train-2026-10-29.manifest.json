@@ -1,0 +1,1725 @@
+{
+  "config": {
+    "retriever": {
+      "mode": "hybrid",
+      "rerank": true,
+      "rerank_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+      "candidates": 20,
+      "k": 5
+    },
+    "chunks": {
+      "file": "chunks.jsonl",
+      "bytes": 6851532,
+      "md5": "933d1a5fe92ef9d2300e6fe4e997cecf"
+    },
+    "golden": {
+      "file": "golden.csv",
+      "bytes": 123811,
+      "md5": "bd96be8ec3f504c0acf6e49800a563c7"
+    }
+  },
+  "ids": [
+    "gs-002",
+    "gs-003",
+    "gs-004",
+    "gs-007",
+    "gs-008",
+    "gs-011",
+    "gs-012",
+    "gs-014",
+    "gs-015",
+    "gs-017",
+    "gs-019",
+    "gs-020",
+    "gs-021",
+    "gs-022",
+    "gs-023",
+    "gs-024",
+    "gs-025",
+    "gs-027",
+    "gs-028",
+    "gs-029",
+    "gs-030",
+    "gs-031",
+    "gs-032",
+    "gs-034",
+    "gs-036",
+    "gs-037",
+    "gs-038",
+    "gs-041",
+    "gs-042",
+    "gs-043",
+    "gs-044",
+    "gs-045",
+    "gs-047",
+    "gs-049",
+    "gs-050",
+    "gs-051",
+    "gs-052",
+    "gs-054",
+    "gs-056",
+    "gs-057",
+    "gs-058",
+    "gs-059",
+    "gs-062",
+    "gs-063",
+    "gs-064",
+    "gs-065",
+    "gs-066",
+    "gs-068",
+    "gs-069",
+    "gs-070",
+    "gs-072",
+    "gs-073",
+    "gs-074",
+    "gs-075",
+    "gs-077",
+    "gs-078",
+    "gs-079",
+    "gs-080",
+    "gs-081",
+    "gs-083",
+    "gs-085",
+    "gs-088",
+    "gs-090",
+    "gs-092",
+    "gs-093",
+    "gs-094",
+    "gs-096",
+    "gs-097",
+    "gs-098",
+    "gs-099",
+    "gs-100",
+    "gs-101",
+    "gs-103",
+    "gs-104",
+    "gs-105",
+    "gs-106",
+    "gs-107",
+    "gs-108",
+    "gs-109",
+    "gs-110",
+    "gs-113",
+    "gs-114",
+    "gs-116",
+    "gs-117",
+    "gs-118",
+    "gs-120",
+    "gs-121",
+    "gs-125",
+    "gs-126",
+    "gs-127",
+    "gs-128",
+    "gs-129",
+    "gs-132",
+    "gs-134",
+    "gs-135",
+    "gs-136",
+    "gs-137",
+    "gs-139",
+    "gs-141",
+    "gs-142",
+    "gs-146",
+    "gs-147",
+    "gs-148",
+    "gs-149",
+    "gs-151",
+    "gs-152",
+    "gs-153",
+    "gs-156",
+    "gs-159",
+    "gs-160"
+  ],
+  "inserted": 40,
+  "inserted_ids": [
+    "gs-002",
+    "gs-003",
+    "gs-004",
+    "gs-014",
+    "gs-015",
+    "gs-017",
+    "gs-022",
+    "gs-024",
+    "gs-027",
+    "gs-029",
+    "gs-031",
+    "gs-034",
+    "gs-036",
+    "gs-037",
+    "gs-038",
+    "gs-041",
+    "gs-043",
+    "gs-057",
+    "gs-062",
+    "gs-066",
+    "gs-072",
+    "gs-073",
+    "gs-077",
+    "gs-081",
+    "gs-085",
+    "gs-090",
+    "gs-092",
+    "gs-097",
+    "gs-109",
+    "gs-110",
+    "gs-114",
+    "gs-118",
+    "gs-120",
+    "gs-134",
+    "gs-135",
+    "gs-136",
+    "gs-137",
+    "gs-139",
+    "gs-147",
+    "gs-148"
+  ],
+  "refused": [],
+  "token_estimate": "estimate: words x 1.3 (whitespace-split words), not a tokenizer count",
+  "totals": {
+    "chars": 1151479,
+    "tokens_est": 230105,
+    "max_example_tokens_est": 2544
+  },
+  "sizes": [
+    {
+      "id": "gs-002",
+      "chars": {
+        "system": 1251,
+        "user": 7100,
+        "assistant": 573
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1418,
+        "assistant": 117,
+        "total": 1803
+      }
+    },
+    {
+      "id": "gs-003",
+      "chars": {
+        "system": 1251,
+        "user": 8581,
+        "assistant": 641
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1725,
+        "assistant": 130,
+        "total": 2123
+      }
+    },
+    {
+      "id": "gs-004",
+      "chars": {
+        "system": 1251,
+        "user": 9992,
+        "assistant": 500
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1985,
+        "assistant": 109,
+        "total": 2362
+      }
+    },
+    {
+      "id": "gs-007",
+      "chars": {
+        "system": 1251,
+        "user": 6206,
+        "assistant": 606
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1216,
+        "assistant": 113,
+        "total": 1597
+      }
+    },
+    {
+      "id": "gs-008",
+      "chars": {
+        "system": 1251,
+        "user": 6348,
+        "assistant": 507
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1217,
+        "assistant": 100,
+        "total": 1585
+      }
+    },
+    {
+      "id": "gs-011",
+      "chars": {
+        "system": 1251,
+        "user": 10585,
+        "assistant": 446
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1962,
+        "assistant": 77,
+        "total": 2307
+      }
+    },
+    {
+      "id": "gs-012",
+      "chars": {
+        "system": 1251,
+        "user": 8080,
+        "assistant": 553
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1659,
+        "assistant": 104,
+        "total": 2031
+      }
+    },
+    {
+      "id": "gs-014",
+      "chars": {
+        "system": 1251,
+        "user": 8210,
+        "assistant": 489
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1652,
+        "assistant": 94,
+        "total": 2014
+      }
+    },
+    {
+      "id": "gs-015",
+      "chars": {
+        "system": 1251,
+        "user": 9336,
+        "assistant": 472
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1794,
+        "assistant": 90,
+        "total": 2152
+      }
+    },
+    {
+      "id": "gs-017",
+      "chars": {
+        "system": 1251,
+        "user": 10256,
+        "assistant": 493
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 2003,
+        "assistant": 94,
+        "total": 2365
+      }
+    },
+    {
+      "id": "gs-019",
+      "chars": {
+        "system": 1251,
+        "user": 10302,
+        "assistant": 417
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1907,
+        "assistant": 78,
+        "total": 2253
+      }
+    },
+    {
+      "id": "gs-020",
+      "chars": {
+        "system": 1251,
+        "user": 9385,
+        "assistant": 308
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1793,
+        "assistant": 60,
+        "total": 2121
+      }
+    },
+    {
+      "id": "gs-021",
+      "chars": {
+        "system": 1251,
+        "user": 7477,
+        "assistant": 530
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1440,
+        "assistant": 91,
+        "total": 1799
+      }
+    },
+    {
+      "id": "gs-022",
+      "chars": {
+        "system": 1251,
+        "user": 7428,
+        "assistant": 560
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1494,
+        "assistant": 107,
+        "total": 1869
+      }
+    },
+    {
+      "id": "gs-023",
+      "chars": {
+        "system": 1251,
+        "user": 10125,
+        "assistant": 488
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1985,
+        "assistant": 100,
+        "total": 2353
+      }
+    },
+    {
+      "id": "gs-024",
+      "chars": {
+        "system": 1251,
+        "user": 8377,
+        "assistant": 611
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1618,
+        "assistant": 118,
+        "total": 2004
+      }
+    },
+    {
+      "id": "gs-025",
+      "chars": {
+        "system": 1251,
+        "user": 9747,
+        "assistant": 271
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1915,
+        "assistant": 44,
+        "total": 2227
+      }
+    },
+    {
+      "id": "gs-027",
+      "chars": {
+        "system": 1251,
+        "user": 7491,
+        "assistant": 383
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1485,
+        "assistant": 69,
+        "total": 1822
+      }
+    },
+    {
+      "id": "gs-028",
+      "chars": {
+        "system": 1251,
+        "user": 9528,
+        "assistant": 484
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1894,
+        "assistant": 94,
+        "total": 2256
+      }
+    },
+    {
+      "id": "gs-029",
+      "chars": {
+        "system": 1251,
+        "user": 9396,
+        "assistant": 414
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1932,
+        "assistant": 68,
+        "total": 2268
+      }
+    },
+    {
+      "id": "gs-030",
+      "chars": {
+        "system": 1251,
+        "user": 8419,
+        "assistant": 494
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1778,
+        "assistant": 91,
+        "total": 2137
+      }
+    },
+    {
+      "id": "gs-031",
+      "chars": {
+        "system": 1251,
+        "user": 10273,
+        "assistant": 597
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 2053,
+        "assistant": 133,
+        "total": 2454
+      }
+    },
+    {
+      "id": "gs-032",
+      "chars": {
+        "system": 1251,
+        "user": 8366,
+        "assistant": 652
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1565,
+        "assistant": 120,
+        "total": 1953
+      }
+    },
+    {
+      "id": "gs-034",
+      "chars": {
+        "system": 1251,
+        "user": 8492,
+        "assistant": 643
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1569,
+        "assistant": 114,
+        "total": 1951
+      }
+    },
+    {
+      "id": "gs-036",
+      "chars": {
+        "system": 1251,
+        "user": 10014,
+        "assistant": 524
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 2066,
+        "assistant": 104,
+        "total": 2438
+      }
+    },
+    {
+      "id": "gs-037",
+      "chars": {
+        "system": 1251,
+        "user": 8756,
+        "assistant": 720
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1882,
+        "assistant": 155,
+        "total": 2305
+      }
+    },
+    {
+      "id": "gs-038",
+      "chars": {
+        "system": 1251,
+        "user": 8753,
+        "assistant": 905
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1828,
+        "assistant": 213,
+        "total": 2309
+      }
+    },
+    {
+      "id": "gs-041",
+      "chars": {
+        "system": 1251,
+        "user": 8857,
+        "assistant": 705
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1841,
+        "assistant": 139,
+        "total": 2248
+      }
+    },
+    {
+      "id": "gs-042",
+      "chars": {
+        "system": 1251,
+        "user": 7493,
+        "assistant": 445
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1639,
+        "assistant": 96,
+        "total": 2003
+      }
+    },
+    {
+      "id": "gs-043",
+      "chars": {
+        "system": 1251,
+        "user": 7790,
+        "assistant": 504
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1526,
+        "assistant": 96,
+        "total": 1890
+      }
+    },
+    {
+      "id": "gs-044",
+      "chars": {
+        "system": 1251,
+        "user": 10010,
+        "assistant": 604
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1994,
+        "assistant": 114,
+        "total": 2376
+      }
+    },
+    {
+      "id": "gs-045",
+      "chars": {
+        "system": 1251,
+        "user": 9853,
+        "assistant": 769
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1911,
+        "assistant": 143,
+        "total": 2322
+      }
+    },
+    {
+      "id": "gs-047",
+      "chars": {
+        "system": 1251,
+        "user": 8457,
+        "assistant": 612
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1918,
+        "assistant": 129,
+        "total": 2315
+      }
+    },
+    {
+      "id": "gs-049",
+      "chars": {
+        "system": 1251,
+        "user": 8439,
+        "assistant": 769
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1736,
+        "assistant": 157,
+        "total": 2161
+      }
+    },
+    {
+      "id": "gs-050",
+      "chars": {
+        "system": 1251,
+        "user": 6450,
+        "assistant": 705
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1271,
+        "assistant": 131,
+        "total": 1670
+      }
+    },
+    {
+      "id": "gs-051",
+      "chars": {
+        "system": 1251,
+        "user": 9216,
+        "assistant": 255
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1837,
+        "assistant": 48,
+        "total": 2153
+      }
+    },
+    {
+      "id": "gs-052",
+      "chars": {
+        "system": 1251,
+        "user": 8198,
+        "assistant": 348
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1719,
+        "assistant": 69,
+        "total": 2056
+      }
+    },
+    {
+      "id": "gs-054",
+      "chars": {
+        "system": 1251,
+        "user": 7899,
+        "assistant": 399
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1572,
+        "assistant": 70,
+        "total": 1910
+      }
+    },
+    {
+      "id": "gs-056",
+      "chars": {
+        "system": 1251,
+        "user": 7933,
+        "assistant": 352
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1680,
+        "assistant": 69,
+        "total": 2017
+      }
+    },
+    {
+      "id": "gs-057",
+      "chars": {
+        "system": 1251,
+        "user": 6459,
+        "assistant": 584
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1275,
+        "assistant": 109,
+        "total": 1652
+      }
+    },
+    {
+      "id": "gs-058",
+      "chars": {
+        "system": 1251,
+        "user": 5739,
+        "assistant": 369
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1175,
+        "assistant": 77,
+        "total": 1520
+      }
+    },
+    {
+      "id": "gs-059",
+      "chars": {
+        "system": 1251,
+        "user": 6507,
+        "assistant": 416
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1308,
+        "assistant": 73,
+        "total": 1649
+      }
+    },
+    {
+      "id": "gs-062",
+      "chars": {
+        "system": 1251,
+        "user": 8065,
+        "assistant": 564
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1658,
+        "assistant": 107,
+        "total": 2033
+      }
+    },
+    {
+      "id": "gs-063",
+      "chars": {
+        "system": 1251,
+        "user": 8755,
+        "assistant": 494
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1869,
+        "assistant": 100,
+        "total": 2237
+      }
+    },
+    {
+      "id": "gs-064",
+      "chars": {
+        "system": 1251,
+        "user": 7791,
+        "assistant": 483
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1690,
+        "assistant": 96,
+        "total": 2054
+      }
+    },
+    {
+      "id": "gs-065",
+      "chars": {
+        "system": 1251,
+        "user": 9203,
+        "assistant": 693
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1726,
+        "assistant": 122,
+        "total": 2116
+      }
+    },
+    {
+      "id": "gs-066",
+      "chars": {
+        "system": 1251,
+        "user": 9902,
+        "assistant": 686
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1704,
+        "assistant": 133,
+        "total": 2105
+      }
+    },
+    {
+      "id": "gs-068",
+      "chars": {
+        "system": 1251,
+        "user": 10564,
+        "assistant": 741
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1964,
+        "assistant": 135,
+        "total": 2367
+      }
+    },
+    {
+      "id": "gs-069",
+      "chars": {
+        "system": 1251,
+        "user": 9402,
+        "assistant": 494
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1807,
+        "assistant": 103,
+        "total": 2178
+      }
+    },
+    {
+      "id": "gs-070",
+      "chars": {
+        "system": 1251,
+        "user": 8020,
+        "assistant": 294
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1651,
+        "assistant": 60,
+        "total": 1979
+      }
+    },
+    {
+      "id": "gs-072",
+      "chars": {
+        "system": 1251,
+        "user": 9176,
+        "assistant": 360
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1699,
+        "assistant": 58,
+        "total": 2025
+      }
+    },
+    {
+      "id": "gs-073",
+      "chars": {
+        "system": 1251,
+        "user": 6640,
+        "assistant": 576
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1274,
+        "assistant": 121,
+        "total": 1663
+      }
+    },
+    {
+      "id": "gs-074",
+      "chars": {
+        "system": 1251,
+        "user": 9109,
+        "assistant": 529
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1914,
+        "assistant": 113,
+        "total": 2295
+      }
+    },
+    {
+      "id": "gs-075",
+      "chars": {
+        "system": 1251,
+        "user": 9274,
+        "assistant": 486
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1719,
+        "assistant": 88,
+        "total": 2075
+      }
+    },
+    {
+      "id": "gs-077",
+      "chars": {
+        "system": 1251,
+        "user": 9673,
+        "assistant": 469
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1994,
+        "assistant": 86,
+        "total": 2348
+      }
+    },
+    {
+      "id": "gs-078",
+      "chars": {
+        "system": 1251,
+        "user": 8620,
+        "assistant": 200
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1010,
+        "assistant": 36,
+        "total": 1314
+      }
+    },
+    {
+      "id": "gs-079",
+      "chars": {
+        "system": 1251,
+        "user": 7719,
+        "assistant": 464
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1585,
+        "assistant": 84,
+        "total": 1937
+      }
+    },
+    {
+      "id": "gs-080",
+      "chars": {
+        "system": 1251,
+        "user": 9468,
+        "assistant": 630
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1772,
+        "assistant": 120,
+        "total": 2160
+      }
+    },
+    {
+      "id": "gs-081",
+      "chars": {
+        "system": 1251,
+        "user": 9087,
+        "assistant": 261
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1651,
+        "assistant": 43,
+        "total": 1962
+      }
+    },
+    {
+      "id": "gs-083",
+      "chars": {
+        "system": 1251,
+        "user": 9421,
+        "assistant": 526
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1836,
+        "assistant": 108,
+        "total": 2212
+      }
+    },
+    {
+      "id": "gs-085",
+      "chars": {
+        "system": 1251,
+        "user": 8958,
+        "assistant": 241
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1834,
+        "assistant": 51,
+        "total": 2153
+      }
+    },
+    {
+      "id": "gs-088",
+      "chars": {
+        "system": 1251,
+        "user": 9692,
+        "assistant": 372
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1862,
+        "assistant": 81,
+        "total": 2211
+      }
+    },
+    {
+      "id": "gs-090",
+      "chars": {
+        "system": 1251,
+        "user": 9603,
+        "assistant": 428
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1964,
+        "assistant": 78,
+        "total": 2310
+      }
+    },
+    {
+      "id": "gs-092",
+      "chars": {
+        "system": 1251,
+        "user": 7407,
+        "assistant": 675
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1456,
+        "assistant": 146,
+        "total": 1870
+      }
+    },
+    {
+      "id": "gs-093",
+      "chars": {
+        "system": 1251,
+        "user": 7185,
+        "assistant": 529
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1443,
+        "assistant": 133,
+        "total": 1844
+      }
+    },
+    {
+      "id": "gs-094",
+      "chars": {
+        "system": 1251,
+        "user": 8481,
+        "assistant": 511
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1754,
+        "assistant": 107,
+        "total": 2129
+      }
+    },
+    {
+      "id": "gs-096",
+      "chars": {
+        "system": 1251,
+        "user": 8907,
+        "assistant": 680
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1864,
+        "assistant": 133,
+        "total": 2265
+      }
+    },
+    {
+      "id": "gs-097",
+      "chars": {
+        "system": 1251,
+        "user": 8856,
+        "assistant": 673
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1932,
+        "assistant": 139,
+        "total": 2339
+      }
+    },
+    {
+      "id": "gs-098",
+      "chars": {
+        "system": 1251,
+        "user": 7958,
+        "assistant": 334
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1521,
+        "assistant": 65,
+        "total": 1854
+      }
+    },
+    {
+      "id": "gs-099",
+      "chars": {
+        "system": 1251,
+        "user": 7559,
+        "assistant": 493
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1486,
+        "assistant": 100,
+        "total": 1854
+      }
+    },
+    {
+      "id": "gs-100",
+      "chars": {
+        "system": 1251,
+        "user": 8143,
+        "assistant": 506
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1617,
+        "assistant": 100,
+        "total": 1985
+      }
+    },
+    {
+      "id": "gs-101",
+      "chars": {
+        "system": 1251,
+        "user": 8798,
+        "assistant": 522
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1903,
+        "assistant": 99,
+        "total": 2270
+      }
+    },
+    {
+      "id": "gs-103",
+      "chars": {
+        "system": 1251,
+        "user": 8100,
+        "assistant": 634
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1910,
+        "assistant": 152,
+        "total": 2330
+      }
+    },
+    {
+      "id": "gs-104",
+      "chars": {
+        "system": 1251,
+        "user": 6562,
+        "assistant": 305
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1444,
+        "assistant": 70,
+        "total": 1782
+      }
+    },
+    {
+      "id": "gs-105",
+      "chars": {
+        "system": 1251,
+        "user": 9644,
+        "assistant": 299
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1880,
+        "assistant": 53,
+        "total": 2201
+      }
+    },
+    {
+      "id": "gs-106",
+      "chars": {
+        "system": 1251,
+        "user": 10056,
+        "assistant": 607
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1912,
+        "assistant": 126,
+        "total": 2306
+      }
+    },
+    {
+      "id": "gs-107",
+      "chars": {
+        "system": 1251,
+        "user": 8755,
+        "assistant": 744
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1670,
+        "assistant": 155,
+        "total": 2093
+      }
+    },
+    {
+      "id": "gs-108",
+      "chars": {
+        "system": 1251,
+        "user": 9893,
+        "assistant": 572
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1956,
+        "assistant": 103,
+        "total": 2327
+      }
+    },
+    {
+      "id": "gs-109",
+      "chars": {
+        "system": 1251,
+        "user": 8595,
+        "assistant": 718
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1754,
+        "assistant": 142,
+        "total": 2164
+      }
+    },
+    {
+      "id": "gs-110",
+      "chars": {
+        "system": 1251,
+        "user": 9062,
+        "assistant": 762
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1650,
+        "assistant": 134,
+        "total": 2052
+      }
+    },
+    {
+      "id": "gs-113",
+      "chars": {
+        "system": 1251,
+        "user": 8530,
+        "assistant": 575
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1603,
+        "assistant": 134,
+        "total": 2005
+      }
+    },
+    {
+      "id": "gs-114",
+      "chars": {
+        "system": 1251,
+        "user": 8467,
+        "assistant": 474
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1725,
+        "assistant": 91,
+        "total": 2084
+      }
+    },
+    {
+      "id": "gs-116",
+      "chars": {
+        "system": 1251,
+        "user": 9955,
+        "assistant": 601
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 2054,
+        "assistant": 129,
+        "total": 2451
+      }
+    },
+    {
+      "id": "gs-117",
+      "chars": {
+        "system": 1251,
+        "user": 8638,
+        "assistant": 835
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1639,
+        "assistant": 157,
+        "total": 2064
+      }
+    },
+    {
+      "id": "gs-118",
+      "chars": {
+        "system": 1251,
+        "user": 8873,
+        "assistant": 1009
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1877,
+        "assistant": 212,
+        "total": 2357
+      }
+    },
+    {
+      "id": "gs-120",
+      "chars": {
+        "system": 1251,
+        "user": 8424,
+        "assistant": 861
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1674,
+        "assistant": 170,
+        "total": 2112
+      }
+    },
+    {
+      "id": "gs-121",
+      "chars": {
+        "system": 1251,
+        "user": 7726,
+        "assistant": 616
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1680,
+        "assistant": 129,
+        "total": 2077
+      }
+    },
+    {
+      "id": "gs-125",
+      "chars": {
+        "system": 1251,
+        "user": 9416,
+        "assistant": 971
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1837,
+        "assistant": 200,
+        "total": 2305
+      }
+    },
+    {
+      "id": "gs-126",
+      "chars": {
+        "system": 1251,
+        "user": 7602,
+        "assistant": 615
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1544,
+        "assistant": 113,
+        "total": 1925
+      }
+    },
+    {
+      "id": "gs-127",
+      "chars": {
+        "system": 1251,
+        "user": 9985,
+        "assistant": 357
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 2028,
+        "assistant": 68,
+        "total": 2364
+      }
+    },
+    {
+      "id": "gs-128",
+      "chars": {
+        "system": 1251,
+        "user": 9095,
+        "assistant": 1001
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1895,
+        "assistant": 208,
+        "total": 2371
+      }
+    },
+    {
+      "id": "gs-129",
+      "chars": {
+        "system": 1251,
+        "user": 7148,
+        "assistant": 582
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1491,
+        "assistant": 112,
+        "total": 1871
+      }
+    },
+    {
+      "id": "gs-132",
+      "chars": {
+        "system": 1251,
+        "user": 10689,
+        "assistant": 902
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 2098,
+        "assistant": 178,
+        "total": 2544
+      }
+    },
+    {
+      "id": "gs-134",
+      "chars": {
+        "system": 1251,
+        "user": 10063,
+        "assistant": 774
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1872,
+        "assistant": 136,
+        "total": 2276
+      }
+    },
+    {
+      "id": "gs-135",
+      "chars": {
+        "system": 1251,
+        "user": 10117,
+        "assistant": 610
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 2027,
+        "assistant": 124,
+        "total": 2419
+      }
+    },
+    {
+      "id": "gs-136",
+      "chars": {
+        "system": 1251,
+        "user": 9050,
+        "assistant": 810
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1720,
+        "assistant": 153,
+        "total": 2141
+      }
+    },
+    {
+      "id": "gs-137",
+      "chars": {
+        "system": 1251,
+        "user": 9462,
+        "assistant": 529
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1940,
+        "assistant": 84,
+        "total": 2292
+      }
+    },
+    {
+      "id": "gs-139",
+      "chars": {
+        "system": 1251,
+        "user": 10906,
+        "assistant": 732
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 2024,
+        "assistant": 133,
+        "total": 2425
+      }
+    },
+    {
+      "id": "gs-141",
+      "chars": {
+        "system": 1251,
+        "user": 9023,
+        "assistant": 301
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1852,
+        "assistant": 57,
+        "total": 2177
+      }
+    },
+    {
+      "id": "gs-142",
+      "chars": {
+        "system": 1251,
+        "user": 8844,
+        "assistant": 405
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1708,
+        "assistant": 75,
+        "total": 2051
+      }
+    },
+    {
+      "id": "gs-146",
+      "chars": {
+        "system": 1251,
+        "user": 11687,
+        "assistant": 229
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1599,
+        "assistant": 43,
+        "total": 1910
+      }
+    },
+    {
+      "id": "gs-147",
+      "chars": {
+        "system": 1251,
+        "user": 7844,
+        "assistant": 667
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1699,
+        "assistant": 125,
+        "total": 2092
+      }
+    },
+    {
+      "id": "gs-148",
+      "chars": {
+        "system": 1251,
+        "user": 9194,
+        "assistant": 388
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1695,
+        "assistant": 73,
+        "total": 2036
+      }
+    },
+    {
+      "id": "gs-149",
+      "chars": {
+        "system": 1251,
+        "user": 8358,
+        "assistant": 577
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1788,
+        "assistant": 117,
+        "total": 2173
+      }
+    },
+    {
+      "id": "gs-151",
+      "chars": {
+        "system": 1251,
+        "user": 9631,
+        "assistant": 74
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1915,
+        "assistant": 13,
+        "total": 2196
+      }
+    },
+    {
+      "id": "gs-152",
+      "chars": {
+        "system": 1251,
+        "user": 6967,
+        "assistant": 74
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1559,
+        "assistant": 13,
+        "total": 1840
+      }
+    },
+    {
+      "id": "gs-153",
+      "chars": {
+        "system": 1251,
+        "user": 8659,
+        "assistant": 74
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1706,
+        "assistant": 13,
+        "total": 1987
+      }
+    },
+    {
+      "id": "gs-156",
+      "chars": {
+        "system": 1251,
+        "user": 7405,
+        "assistant": 74
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1381,
+        "assistant": 13,
+        "total": 1662
+      }
+    },
+    {
+      "id": "gs-159",
+      "chars": {
+        "system": 1251,
+        "user": 7372,
+        "assistant": 74
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1427,
+        "assistant": 13,
+        "total": 1708
+      }
+    },
+    {
+      "id": "gs-160",
+      "chars": {
+        "system": 1251,
+        "user": 8776,
+        "assistant": 74
+      },
+      "tokens_est": {
+        "system": 268,
+        "user": 1710,
+        "assistant": 13,
+        "total": 1991
+      }
+    }
+  ]
+}

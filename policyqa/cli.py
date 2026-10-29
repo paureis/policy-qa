@@ -12,6 +12,10 @@
   smoke    one tiny chat request through the configured model; prints model, latency, tokens, cost, reply
   case-evals  the 30 denial letters in cases/ through the API's chain; verdict accuracy, refusal,
               letter verification, cost and time -> results/case-evals-<date>.json and .md
+  finetune-dataset  golden rows outside the judge subset, with the answer stage's passages ->
+              results/finetune/train-<date>.jsonl and .manifest.json (no model call)
+  finetune-job  Fireworks: whoami, upload, create, status, wait, model, deploy, deploy-status,
+              wait-deploy, undeploy (FIREWORKS_API_KEY, FIREWORKS_ACCOUNT_ID; JSON on stdout)
 """
 import argparse
 import json
@@ -57,6 +61,21 @@ def smoke(provider=None, raw: bool = False, effort: str | None = None) -> int:
     if raw and getattr(provider, "last_response", None) is not None:
         print(json.dumps(provider.last_response, indent=2))
     return 0
+
+
+def answer_retriever(args):
+    """The retriever the answer stage uses (`answer`, `eval-answers`, `finetune-dataset`), from the
+    shared retrieval arguments. Returns (retriever, rerank, rerank_model); `search(q, k=..., trace=...)`
+    is bound to `--candidates`."""
+    from .index import Index
+    from .retrieve import Retriever, ANSWER_RERANK_MODEL
+
+    rerank = not args.no_rerank
+    rerank_model = args.rerank_model or ANSWER_RERANK_MODEL
+    r = Retriever(Index(args.chunks, args.dense), mode=args.mode, rerank=rerank, rerank_model=rerank_model)
+    r_search = r.search
+    r.search = lambda q, k=5, trace=None: r_search(q, k=k, candidates=args.candidates, trace=trace)
+    return r, rerank, rerank_model
 
 
 def main(argv=None):
@@ -126,6 +145,49 @@ def main(argv=None):
     ea.add_argument("--name", default=None)
     ea.add_argument("--traces", type=Path, default=ROOT / "data/traces.jsonl", help="JSONL trace log; pass an empty string to disable")
 
+    fd = sub.add_parser("finetune-dataset", help="golden rows outside the judge subset -> results/finetune/train-<date>.jsonl and its manifest")
+    add_retrieval_args(fd)
+    fd.add_argument("--golden", type=Path, default=ROOT / "golden/golden.csv")
+    fd.add_argument("--out-dir", type=Path, default=ROOT / "results/finetune")
+    fd.add_argument("--date", default=None, help="file name stamp, default today (YYYY-MM-DD)")
+    fd.add_argument("--min-rows", type=int, default=100, help="exit 1 when fewer rows are written")
+
+    fj = sub.add_parser("finetune-job", help="Fireworks dataset upload, supervised fine-tuning job, and on-demand deployment (FIREWORKS_API_KEY, FIREWORKS_ACCOUNT_ID)")
+    fja = fj.add_subparsers(dest="action", required=True)
+    fja.add_parser("whoami", help="the account ids this key can see (GET /v1/accounts)")
+    up = fja.add_parser("upload", help="create the dataset record, upload the JSONL, print the dataset state")
+    up.add_argument("jsonl", type=Path)
+    up.add_argument("--dataset-id", required=True)
+    cr = fja.add_parser("create", help="create the supervised fine-tuning job")
+    cr.add_argument("--dataset", required=True, help="dataset id, or accounts/<account>/datasets/<id>")
+    cr.add_argument("--output-model", required=True, help="model id, or accounts/<account>/models/<id>")
+    cr.add_argument("--epochs", type=int, default=3)
+    cr.add_argument("--learning-rate", type=float, default=0.0001)
+    cr.add_argument("--lora-rank", type=int, default=16)
+    cr.add_argument("--base-model", default=None, help="default accounts/fireworks/models/muse-glimmer-30b (finetune.BASE_MODEL)")
+    cr.add_argument("--job-id", default=None, help="default: Fireworks generates one")
+    st = fja.add_parser("status", help="job state and progress percent")
+    st.add_argument("job")
+    wt = fja.add_parser("wait", help="poll until the job completes or fails; exit 1 on failure or timeout")
+    wt.add_argument("job")
+    wt.add_argument("--poll", type=float, default=30)
+    wt.add_argument("--timeout", type=float, default=7200)
+    md = fja.add_parser("model", help="the model id for chat completions, once the job is completed")
+    md.add_argument("job")
+    dp = fja.add_parser("deploy", help="create an on-demand deployment of a model (base or fine-tuned), one replica, never scaling up")
+    dp.add_argument("--model", required=True)
+    dp.add_argument("--deployment-id", default=None)
+    dp.add_argument("--shape", default="default", help="deployment shape name; 'default' lets Fireworks pick a validated shape")
+    dp.add_argument("--gpu", default=None, help="accelerator, for example H100 (sent as acceleratorType); default: the shape decides")
+    ds = fja.add_parser("deploy-status", help="deployment state and the model string for chat completions")
+    ds.add_argument("deployment")
+    wd = fja.add_parser("wait-deploy", help="poll until the deployment is READY or FAILED")
+    wd.add_argument("deployment")
+    wd.add_argument("--poll", type=float, default=15)
+    wd.add_argument("--timeout", type=float, default=1800)
+    ud = fja.add_parser("undeploy", help="delete the deployment (a 404 means already gone: exit 0)")
+    ud.add_argument("deployment")
+
     jd = sub.add_parser("judge-answers", help="grade a saved answers file (from eval-answers --judge none) with the Claude or mock judge")
     jd.add_argument("answers", type=Path, help="results/answers-<name>.json")
     jd.add_argument("--judge", choices=["claude", "mock"], default="claude")
@@ -165,6 +227,11 @@ def main(argv=None):
 
     if args.cmd == "smoke":
         sys.exit(smoke(raw=args.raw, effort=args.effort))
+
+    if args.cmd == "finetune-job":
+        from . import finetune
+
+        sys.exit(finetune.job_action(args, finetune.make_client()))
 
     if args.cmd == "ingest":
         from .ingest import ingest
@@ -230,16 +297,37 @@ def main(argv=None):
         write_report(res, ROOT / "results" / f"{name}.json", config)
         print(json.dumps(res["summary"], indent=2))
         print(f"wrote results/{name}.json")
+    elif args.cmd == "finetune-dataset":
+        from datetime import date
+
+        from . import finetune
+        from .eval_retrieval import load_golden
+
+        r, rerank, rerank_model = answer_retriever(args)
+        res = finetune.build_dataset(load_golden(args.golden), lambda q, k: r.search(q, k=k), r.index.chunks, k=args.k)
+        stamp = args.date or date.today().isoformat()
+        out = args.out_dir / f"train-{stamp}.jsonl"
+        man = args.out_dir / f"train-{stamp}.manifest.json"
+        config = {
+            "retriever": {"mode": args.mode, "rerank": rerank, "rerank_model": rerank_model if rerank else None, "candidates": args.candidates, "k": args.k},
+            "chunks": finetune.index_fingerprint(args.chunks),
+            "golden": finetune.index_fingerprint(args.golden),
+        }
+        try:
+            manifest = finetune.write_dataset(res, out, man, config)
+        except finetune.DatasetRefused as e:
+            print(json.dumps({"error": str(e)}))
+            sys.exit(1)
+        c = finetune.counts(manifest)
+        c["files"] = [str(out), str(man)]
+        print(json.dumps(c))
+        if c["written"] < args.min_rows:
+            print(json.dumps({"error": f"only {c['written']} rows written, fewer than {args.min_rows}"}))
+            sys.exit(1)
     elif args.cmd in ("answer", "eval-answers"):
-        from .index import Index
-        from .retrieve import Retriever, ANSWER_RERANK_MODEL
         from .generate import Provider, MockProvider, answer_question
 
-        rerank = not args.no_rerank
-        rerank_model = args.rerank_model or ANSWER_RERANK_MODEL
-        r = Retriever(Index(args.chunks, args.dense), mode=args.mode, rerank=rerank, rerank_model=rerank_model)
-        r_search = r.search
-        r.search = lambda q, k=5, trace=None: r_search(q, k=k, candidates=args.candidates, trace=trace)
+        r, rerank, rerank_model = answer_retriever(args)
         provider = MockProvider() if args.provider == "mock" else Provider()
         if args.cmd == "answer":
             a = answer_question(args.question, r.search(args.question, k=args.k), provider)
