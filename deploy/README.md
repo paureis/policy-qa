@@ -57,6 +57,7 @@ Run everything from PowerShell in `~\recourse`, in the venv (`.\.venv\Scripts\Ac
      POLICYQA_LLM_REASONING_EFFORT=low
    ```
    The base URL, model, and prices are the public values from `.env.example`; use whatever your `.env` has if it differs. Leave `POLICYQA_LLM_REASONING_EFFORT` empty (`POLICYQA_LLM_REASONING_EFFORT=`) to send nothing. Add `--force` to replace an existing secret.
+   Since Oct 28 the same secret also carries the second opinion (`policyqa/second_opinion.py`), so the deployed API runs it: add `POLICYQA_SECOND_LLM_BASE_URL=$env:POLICYQA_SECOND_LLM_BASE_URL POLICYQA_SECOND_LLM_API_KEY=$env:POLICYQA_SECOND_LLM_API_KEY POLICYQA_SECOND_LLM_MODEL=$env:POLICYQA_SECOND_LLM_MODEL POLICYQA_SECOND_LLM_INPUT_USD_PER_M=$env:POLICYQA_SECOND_LLM_INPUT_USD_PER_M POLICYQA_SECOND_LLM_OUTPUT_USD_PER_M=$env:POLICYQA_SECOND_LLM_OUTPUT_USD_PER_M` to the command. Empty price values fall back to the primary's prices. `deploy/modal_app.py` requires only the three primary names; the rest pass through. Done on Oct 28 from Git Bash with the values read from `.env` into the environment (`set -a; . ./.env; set +a`), never typed.
    Verify: `modal secret list` shows `recourse-muse-spark`.
 
 ### C. Data volume (10 to 20 minutes)
@@ -75,6 +76,7 @@ Then fill it. Option 1 is the recommended one: it ships the exact index the gold
 11. `modal volume put recourse-data E:\Downloads\policy-qa-corpus\all /pdfs`
     That is the folder in `RECOURSE_PDF_DIR` in your `.env` on Oct 26 (about 67 MB). It also holds a stray `manifest.csv`, which is harmless. Do not upload `data/cases` (local test cases) or `data/pages` (a cache that rebuilds itself).
     Add `--force` to any of these to overwrite a file already there.
+    Done on Oct 28 (steps 6 to 11, about 3 minutes). From Git Bash the local path must be in Windows form (`E:/Downloads/policy-qa-corpus/all`): with `MSYS_NO_PATHCONV=1` set for the remote path, a `/e/...` local path is passed to Modal unconverted and the upload fails with a "does not exist" error. A "'charmap' codec" line after a successful upload is the Windows console failing to print Modal's tick mark, not an error; set `PYTHONIOENCODING=utf-8` to avoid it.
 
 **Option 2: build in the cloud (fallback).**
 
@@ -98,6 +100,7 @@ Then fill it. Option 1 is the recommended one: it ships the exact index the gold
     `$env:RECOURSE_CORS_ORIGINS = "http://localhost:3000"`
 14. `modal deploy deploy/modal_app.py`
     Expected: the app `recourse-api` is created and the output lists the web endpoint URL, `https://<workspace>--recourse-api.modal.run`. Copy it.
+    Done on Oct 28 at about 7:45 pm: the URL carries the region, `https://alpau-reis--recourse-api.us-east.modal.run` (deployed in 2 s after the image built during step 12). Steps 15 to 17 then held: `/health` live on every stage with 64 PDFs (5.7 s on the first request), `/search` returned `fl-04` page 5, the page PNG was 260,281 bytes (the same bytes as the local render), and the highlight for the PDN quote gave the same boxes as the local API to the decimal, so Debian's poppler locates the same text.
 15. Health check:
     `curl.exe -s https://<workspace>--recourse-api.modal.run/health`
     (`curl.exe`, not `curl`: in Windows PowerShell `curl` is `Invoke-WebRequest`.) Expected:
@@ -122,6 +125,7 @@ Then fill it. Option 1 is the recommended one: it ships the exact index the gold
     ```
     Verify: `curl.exe -s -i -H "Origin: https://<your-project>.vercel.app" https://<workspace>--recourse-api.modal.run/health` shows `access-control-allow-origin: https://<your-project>.vercel.app`.
 21. End to end: open the Vercel domain, paste one synthetic sample letter (`cases/letters/`), and watch the case through to `reviewed`. Expected: 50 to 90 seconds, about $0.10 in model credits. Then `modal run deploy/modal_app.py::inventory` shows `"cases": 1`.
+    Done against the API alone on Oct 28 at about 7:55 pm, before Vercel, with `curl`-style calls from a script (intake as form text, investigate, poll every 3 s): dc-001 became case `c_2cbfeb`, intake in 4.3 s, `reviewed` at 47.7 s, inconsistent, 6 of 6 findings supported, 4 of 4 letter claims verified, the critic found and fixed 2 issues, the second opinion (Muse Spark Open) agreed in 3.2 s; $0.11 in model credits. So the background thread finishes a case on Modal and the second opinion runs there from the one secret.
 
 ## Settings you may want to change
 
