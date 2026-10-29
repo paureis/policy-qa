@@ -12,6 +12,7 @@ import {
   investigate,
   isAbort,
   isFixtureCase,
+  isRecordedSample,
   isWorking,
   pollCase,
   POLL_MS,
@@ -167,8 +168,8 @@ export function InvestigationView({ caseId }: { caseId: string }) {
     }
   };
 
-  /* The band marks a fixture case, also when one renders on the live dev server. */
-  const sample = isFixtureCase(caseId);
+  /* The band marks a fixture case, also when one renders on the live dev server; the public sample as the recorded run it is. */
+  const sample = isFixtureCase(caseId) ? (isRecordedSample(caseId) ? "recorded" : true) : false;
   const record = view.kind === "ready" ? view.record : null;
   const dual = record?.route?.dual === true;
   const investigation = record?.investigation ?? null;
@@ -336,7 +337,8 @@ export function InvestigationView({ caseId }: { caseId: string }) {
     and the receipt; with the folder tab beside it, both would not fit on one line.
   */
   const bandStatus = record ? (stageLine(record) ?? "") : "";
-  const opened = openedDate(record?.created_at);
+  /* Not on the recorded sample: its created_at is the replay's clock, so the date would be wrong on any other day (section 15, fix round). */
+  const opened = sample === "recorded" ? null : openedDate(record?.created_at);
   /*
     The top sheet: the case header, the status line and the verdict on one
     bond sheet with a 1 px ink edge on the manila folder (the finished case
@@ -386,7 +388,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
     ) : null;
 
   return (
-    <PageViewerProvider>
+    <PageViewerProvider caseId={caseId}>
       <div className="flex min-h-full flex-col" data-layout={annotated ? "annotated" : "column"}>
         <Band
           sample={sample}

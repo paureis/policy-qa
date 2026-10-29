@@ -1004,3 +1004,177 @@ one disclosure lives in the band's tab.
   `c_sample` at 390 and 1280 at `reviewed`, and the run frames at 1280 (the section 14 script with a
   shots folder). README's demo line ("synthetic sample letters") gains the words that the public
   sample is a recorded run of dc-001 with its date; DECISIONS gets the entry.
+
+Decided by the builder, with the reason (Oct 28, 2026, evening):
+
+- The export (`web/scripts/sample-case.mjs`) reads the stored file, not `GET /case/c_f3b3d0`, so it
+  runs against an API that no longer holds the case. It walks every citation H2 lists plus the draft
+  paragraphs and the critic round's before and after, and finds 15 distinct (doc_id, page, quote) on the
+  six pages. The generated module is 95 KB. The page images carry no `dpi` parameter, so the exhibit's
+  220 dpi request (`sharpSrc`) leaves them at 110 dpi as H2 says: the crop is softer than a live one.
+- `pageImageSrc` treats `/sample/` like `/fixtures/` (served by the web app, never the API), so the
+  production build in live mode loads the pages from `public/sample/`.
+- The reconstruction (H3): `ANSWER_WORKERS = 3` in `policyqa/investigate.py`. The questions go to the
+  pool in planned order once the route and plan spans are done (5.19 s); each lands at its worker's
+  start plus its `question` span. Result: f2 at 10.44 s, f1 11.19, f3 12.59, f4 15.92, f5 16.67, f6
+  17.89, which is the order of the trace's question spans; the last lands 7 ms before the recorded
+  17.894 s. The replay computes this from the record when it loads (`recordedTimeline` in `case.ts`);
+  if a question span were missing it would spread the findings evenly after the plan. As the API does,
+  the findings list is in planned order, so f1 lands above f2 and the latest-finding line keeps f2's
+  words until f3 lands.
+- decided and drafted are each held 1.8 s (2.5 s since the fix round, below) inside the next step's recorded time,
+  not added to it. A fixture poll comes every 1.75 s (the 250 ms read plus 1.5 s), so a shorter hold
+  could be missed. The chain still lands at the recorded seconds: the verdict 4.1 s after the
+  investigation, the letter 6.9 s after the verdict, the self-check 9.0 s after the letter, reviewed at
+  37.9 s. `investigated` is not served (deciding at once, as H3 says).
+- Counts and cost during the run follow the API's roll-up: `questions_planned` is 0 until the plan
+  lands; the cost is 0 until the first finding, then the plan plus the landed findings. The trace grows
+  with the run: each span appears once its step has landed.
+- The constants are split: `RECORDED_CARD`, `RECORDED_SUMMARY` and `RECORDED_LETTER_TEXT` read the
+  generated record; `SAMPLE_CARD`, `SAMPLE_SUMMARY` and `SAMPLE_LETTER_TEXT` are unchanged and still
+  serve the seven fixtures. `isRecordedSample` (`/^c_sample\d*$/`) picks the family.
+- The H4 check is `web/scripts/sample-text-check.mjs`. "sample" is allowed in the band, the case id,
+  the register (the card's payer), the letter exhibit and the appeal letter. Its control: run on
+  `c_rejected` it fails with 41 offending strings.
+
+Measured (dev server, every API request aborted, one page at a time):
+
+| Check | Result |
+|---|---|
+| Export, first run | 6 PNGs (219 to 260 KB), `sample-case.ts` 95 KB; 15 vision checks, 14 agree, 1 disagrees (below); recorded cost $0.1031, of which one check ($0.0048, the rule's fl-04 p5 quote) was already cached, so the run spent about $0.098 |
+| Export, re-run | every file "unchanged", then "nothing changed", in 1.2 s |
+| H1 control | 14 of 14 captures (seven fixtures at 390 and 1280) pixel-identical to the baseline taken before any source change |
+| H4 text check | clean at 390 and 1280 on the dev server, and at 1280 on the production build in live mode (`next start`) |
+| H9 | `npm run build` passes; on the production build `/case/c_sample` reaches reviewed with 0 API calls, the exhibit's page from `/sample/fl-04-p5.png`, the caption "Muse Spark vision check: matches the quote." |
+| H5 viewer | "See the page" on `c_sample3` opens `/sample/fl-04-p5.png` with the recorded boxes and the recorded check text, 0 API calls |
+| `tsc --noEmit`, `npm run lint` | clean |
+| Receipt at reviewed | Investigation 18 s $0.0647, Verdict 4.1 s $0.0095, Second opinion 4.1 s $0.0076, Letter 6.9 s $0.0139, Self-check 9.0 s $0.0161, Total 38 s $0.1118; Model: muse-spark-1.3 |
+
+H10 on `c_sample`, y in page px, seconds from page load:
+
+| Width | Moment | Stamp | Slip | Latest line | First exhibit | Second opinion | Strip |
+|---|---|---|---|---|---|---|---|
+| 1280 x 800 | first poll (0.4 s) | 138.5 | 371.2 | 465.2 (empty) | none | none | none |
+| 1280 x 800 | findings land (10.9 to 18.0 s) | 138.5 | 371.2 | 465.2 | none | none | none |
+| 1280 x 800 | decided (23.3 s), settled by 23.9 s | 117.3, then 122.2 | 371.2 | 465.2 | 540.7, then 537.2 | 311, then 307.5 | 1165.3, then 1178 |
+| 1280 x 800 | drafting to reviewed (25.1 to 39.2 s) | 122.2 | 371.2 | 465.2 | 537.2 | 307.5 ("agrees." at 26.9 s) | 1178 |
+| 1280 x 800 | slip folded (40.8 s) | 122.2 | none | none | 395.2 | 307.5 | 1036 |
+| 1024 x 800 | first poll | 138.5 | 461.2 | 587.2 (empty) | none | none | none |
+| 1024 x 800 | decided, settled by 23.8 s | 169.2, then 170.5 | 461.2 | 587.2 | 660.7, then 659.2 | 339.5, then 337.9 | 1312.9, then 1322.1 |
+| 1024 x 800 | drafting to reviewed | 170.5 | 461.2 | 587.2 | 659.2 | 337.9 | 1322.1 |
+| 1024 x 800 | slip folded | 170.5 | none | none | 485.2 | 337.9 | 1148.1 |
+
+The slip's `ol`, the latest-finding line and the second-opinion line kept one node each from their first
+appearance to the fold at 1280, 1024 and 390. The register held 233.2 px (1280) and 271.2 (1024), its
+Lead slot 67.2, at every sample. The settle at decided (the stamp 117.3 to 122.2 within 0.4 s, the strip
+once more when the policy crop's image loads) is not new: the unchanged `c_consistent` settles the same
+way at 1280 (117.3 to 122.2, 540.7 to 537.2), and `c_rejected`'s strip moves twice (crop, then caption).
+At 390 the stage lines above the stamp change height with each status (stamp 858.1 and 886.1 in turn,
+the latest line 744.3 and 772.3), as on the unchanged `c_rejected` (759.1 and 787.1): the phone layout's
+known behaviour (D1), not the replay.
+
+Reported, not changed (H11 and what the look showed):
+
+- (Fixed in the fix round, below.) The band on the finished case at desktop: the tab with the payer, the date and "recorded run, sample
+  letter" is 755 px wide (616 on `c_rejected`), so the status line beside it is 115 px wide and clamps
+  to "Letter checked: / the first draft..." at 1280, 1440 and 1536 px alike (the column stops at
+  1120 px). On the fixtures it fits on one line. A layout choice for Alvaro: drop the payer and the date
+  from the sample's tab, or give the status line its room another way.
+- (Fixed in the fix round, below.) During the first 10.4 s (before the first finding) the receipt reads "Investigation ... $0.0000
+  (prices not set)", because the API's roll-up has cost 0 until a question completes and the model is
+  real. It is below the fold at 1280 and 1024. A live case shows the same; the fix belongs in
+  `formatCost` or the receipt (a running step's zero is not "prices not set"), not in the data.
+- One recorded vision check disagrees: fl-04 p6, the 265-character quote "services for recipients
+  under the age of 21 years exceeding the coverage described within this policy..." (finding f3 and one
+  evidence item). Its "See the page" says "does not match the quote." That is the API's own result.
+- The verdict's `what_would_change` is null; the section is left out, as the component does for an
+  empty value. The U+2022 bullets in the fl-04 p5 quotes render inline in the exhibits and the letter
+  ("• Are determined medically necessary • Do not duplicate another service ...").
+- Not measured: the fixture-mode intake returning the record's card (the dev server runs in live mode,
+  and a live intake is a POST this build may not make); `c_sample3` was opened directly instead.
+
+Files: `web/scripts/sample-case.mjs`, `web/src/lib/sample-case.ts` (generated), `web/public/sample/`
+(six PNGs), `web/src/lib/case.ts`, `web/src/components/intake/Band.tsx`,
+`web/src/components/investigation/InvestigationView.tsx`, `web/scripts/sample-text-check.mjs`,
+`README.md`, `DECISIONS.md`.
+
+Fix round (Oct 28, 2026, evening), from a fresh evaluator's report and two decisions by Alvaro:
+
+1. The sample's tab drops "opened <date>" (Alvaro's choice; the date came from the replay's clock). It
+   reads `CASE c_sample · Sample Health Plan · recorded run, sample letter`; the title is unchanged.
+   Measured on the finished case: the tab is 403 px at 1024 (the payer is hidden below 1280), 575 px at
+   1280 and 1440; the band's status line "Letter checked: the first draft stands." is 223 px wide and
+   one line (19 px) at all three, the same as `c_rejected` at 1280 (tab 616 px, status 223 px, one line).
+2. The export is fail-closed. It fetches everything into memory; if any quote is not found or any
+   vision check is not `checked` (or carries an error), it writes nothing, names each failure and exits 1.
+   Otherwise it compares every would-be file with the one on disk and writes only those that differ,
+   or says "nothing changed". Proved with a stub API (`node stub.mjs`, no model calls) in two modes:
+   every vision check `checked:false, error:"provider timeout"` gave "REFUSED: 15 failure(s); nothing
+   was written." and exit 1; one highlight not found gave "REFUSED: 1 failure(s)" and exit 1; the hash
+   of the module and the six PNGs was the same before and after both. Re-run against the live API: exit
+   0, all seven files "unchanged", "nothing changed", in 920 ms for 15 highlights, 15 vision checks and
+   six pages. An uncached check took 2.3 to 13.5 s on the first run, so none of these 15 called the
+   model. The API's own log was not readable from this session (it runs in a window I cannot see).
+3. The intake page in fixture mode passes `sample="intake"` to the band, whose title now reads
+   "Fixture mode: every submit opens the recorded run of the Sample Health Plan letter (October 28,
+   2026)". The seven fixtures' case pages keep the old title. Not rendered: the dev server runs in
+   live mode, where the intake band carries no mark; checked in the source and by tsc. The landing
+   page (`app/page.tsx`) still passes `sample` as a boolean and keeps the old title in fixture mode,
+   since H6 leaves the landing untouched; the orchestrator decides whether it changes too.
+4. `formatCost(usd, model, reportedTokens)`: "(prices not set)" is added only when the cost is zero, the
+   model is real, and the step's finished calls reported tokens (the plan or any finding for the
+   investigation, the call itself for the verdict, letter and second opinion, the rounds for the
+   self-check). The total gets the note only when some step reported tokens. The replay now counts the
+   plan's cost when the plan lands (5.2 s), as it already showed the plan's tokens then; the API's own
+   roll-up adds it at the first finding. Receipt per poll on the replay at 1280: $0.0000 from 0.3 to
+   3.9 s, $0.0066 from 5.7 to 9.1 s, then $0.0146, $0.0236, $0.0349, $0.0543, $0.0647 as findings land,
+   $0.1118 at reviewed; "prices not set" in 0 of the samples (49 samples, 5.6 to 9.1 s, in a run with the new rule but before the plan-cost change). The
+   seven fixtures' finished pages are pixel-identical (item 6's control).
+5. The recorded highlight and vision lookup answers only on the recorded sample family:
+   `getHighlight` and `visionCheck` take the case id, which `PageViewerProvider` now carries in a
+   context (`useViewerCaseId`) to the exhibit and the viewer. Proved on the live-mode dev server: case
+   `c_f3b3d0` (its GET answered in the browser from the stored record, which cites the same 15 quotes)
+   sent its highlight request to the API (2 requests, aborted and counted; the exhibit shows its error
+   state), while `c_sample` reached reviewed with 0 API requests and its crop.
+6. The holds for decided and drafted are 2.5 s. Re-measured at 1280 (seconds from page load, every
+   API request aborted):
+
+| Status first seen | 0.4 investigating | 19.8 deciding | 23.4 decided | 25.0 drafting | 30.4 drafted | 32.1 reviewing | 39.2 reviewed | 40.7 slip folded |
+|---|---|---|---|---|---|---|---|---|
+
+   Every status was seen. The latest-finding line changed at 10.9, 14.5, 18.0 and 19.8 s (f4 and f5
+   landed between two polls, as the evaluator saw at 390); the stamp 138.5 then 122.2 (after a
+   120.9 sample at decided), the slip 371.2, the latest line 465.2, the first exhibit 537.2 then 395.2
+   at the fold, the second-opinion line 307.5 ("agrees." at 26.8 s), the strip 1178 then 1036: the same
+   positions as the first table. The slip's `ol`, the latest line and the second-opinion line kept one
+   node each to the fold.
+
+Checks after the round: `tsc --noEmit`, `npm run lint` and `npm run build` clean; the H4 check
+(`scripts/sample-text-check.mjs`, now also reading the page about 7 s into the run, after the plan
+lands and before the first finding, where every forbidden string but "$0.0000" must be absent) clean at
+390 and 1280. Its control: with the old cost line put back for one run (case.ts saved, mutated,
+restored, compared byte for byte) it found "prices not set" twice at 7.0 s and exited 1. H1 control:
+14 of 14 captures pixel-identical to the original baseline. `c_sample` captured at 390 and 1280 at
+reviewed.
+
+Fresh evaluation (Oct 28, 2026, 8:00 to 9:20 pm, an Opus evaluator that had not seen the build; its own
+base worktree of 7bede24 on port 3001, a byte-checked copy of the head in fixture mode on 3002 and as a
+production build on 3003, every API request aborted and counted): H1 to H11 PASS, H12 UNVERIFIED only
+because re-running the export could spend credits. Evidence it produced: the generated record equal to
+`data/cases/c_f3b3d0.json` across 1,067 leaves except `case_id`; the 15 distinct cited quotes set-equal
+with the table; the six PNGs byte-identical to the API's render and all 15 highlights equal to the API's
+answer; every stage landing in the first poll after its recorded time; 23 "See the page" opens from
+`/sample/` with 0 API calls (the one recorded disagreement, fl-04 p6, shown honestly); the day count 16
+with the clock moved to Nov 20; the receipt equal to the record ($0.1118, 38 s); no remounts, every
+settle also present on the unchanged fixtures; 14 of 14 control captures identical. Four defects and two
+contract gaps, all fixed in the fix round above by Alvaro's go (the tab wording his choice): the export
+was fail-open (15 failed checks written, exit 0); the tab clamped the band's status line at 1280 and
+1440; the fixture-mode intake title named Sunshine Health; "(prices not set)" showed for the first 9 s
+of every case; the recorded lookup applied to any case citing one of the 15 quotes; the 1.8 s holds were
+shorter than the measured poll gap. Re-check by the same evaluator: all six PASS (tab 575 px at 1280,
+status line 223 px on one line; the export refuses with exit 1 and unchanged hashes on two stubs; 0 of
+71 receipt samples with the note; a non-sample case id reaches the API, `c_sample` never; every status
+seen on three runs, reviewed at 39.3 to 39.5 s; 14 of 14 control captures identical; the whole-DOM grep
+clean at 7 s and at reviewed). Left as recorded: the replay lands the plan at 5.2 s where the real API
+emits nothing until the first question completes; the landing's fixture-mode band title is untouched
+(H6; production runs live).

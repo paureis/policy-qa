@@ -38,7 +38,7 @@ Live agreement rate (Oct 28, 2026, `results/case-evals-2026-10-28-second-opinion
 | Investigation agent with verified findings | Oct 28 |
 | Steelman, verdict, appeal letter, deadline and filing steps, evidence checklist, scope guardrail | Oct 29 |
 | Denial-case eval set (about 30 synthetic letters with known verdicts), judge validation against human verdicts | Oct 30 |
-| Live demo: API on Modal, front end on Vercel, synthetic sample letters | Oct 31 |
+| Live demo: API on Modal, front end on Vercel, synthetic sample letters; the public sample case is a recorded run of dc-001 through the API on October 28, 2026 (only the letter is synthetic) | Oct 31 |
 | Open-weights comparison on Baseten; dual-eligible side by side | Nov 1 |
 | Full evaluation run, numbers, write-up, video | Nov 2 to 3 |
 

@@ -229,7 +229,7 @@ export function IntakeFlow() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <Band sample={sample} widthClass={FRAME_WIDTH}>
+      <Band sample={sample ? "intake" : false} widthClass={FRAME_WIDTH}>
         {phase !== "entry" ? (
           <button
             type="button"

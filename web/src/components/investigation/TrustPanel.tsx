@@ -8,6 +8,7 @@ import {
   formatCost,
   formatSeconds,
   letterVerificationLine,
+  reportedTokens,
   secondOpinionModelName,
   selfCheckLine,
   type Critique,
@@ -80,24 +81,41 @@ export function TrustPanel({
 
   // Steps that have reported their usage: the investigation always, then the verdict and the letter once done.
   /* beside: a step that ran beside the chain (the second opinion): its own row and its cost, outside the total time, the model line and the heading's count. */
-  const steps: { name: string; cost: number; ms: number; model: string; time?: string; beside?: boolean }[] = [
-    { name: "investigation", cost: investigation.cost_usd, ms: investigation.latency_ms, model: investigation.model },
+  /* tokens: the step's finished calls reported tokens, so a zero cost there means prices are not set (formatCost). */
+  const plan = (investigation as Investigation & { plan?: { input_tokens?: number; output_tokens?: number } }).plan;
+  const steps: { name: string; cost: number; ms: number; model: string; tokens: boolean; time?: string; beside?: boolean }[] = [
+    {
+      name: "investigation",
+      cost: investigation.cost_usd,
+      ms: investigation.latency_ms,
+      model: investigation.model,
+      tokens: reportedTokens(plan) || findings.some((f) => reportedTokens(f)),
+    },
   ];
-  if (verdict && verdict.status !== "running") steps.push({ name: "verdict", cost: verdict.cost_usd ?? 0, ms: verdict.latency_ms ?? 0, model: verdict.model });
+  if (verdict && verdict.status !== "running")
+    steps.push({ name: "verdict", cost: verdict.cost_usd ?? 0, ms: verdict.latency_ms ?? 0, model: verdict.model, tokens: reportedTokens(verdict) });
   if (secondOpinion && secondOpinion.status === "done")
     steps.push({
       name: `Second opinion (${secondOpinionModelName(secondOpinion.model)})`,
       cost: secondOpinion.cost_usd ?? 0,
       ms: secondOpinion.latency_ms ?? 0,
       model: secondOpinion.model ?? "",
+      tokens: reportedTokens(secondOpinion),
       beside: true,
     });
   else if (secondOpinion && secondOpinion.status === "failed")
     /* No model answered, so a zero cost is not "prices not set": the cost is printed without the model. */
-    steps.push({ name: "Second opinion", cost: secondOpinion.cost_usd ?? 0, ms: 0, model: "", time: "did not answer", beside: true });
-  if (letter && letter.status !== "running") steps.push({ name: "letter", cost: letter.cost_usd ?? 0, ms: letter.latency_ms ?? 0, model: letter.model });
+    steps.push({ name: "Second opinion", cost: secondOpinion.cost_usd ?? 0, ms: 0, model: "", tokens: false, time: "did not answer", beside: true });
+  if (letter && letter.status !== "running")
+    steps.push({ name: "letter", cost: letter.cost_usd ?? 0, ms: letter.latency_ms ?? 0, model: letter.model, tokens: reportedTokens(letter) });
   if (critique && critique.status !== "running" && !critique.skipped)
-    steps.push({ name: "self-check", cost: critique.cost_usd ?? 0, ms: critique.latency_ms ?? 0, model: critique.model });
+    steps.push({
+      name: "self-check",
+      cost: critique.cost_usd ?? 0,
+      ms: critique.latency_ms ?? 0,
+      model: critique.model,
+      tokens: (critique.rounds ?? []).some((r) => reportedTokens(r)),
+    });
   const totalCost = steps.reduce((s, x) => s + (Number.isFinite(x.cost) ? x.cost : 0), 0);
   const totalMs = steps.reduce((s, x) => s + (!x.beside && Number.isFinite(x.ms) ? x.ms : 0), 0);
   const chain = steps.filter((x) => !x.beside);
@@ -184,7 +202,7 @@ export function TrustPanel({
                 {capitalize(x.name)}
               </th>
               <td className="py-2 pr-3 text-right whitespace-nowrap">{x.time ?? formatSeconds(x.ms)}</td>
-              <td className="py-2 text-right">{formatCost(x.cost, x.model === "" ? undefined : x.model)}</td>
+              <td className="py-2 text-right">{formatCost(x.cost, x.model === "" ? undefined : x.model, x.tokens)}</td>
             </tr>
           ))}
         </tbody>
@@ -195,7 +213,7 @@ export function TrustPanel({
             </th>
             <td className={`py-2 pr-3 text-right font-bold whitespace-nowrap ${folder ? "lg:font-semibold" : ""}`}>{formatSeconds(totalMs)}</td>
             <td className={`py-2 text-right font-bold ${folder ? "lg:font-semibold" : ""}`} data-total-cost="true">
-              {formatCost(totalCost, costModel)}
+              {formatCost(totalCost, costModel, steps.some((x) => x.tokens))}
             </td>
           </tr>
         </tfoot>

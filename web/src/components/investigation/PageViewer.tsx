@@ -63,6 +63,13 @@ interface ViewerActions {
 
 const StateContext = createContext<ViewerState | null>(null);
 const ActionsContext = createContext<ViewerActions | null>(null);
+/* The case the page shows: the recorded sample's highlights and vision checks answer only on its own family (section 15, fix round). */
+const CaseIdContext = createContext<string | null>(null);
+
+/* The case id of the page around a viewer or an exhibit, or null outside a case page. */
+export function useViewerCaseId(): string | null {
+  return useContext(CaseIdContext);
+}
 
 function subscribeDesktop(onChange: () => void): () => void {
   const mq = window.matchMedia(DESKTOP_QUERY);
@@ -85,7 +92,7 @@ function chipFor(key: string): HTMLElement | null {
   return document.querySelector<HTMLElement>(`[aria-controls~="${CSS.escape(key)}"]`);
 }
 
-export function PageViewerProvider({ children }: { children: ReactNode }) {
+export function PageViewerProvider({ children, caseId = null }: { children: ReactNode; caseId?: string | null }) {
   const [open, setOpen] = useState<OpenViewer | null>(null);
   const desktop = useDesktop();
   const openRef = useRef<OpenViewer | null>(null);
@@ -116,7 +123,9 @@ export function PageViewerProvider({ children }: { children: ReactNode }) {
 
   return (
     <ActionsContext.Provider value={actions}>
-      <StateContext.Provider value={state}>{children}</StateContext.Provider>
+      <StateContext.Provider value={state}>
+        <CaseIdContext.Provider value={caseId}>{children}</CaseIdContext.Provider>
+      </StateContext.Provider>
     </ActionsContext.Provider>
   );
 }
@@ -258,12 +267,13 @@ function PageViewerPanel({
   /* The highlight first, then the vision check on the highlighted area. Both abort on close. Keyed on
      the citation's fields, not the object, so a poll that rebuilds the record does not re-run them. */
   const { doc_id, page, quote } = citation;
+  const caseId = useViewerCaseId() ?? undefined;
   useEffect(() => {
     const controller = new AbortController();
     (async () => {
       let highlight: PageHighlight;
       try {
-        highlight = await getHighlight(doc_id, page, quote, controller.signal);
+        highlight = await getHighlight(doc_id, page, quote, controller.signal, caseId);
       } catch (err) {
         if (controller.signal.aborted || isAbort(err)) return;
         setLoad({ kind: "error", error: err instanceof PageError ? err : new PageError("unreachable") });
@@ -273,7 +283,7 @@ function PageViewerPanel({
       if (!highlight.found || highlight.boxes_px.length === 0) return;
       setVision({ kind: "checking" });
       try {
-        const res = await visionCheck(doc_id, page, quote, controller.signal);
+        const res = await visionCheck(doc_id, page, quote, controller.signal, caseId);
         const v = res.vision;
         if (!v || !v.checked || v.error) setVision({ kind: "unavailable", error: cleanError(v?.error ?? "") });
         else setVision({ kind: "done", vision: v });
@@ -283,7 +293,7 @@ function PageViewerPanel({
       }
     })();
     return () => controller.abort();
-  }, [doc_id, page, quote, attempt]);
+  }, [doc_id, page, quote, attempt, caseId]);
 
   /* Focus moves into the panel on open; Escape closes it. */
   useEffect(() => {

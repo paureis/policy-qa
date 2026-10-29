@@ -16,7 +16,7 @@ import {
 import { pageFolio, shortDocName } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
 import { CornerMarks, Mark, PaperClip, type MarkKind } from "@/components/investigation/Marks";
-import { usePageViewer, viewerPanelId } from "@/components/investigation/PageViewer";
+import { usePageViewer, useViewerCaseId, viewerPanelId } from "@/components/investigation/PageViewer";
 import { cleanError, visionLine, type Vision } from "@/components/investigation/PageViewer";
 
 /*
@@ -96,13 +96,14 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
      keyed on the object re-ran the highlight and the Muse Spark vision check on each poll (nine
      checks on one live case, Oct 28, 2026). */
   const { doc_id, page, quote } = citation;
+  const caseId = useViewerCaseId() ?? undefined;
   useEffect(() => {
     if (unsupported) return;
     const controller = new AbortController();
     (async () => {
       let highlight: PageHighlight;
       try {
-        highlight = await getHighlight(doc_id, page, quote, controller.signal);
+        highlight = await getHighlight(doc_id, page, quote, controller.signal, caseId);
       } catch (err) {
         if (controller.signal.aborted || isAbort(err)) return;
         setLoad({ kind: "error", error: err instanceof PageError ? err : new PageError("unreachable") });
@@ -112,7 +113,7 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
       if (!highlight.found || highlight.boxes_px.length === 0) return;
       setVision({ kind: "checking" });
       try {
-        const res = await visionCheck(doc_id, page, quote, controller.signal);
+        const res = await visionCheck(doc_id, page, quote, controller.signal, caseId);
         const v = res.vision;
         if (!v || !v.checked || v.error) setVision({ kind: "unavailable", error: cleanError(v?.error ?? "") });
         else setVision({ kind: "done", vision: v });
@@ -122,7 +123,7 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
       }
     })();
     return () => controller.abort();
-  }, [doc_id, page, quote, unsupported]);
+  }, [doc_id, page, quote, unsupported, caseId]);
 
   const folio = (
     <p className="mt-4 font-mono text-[14px] leading-snug text-ink" data-exhibit-folio="true">
