@@ -1178,3 +1178,65 @@ seen on three runs, reviewed at 39.3 to 39.5 s; 14 of 14 control captures identi
 clean at 7 s and at reviewed). Left as recorded: the replay lands the plan at 5.2 s where the real API
 emits nothing until the first question completes; the landing's fixture-mode band title is untouched
 (H6; production runs live).
+
+
+## 16. The sample letters door (Oct 29, 2026)
+
+From the Oct 26 scope brainstorm (DECISIONS.md: "Live judge-submitted letter on the deployed app, with a gallery of
+ten synthetic letters, one a trap"). A judge on the deployed site has no letter in hand; today the only way in is to
+type one or open the recorded sample. Decided by Alvaro (Oct 29, by prompt, from three shapes): a third door on the
+intake desk, not a new page and not a list on the landing; the letters' expected outcomes stay hidden, so a judge's
+run is blind; desktop only until the weekend's phone pass. Made by the orchestrator within section 12 and DESIGN.md
+(J1 to J10), then by the builder where marked. Files: `web/scripts/sample-letters.mjs` (new), `web/src/lib/sample-letters.ts`
+(generated, committed), `web/src/components/intake/EntryForm.tsx`, `IntakeFlow.tsx`, `web/src/app/page.tsx`. Nothing in
+`api/`, `policyqa/` or `cases/` changes.
+
+- J1. The data. `web/scripts/sample-letters.mjs` (run from `web/`, like `sample-case.mjs`) reads `../cases/cases.csv`
+  and keeps the ten rows with `demo` = `yes` in file order, and reads each one's `../cases/letters/<id>.txt`. It
+  writes `src/lib/sample-letters.ts`: an array of `{ id, payer, program, service, reason, text }` where `program` is
+  the plain label (the same map as `policyqa.investigate.PROGRAM_LABELS`: "Florida Medicaid (MMA)", "Medicare Part B",
+  and so on), `reason` is the first sentence of the card's stated denial reason, and `text` is the letter file as is.
+  Nothing else from the CSV reaches the module: no intended outcome, no trap flag, no hinge, no notes, no difficulty.
+  The script refuses to write when a letter file is missing or shorter than 200 characters, and says "nothing
+  changed" when the module is already current. A test or a grep in the builder's report proves the generated file
+  contains none of the words `intended`, `trap`, `hinge`, `inconsistent`, `not_settled`.
+- J2. The door. At 1024 px and up, in the desk's 420 px column under the two file doors (E3), after its own short
+  label in the first label's style ("Or start from a sample"), a third secondary button in the doors' exact style
+  (bond, 1 px ink border, 48 px, full width, ink text at 600): "Try a sample letter", with the hint under it in the
+  doors' hint style: "Ten letters written for this demo. Pick one and read it as your own." The door is a button with
+  `aria-expanded` and `aria-controls` naming the list.
+- J3. The list. Pressing the door opens, under it in the same column, the list: a 14 px faded-ink label "Sample
+  letters", then ten rows in CSV order, each one a button, full width, bond with a 1 px pencil-edge border, 12 px
+  inset, at least 44 px tall, square corners, left-aligned: line 1 the service (16 px ink, 600) and the payer after
+  it (16 px ink, 400); line 2 the program label, a middle dot, and the reason's first sentence (14 px faded ink,
+  clamped to two lines with an ellipsis). No outcome, no number, no "trap". Hover and focus as the world's other
+  buttons (the ink focus ring). Pressing the door again, or Escape while the list has focus, closes it.
+- J4. Choosing a letter. Pressing a row puts the letter's text in the paste box (the same `text` state the textarea
+  edits, through `onTextChange`), so the character count line updates and "Read this letter" enables as for pasted
+  text; the list closes; focus moves to the "Read this letter" button; a polite, visually hidden status announces
+  "Sample letter loaded: <service>, <payer>." The reader can edit the text afterwards; nothing else changes about
+  the entry state. The door's label stays "Try a sample letter" (pressing it again reopens the list).
+- J5. The landing. Beside "See a sample case" (E9), a third text action in the same style, "Try a sample letter",
+  linking to `/case/new#sample-letters`; on the intake, when the page opens with that hash, the entry form shows the
+  list open (read once on mount; no `useSearchParams`, no Suspense boundary). Desktop only, like the sample link.
+- J6. Under 1024 px nothing changes on either page (E12): no door, no list, the landing's new link hidden like the
+  sample link. Captures of the landing and the intake entry at 390 and 768 are pixel-identical to captures taken
+  before the change.
+- J7. The other entry controls are untouched: the paste box, the photo and file doors, the character count, the
+  scope line (E4). Processing, errors, reviewing, confirming and confirmed (E5 to E8) hide the list as they hide the
+  doors; returning to the entry state (Cancel, Retry, "choose again") shows the door closed with the loaded text
+  kept, as pasted text is kept today.
+- J8. Fixture mode behaves the same (the fixture intake accepts any text); in live mode the loaded letter runs the
+  real intake as a pasted letter would. The case page and `c_sample` are untouched: full-page captures of
+  `/case/c_sample` at 1280 and 390 pixel-identical before and after.
+- J9. Accessibility (AA, DESIGN.md): the door and every row at least 44 px tall and keyboard reachable in reading
+  order; the list is a `ul` of buttons (not links) with the label as its accessible name; the status announcement
+  is polite and atomic; contrast as the world's; the hint is the door's description.
+- J10. Verification the builder owes before reporting: `npx tsc --noEmit`, `npm run lint` and `npm run build` clean;
+  the generated module committed with the script and a `package.json` script entry if `sample-case` has one;
+  Playwright full-page captures at 390, 768, 1024 and 1280 by 800 of the landing and of the intake entry state in
+  fixture mode (door closed; list open; a letter loaded, with the count line visible), one page at a time; the
+  before-and-after identity captures of J6 and J8; the live path not required (no credits). A fresh evaluator grades
+  J1 to J10 with the captures before the orchestrator looks.
+
+Decided by the builder, with the reason (filled in by the builder):

@@ -11,7 +11,7 @@ Decisions it follows:
 
 Target: about 420 spoken words. This draft: 390.
 
-Open points for Alvaro: the KFF line (the range or the one Medicare Advantage figure); row 7's last sentence (ten cents a case, or the judge line); see the alternatives at the end.
+Decided by Alvaro (Oct 29, by prompt): the KFF line stays the range; row 7 closes on ten cents a case; the not-settled shot comes from a live dc-010 run on recording day. The alternatives at the end stay for the edit only.
 
 ## The script
 
