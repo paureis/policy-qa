@@ -24,9 +24,11 @@ Exceptions (Oct 27, second pass): the model sees a code check of every exception
 (policyqa.relevance: does its verified quote name a fact the letter states?) and says whether
 its outcome relies on an exception. Each exception is "relevant", "not_relevant" or
 "unchecked" (the letter states no specific fact, or the quote is the rule itself). An
-inconsistent outcome that relies on an exception, where no validated rule quote is relevant
-and one is not_relevant, becomes `not_settled` (proposed_outcome keeps the model's call); an
-unchecked case is never guarded. Nothing is hidden: the findings and the rule's citations stay.
+inconsistent outcome that relies on an exception becomes `not_settled` (proposed_outcome keeps
+the model's call) on the exception it relied on (Oct 29, third pass, dc-008): the quotes that
+count are the cited exception quotes, each judged on its own, when any exist, else every cited
+rule quote, and the guard fires only when every counted quote is not_relevant (an unchecked one
+never fires it). Nothing is hidden: the findings and the rule's citations stay.
 
 Verdict shape: {status, steelman: {argument, citations, unsupported}, outcome,
 proposed_outcome, headline, rule: {statement, citations, unsupported}, gap,
@@ -124,12 +126,13 @@ Work in this order.
    - "letter": the letter states it as a fact about the claim: the member's age, the dates, the service or quantity billed, what the prescription says the drug is for, a related surgery, other coverage on file. Take the letter's own facts as given.
    - "payer_determination": the rule leaves it to an individual decision (a prior authorization decision, an assessment, a plan of care, the authorized amount, medical necessity for this member) and the letter only reports the payer's own conclusion about it. The payer's conclusion is not proof that the rule was met or not met.
    - "outside_documents": it is set by a document the findings refer to but do not contain (a plan's preferred drug list or formulary, a form a contract requires, the plan's own policy) or by a rule outside these documents.
+   A fact is decisive only if the outcome changes with it: when a cited rule already covers the letter's own facts whichever way an open fact falls (a transition supply the plan must provide in the first days of enrollment because the drug is non-formulary, or emergency services covered regardless of network or prior approval), that open fact is not the decisive one, and settled_by is "documents" or "letter".
    relies_on_exception: true when the denial would be inconsistent because an exception covers the letter's facts (the rule the letter cites is real, but an exception to it applies); then cite the exception's quote in the rule. False otherwise, including when a cited rule itself contradicts the letter's reason or the letter misstates the rule. Citations are checked: an inconsistent outcome that relies on an exception whose cited quotes do not name the letter's facts becomes "not_settled".
 4. Outcome. Only then decide, choosing exactly one:
    - "consistent": {HEADLINES["consistent"]}
    - "inconsistent": {HEADLINES["inconsistent"]}
    - "not_settled": {HEADLINES["not_settled"]}
-   Choose "consistent" only when a cited rule states the exclusion, limit, or requirement the letter cites, the letter's own facts meet it, and no cited exception covers those facts. Choose "inconsistent" only when a cited rule contradicts the letter's stated reason or the reason goes beyond what the rule allows the plan to do, including an exclusion that a cited exception covers on the letter's own facts. Choose "not_settled" when the decisive fact is "payer_determination" or "outside_documents", or when the supported findings do not state the rule that decides the letter's reason. "not_settled" is a correct answer, not a failure; do not guess.
+   Choose "consistent" only when a cited rule states the exclusion, limit, or requirement the letter cites, the letter's own facts meet it, and no cited exception covers those facts. Choose "inconsistent" only when a cited rule contradicts the letter's stated reason or the reason goes beyond what the rule allows the plan to do, including an exclusion that a cited exception covers on the letter's own facts. Choose "not_settled" when the decisive fact, as step 3 defines it, is "payer_determination" or "outside_documents", or when the supported findings do not state the rule that decides the letter's reason. "not_settled" is a correct answer, not a failure; do not guess.
 5. Gap. For inconsistent: the difference between the letter's reason and the rule. For consistent: why the reason matches the rule. For not_settled: what is missing.
 6. what_would_change. For consistent: what would have made the service covered under the rule (for example an authorization or a document the rule names). For not_settled: the decisive fact and the document that would show it. For inconsistent: null.
 
@@ -365,9 +368,10 @@ def verdict_from_data(data, investigation, meta: dict, case: dict | None = None)
 
     With `case` (the card and the intake summary), the exception check runs (policyqa.relevance): every
     exception finding is marked relevant or not and recorded in `exceptions`, and an inconsistent outcome
-    the model says relies on an exception (`relies_on_exception`) becomes not_settled when none of the
-    rule's validated quotes is "relevant" and at least one is "not_relevant". A case whose letter states no
-    specific fact leaves its quotes "unchecked" and is never guarded. Without `case` there is no check."""
+    the model says relies on an exception (`relies_on_exception`) becomes not_settled when every counted
+    quote is "not_relevant": the cited exception quotes, each judged on its own (relevance.cited_exception_relevance),
+    or, with no exception finding cited, every validated rule quote. An "unchecked" quote (no specific letter
+    fact, or the rule restated) is never guarded. Without `case` there is no check."""
     if not isinstance(data, dict):
         raise ValueError("reply is not a JSON object")
     outcome = str(data.get("outcome") or "").strip().lower()
@@ -401,23 +405,21 @@ def verdict_from_data(data, investigation, meta: dict, case: dict | None = None)
     relies = data.get("relies_on_exception") is True
     marks: list[dict] = []
     if case is not None:
-        from .relevance import citation_relevance, mark_exceptions
+        from .relevance import cited_exception_relevance, citation_relevance, mark_exceptions
 
         marks = mark_exceptions(investigation, case)
         if outcome == "inconsistent" and relies:
             # Oct 27, second pass (dc-002, dc-003): an exception counts against the letter only when its quoted
             # words name the letter's fact. The cited rule stays as written; only the outcome changes.
-            # Three states (fix round): the guard fires only when no cited rule quote names a letter fact and at
-            # least one fails the check. A case with no specific fact leaves every quote "unchecked" (dc-022,
-            # dc-027), so it is never guarded; an age or program contradiction fails it with or without facts (dc-002).
-            rels = citation_relevance(rule_refs, case)
-            failed = [r for r in rels if r["state"] == "not_relevant"]
-            if failed and not any(r["state"] == "relevant" for r in rels):
-                exc_ids = {m["finding_id"] for m in marks}
-                pick = next((r for r in failed if r["finding_id"] in exc_ids), failed[0])
-                reason = pick["reason"]
+            # A case with no specific fact leaves every quote "unchecked" (dc-022, dc-027), so it is never guarded;
+            # an age or program contradiction fails a quote with or without facts (dc-002).
+            # Oct 29, third pass and fix round (dc-008): the quotes that count are the cited exception quotes, each
+            # judged on its own (cited_exception_relevance), when any exist, else every cited rule quote; the guard
+            # fires only when every counted quote is not_relevant (none relevant, none unchecked).
+            counted = cited_exception_relevance(rule_refs, investigation, case) or citation_relevance(rule_refs, case)
+            if counted and all(r["state"] == "not_relevant" for r in counted):
                 outcome = "not_settled"
-                gap = EXCEPTION_GAP.format(reason=reason)
+                gap = EXCEPTION_GAP.format(reason=counted[0]["reason"])
                 wwc = EXCEPTION_SETTLE
     if outcome == "inconsistent":
         wwc = None

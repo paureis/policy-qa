@@ -51,8 +51,9 @@ exception question came back with the 24-hour rule) and is "unchecked", never "n
 
 How the verdict uses it (verdict.verdict_from_data): every state is shown to the model; only "not_relevant"
 carries "do not rely on it". The guard turns an inconsistent outcome that the model says relies on an
-exception into not_settled only when no cited rule quote is "relevant" and at least one is "not_relevant". An
-unchecked case is never guarded. Relevance is necessary, not sufficient: a relevant exception may still not
+exception into not_settled by the exception relied on (Oct 29, dc-008): the cited exception quotes count, each
+judged on its own (cited_exception_relevance), or every cited quote when no exception finding is cited, and the
+guard fires only when every counted quote is "not_relevant". Relevance is necessary, not sufficient: a relevant exception may still not
 cover the claim (a spouse's surgery reads as "names the fact"); the verdict decides that.
 
 Known limits (evaluator, Oct 27; not fixed tonight):
@@ -332,6 +333,27 @@ def mark_exceptions(investigation, case: dict) -> list[dict]:
                            else quote_relevance(c.get("quote"), facts, c.get("title")))
         chosen = next((r for r in results if r["state"] == "relevant"), None) or next((r for r in results if r["state"] == "not_relevant"), None) or results[0]
         out.append({**mark, **chosen})
+    return out
+
+
+def cited_exception_relevance(refs, investigation, case: dict) -> list[dict]:
+    """One {finding_id, quote, state, reason} per CitationRef that comes from an exception finding, in order (Oct 29,
+    fix round): "unchecked" when the quote restates a supported non-exception finding's quote (as in mark_exceptions),
+    else quote_relevance of that quote with the case's facts and the citation's title. The quote the model cited is
+    judged, not the best quote of its finding."""
+    facts = case_letter_facts(case or {})
+    findings = [f for f in (investigation or {}).get("findings") or [] if isinstance(f, dict)]
+    exc_ids = {f.get("id") for f in findings if is_exception_finding(f)}
+    rule_quotes = [(f.get("id"), str(c.get("quote") or "")) for f in findings
+                   if f.get("status") == "supported" and not is_exception_finding(f) for c in f.get("citations") or []]
+    out = []
+    for r in refs or []:
+        if r.get("finding_id") not in exc_ids:
+            continue
+        quote = str(r.get("quote") or "")
+        same = _restates(quote, rule_quotes)
+        res = _result("unchecked", f"it quotes the same rule as {same}, so it is the rule, not an exception") if same else quote_relevance(quote, facts, r.get("title"))
+        out.append({"finding_id": r.get("finding_id"), "quote": quote, "state": res["state"], "reason": res["reason"]})
     return out
 
 

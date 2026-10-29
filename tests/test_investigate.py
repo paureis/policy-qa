@@ -798,3 +798,66 @@ def test_the_intake_summary_reaches_the_router_and_the_planner():
     plan_input = p.calls[0]["parts"][0]["text"]
     assert summary in plan_input
     assert any("Qualified Medicare Beneficiary" in f["question"] for f in inv["findings"])
+
+
+# ---- Oct 29, third pass: the exception question also searches by the letter's fact -------------------
+
+DC026_CARD = dict(program="medicare_part_d", payer_name="Sample Prescription Drug Plan", member_age_group="65_plus", service="Azelaic acid 15% gel, prescribed for rosacea",
+                  service_code=None, denial_reason="This is a skin product used for a cosmetic purpose. Medicare Part D does not cover drugs used for cosmetic purposes.")
+
+
+class FactRetriever:
+    """A planned question (it ends with '?') gets eight fed-10 pages; any other query gets the rosacea exception
+    page first, then the planned list's first page, so only one of its two top hits is new."""
+
+    def __init__(self):
+        self.calls = []
+
+    def search(self, query, k=5, jurisdictions=None, **kw):
+        self.calls.append(query)
+        j = next(iter(jurisdictions))
+        planned = [_hit_row(d, p, j) for d, p in (("fed-10", 51), ("fed-11", 2), ("fed-12", 3), ("fed-13", 4), ("fed-14", 5), ("fed-15", 6), ("fed-16", 7), ("fed-17", 8), ("fed-18", 9))]
+        if query.rstrip().endswith("?"):
+            return planned[:k]
+        return ([_hit_row("fed-10", 14, j, text="Part D drugs indicated for the treatment of psoriasis, acne, rosacea, or vitiligo are not considered cosmetic.")] + planned)[:k]
+
+
+def test_the_exception_question_also_retrieves_by_the_letters_fact_and_marks_those_passages():
+    """dc-026: on Oct 28 no planned question reached fed-10 p14 (rosacea is not cosmetic): a long exception
+    question dilutes the query. The exception question runs a second, short query from the letter's fact, the
+    service and the program, and its new top hits take the last of the eight slots; other questions do not."""
+    from policyqa.relevance import is_exception_finding
+
+    case = {"case_id": "c_fact", "card": card(**DC026_CARD)}
+    r = FactRetriever()
+    inv = investigate_case(case, r, RecordingProvider())
+    assert inv["status"] == "done"
+    fact_queries = [q for q in r.calls if not q.rstrip().endswith("?")]
+    assert len(fact_queries) == 1
+    assert {"rosacea", "azelaic", "gel"} <= set(fact_queries[0].lower().split()) and "Medicare Part D" in fact_queries[0]
+    exc = [f for f in inv["findings"] if is_exception_finding(f)]
+    assert len(exc) == 1
+    pages = [(p["doc_id"], p["page"]) for p in exc[0]["passages"]]
+    assert len(pages) == 8 and pages[-1] == ("fed-10", 14)  # one new top hit; the main list keeps its order
+    assert pages[:7] == [("fed-10", 51), ("fed-11", 2), ("fed-12", 3), ("fed-13", 4), ("fed-14", 5), ("fed-15", 6), ("fed-16", 7)]
+    assert exc[0]["passages"][-1]["source"] == "fact" and all("source" not in p for p in exc[0]["passages"][:7])
+    for f in inv["findings"]:
+        if not is_exception_finding(f):
+            assert ("fed-10", 14) not in [(p["doc_id"], p["page"]) for p in f["passages"]]
+    # a case whose letter states no fact issues no second query
+    r = FactRetriever()
+    investigate_case({"case_id": "c_nofact", "card": card()}, r, RecordingProvider())
+    assert all(q.rstrip().endswith("?") for q in r.calls) and len(r.calls) == 7
+
+
+def test_the_fact_query_is_traced_as_its_own_retrieve_span_and_adds_no_model_call():
+    """Retrieval is free; the second query must show in the trace and must not cost a model call."""
+    from policyqa.relevance import is_exception_finding
+
+    prov = RecordingProvider()
+    inv = investigate_case({"case_id": "c_fact2", "card": card(**DC026_CARD)}, FactRetriever(), prov)
+    exc_id = next(f["id"] for f in inv["findings"] if is_exception_finding(f))
+    spans = [s for s in inv["trace"]["spans"] if s["name"] == "retrieve"]
+    assert [s.get("query") for s in spans if s["id"] == exc_id] == [None, "fact"]
+    assert all("query" not in s for s in spans if s["id"] != exc_id)
+    assert len(prov.users) == len(inv["findings"]) == 7  # one answer call per finding, as before

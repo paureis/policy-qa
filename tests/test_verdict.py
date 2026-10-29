@@ -569,6 +569,122 @@ def test_a_case_with_a_fact_still_guards_an_exception_that_does_not_name_it():
     assert v["exceptions"][0]["state"] == "not_relevant"
 
 
+# ---- Oct 29, third pass: the guard keys on the exception the model relied on ----------------------------
+
+DAYS_RULE = "Florida Medicaid reimburses up to 45 days of inpatient hospital services per fiscal year for recipients age 21 and older."
+UNDER_21_DAYS = "Florida Medicaid reimburses inpatient hospital services for recipients under the age of 21 years without a day limit when medically necessary."
+DAYS_EXCEPTION_Q = "Is there an exception under Florida Medicaid (MMA) that covers inpatient hospital stay even though the member has used the 45 days covered per fiscal year for adults?"
+
+
+def dc008_case():
+    """dc-008 shape (Oct 28 morning run): no letter fact; f6, the exception question, came back with the same
+    sentence f1 quotes (unchecked, the rule itself); f2 is a limits finding whose quote is about members under 21."""
+    inv = investigation(
+        finding("f1", "limits", "supported", "Adults are covered for up to 45 inpatient days a fiscal year.", [cite("fl-14", 5, DAYS_RULE)]),
+        finding("f2", "limits", "supported", "Recipients under 21 have no day limit.", [cite("fl-14", 5, UNDER_21_DAYS)]),
+        finding("f6", "exclusions", "supported", "The 45-day limit applies to adults.", [cite("fl-14", 5, DAYS_RULE)], question=DAYS_EXCEPTION_Q),
+    )
+    c = case_with(inv, member_age_group="adult", service="Inpatient hospital stay, days 46 through 51 of the fiscal year", payer_name="Sample Health Plan",
+                  denial_reason="The member has used the 45 inpatient hospital days covered per fiscal year for adults. Days 46 through 51 of this stay are denied.")
+    return c, inv
+
+
+def test_an_unchecked_relied_on_exception_keeps_the_outcome_whatever_another_cited_line_says():
+    """dc-008: the model relied on f6 (unchecked: it restates f1) and also cited f2, a line about members under 21
+    (not relevant for an adult). f2 is not the exception the model relied on, so it cannot fire the guard."""
+    c, inv = dc008_case()
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f1", DAYS_RULE), ("f2", UNDER_21_DAYS), ("f6", DAYS_RULE)]))
+    assert v["outcome"] == "inconsistent" and v["proposed_outcome"] == "inconsistent"
+    assert [(e["finding_id"], e["state"]) for e in v["exceptions"]] == [("f6", "unchecked")]
+    assert "same rule as f1" in v["exceptions"][0]["reason"]
+    assert [r["finding_id"] for r in v["rule"]["citations"]] == ["f1", "f2", "f6"]
+
+
+def test_with_no_exception_finding_cited_the_guard_fires_only_when_every_cited_quote_fails_the_check():
+    """The model says it relies on an exception but cites none: the cited quotes are the fallback. One is unchecked
+    (dc-008 states no letter fact) and one is not relevant by age, so the documents cannot show the exception fails."""
+    c, inv = dc008_case()
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f1", DAYS_RULE), ("f2", UNDER_21_DAYS)]))
+    assert v["outcome"] == "inconsistent" and v["relies_on_exception"] is True
+    # every cited quote failing still fires it (the eyeglass rule alone, against "cataract surgery")
+    c, inv = dc018_case()
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f1", EYEGLASS_RULE)]))
+    assert v["outcome"] == "not_settled" and "names none of the letter's facts" in v["gap"]
+
+
+def test_an_unchecked_cited_exception_keeps_the_outcome_even_beside_a_not_relevant_one():
+    """Evaluator, fix round (E3): two cited exceptions, f6 unchecked (it restates f1) and f7 not relevant (under 21
+    for an adult). The guard fires only when every counted quote fails; an unchecked one cannot be shown to fail."""
+    c, inv = dc008_case()
+    inv["findings"].append(finding("f7", "exclusions", "supported", "Services above the policy may be approved for recipients under 21.",
+                                   [cite("fl-14", 6, UNDER_21_EXCEPTION)], question=DAYS_EXCEPTION_Q.replace("Is there an exception", "Is there another exception")))
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f1", DAYS_RULE), ("f6", DAYS_RULE), ("f7", UNDER_21_EXCEPTION)]))
+    assert [(e["finding_id"], e["state"]) for e in v["exceptions"]] == [("f6", "unchecked"), ("f7", "not_relevant")]
+    assert v["outcome"] == "inconsistent" and v["proposed_outcome"] == "inconsistent"
+
+
+def test_the_gap_names_the_reason_of_the_relied_on_exception_not_of_another_cited_line():
+    """dc-002 with the rule line cited from a Long-term Care document: both cited lines fail, for different reasons;
+    the gap gives the exception's own (under 21), and the guard changes nothing but the outcome and its wording."""
+    c, inv = dc002_case()
+    ltc_rule = "The managed care plan must cover private duty nursing services as described in this contract."
+    inv["findings"][0]["citations"] = [cite("fl-16", 8, ltc_rule, title="Statewide Medicaid Managed Care Long-term Care Program")]
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f1", ltc_rule), ("f2", UNDER_21_EXCEPTION)]))
+    assert v["outcome"] == "not_settled" and v["proposed_outcome"] == "inconsistent" and v["relies_on_exception"] is True
+    assert "under 21" in v["gap"] and "Long-term Care" not in v["gap"]
+    assert [r["finding_id"] for r in v["rule"]["citations"]] == ["f1", "f2"] and v["exceptions"][0]["finding_id"] == "f2"
+
+
+UNDER_21_EYES = "Florida Medicaid covers eyeglasses for recipients under the age of 21 years."
+
+
+def test_the_guard_judges_the_cited_exception_quote_not_the_best_quote_of_its_finding():
+    """Evaluator, fix round: f2 holds a relevant cataract quote and an under-21 quote. The model cites only the
+    under-21 one (and the eyeglass rule) and says it relies on an exception: that quote is the exception it relied
+    on, so its own state counts, not the finding's best mark."""
+    inv = investigation(
+        finding("f1", "exclusions", "supported", "Medicare does not cover eyeglasses.", [cite("fed-16", 7, EYEGLASS_RULE)], jurisdiction="Federal"),
+        finding("f2", "exclusions", "supported", "One pair after cataract surgery; eyeglasses for recipients under 21.",
+                [cite("fed-16", 8, CATARACT), cite("fed-16", 9, UNDER_21_EYES)], jurisdiction="Federal", question=EYE_EXCEPTION_Q),
+    )
+    c = case_with(inv, program="medicare_b", payer_name="Medicare", member_age_group="65_plus", service="Eyeglass frames after cataract surgery", denial_reason="Medicare does not cover eyeglasses or contact lenses.")
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f1", EYEGLASS_RULE), ("f2", UNDER_21_EYES)]))
+    assert v["outcome"] == "not_settled" and v["proposed_outcome"] == "inconsistent"
+    assert "under 21" in v["gap"]
+    assert v["exceptions"][0]["state"] == "relevant"  # the per-finding mark the model sees is unchanged
+
+
+def test_a_cited_exception_quote_that_restates_the_rule_is_unchecked_even_when_the_letter_has_a_fact():
+    """Evaluator, re-check (E8): dc-018's card states a fact ("cataract surgery"), and the exception finding f2 only
+    quotes the eyeglass rule that f1 also quotes. The model cites that quote alone as its exception: it is the rule
+    restated, not an exception failing the fact check, so the guard does not fire."""
+    inv = investigation(
+        finding("f1", "exclusions", "supported", "Medicare does not cover eyeglasses.", [cite("fed-16", 7, EYEGLASS_RULE)], jurisdiction="Federal"),
+        finding("f2", "exclusions", "supported", "Eyeglasses are not covered.", [cite("fed-16", 7, EYEGLASS_RULE)], jurisdiction="Federal", question=EYE_EXCEPTION_Q),
+    )
+    c = case_with(inv, program="medicare_b", payer_name="Medicare", member_age_group="65_plus", service="Eyeglass frames after cataract surgery", denial_reason="Medicare does not cover eyeglasses or contact lenses.")
+    v, _ = _live_verdict_on(c, inv, exception_reply([("f2", EYEGLASS_RULE)]))
+    assert v["outcome"] == "inconsistent" and v["proposed_outcome"] == "inconsistent"
+    assert v["exceptions"][0]["state"] == "unchecked" and "same rule as f1" in v["exceptions"][0]["reason"]
+
+
+# ---- Oct 29, third pass: an open fact is decisive only when the outcome turns on it (dc-027) --------------
+
+
+def test_the_prompt_the_model_receives_says_an_open_fact_is_decisive_only_when_the_outcome_changes_with_it():
+    """dc-027: the transition rule applies because the drug is non-formulary and the fill is in the first 90 days,
+    yet the model named the formulary (outside_documents) as decisive and said not settled, on both Oct 28 runs."""
+    c, inv = _hinge_case(*DC027)
+    p = FakeProvider(good_reply())
+    build_steelman_verdict(c, inv, p)
+    system = " ".join(p.calls[0]["system"].split())
+    assert "A fact is decisive only if the outcome changes with it" in system
+    assert "whichever way an open fact falls" in system and "transition supply" in system and "regardless of network" in system
+    assert 'that open fact is not the decisive one, and settled_by is "documents" or "letter"' in system
+    # rule 4 does not contradict it: not_settled follows the decisive fact as step 3 defines it
+    assert 'Choose "not_settled" when the decisive fact, as step 3 defines it, is "payer_determination" or "outside_documents"' in system
+
+
 def test_the_verdict_records_the_decisive_fact_and_who_settles_it():
     c, inv = dc018_case()
     v, _ = _live_verdict_on(c, inv, exception_reply([("f2", CATARACT)]))

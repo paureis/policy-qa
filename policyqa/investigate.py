@@ -16,7 +16,9 @@ Steps (PRODUCT.md vocabulary): Routing, then Investigation.
   jurisdiction, retrieve a pool of candidates with the jurisdiction filter, drop
   documents about another program (program_excludes), keep 8 passages with at most 3
   from any one document (select_passages), and answer with enforced citations; the
-  user message names the program. Answers run three at a time in a thread pool; the
+  user message names the program. An exception question of a case whose letter states a
+  fact (Oct 29, dc-026) also runs a short fact query (fact_query) and gives its new top
+  hits the last FACT_SLOTS slots (question_passages). Answers run three at a time in a thread pool; the
   findings keep the planned order. Each answer maps to a finding:
   `supported` (a citation survived the verifier), `not_settled` (the model abstained),
   `unsupported` (the model answered but every citation was struck; the original answer
@@ -30,7 +32,8 @@ Steps (PRODUCT.md vocabulary): Routing, then Investigation.
   Federal findings too when the route is dual or Medicare only.
 
 Finding shape: {id, question, topic, jurisdiction, status, answer, citations, struck,
-passages: [{chunk_id, doc_id, title, page}] (what the model saw, in order), error,
+passages: [{chunk_id, doc_id, title, page}, plus "source": "fact" on a passage the fact
+query added] (what the model saw, in order), error,
 model, input_tokens, output_tokens, reasoning_tokens, latency_ms, cost_usd}.
 Investigation coverage: {claims, supported, errors}.
 
@@ -63,6 +66,7 @@ MIN_QUESTION_CHARS = 15
 PLAN_MAX_TOKENS = 4000  # reasoning model: the thinking counts against this budget
 ANSWER_MAX_TOKENS = 6000  # second live case: 2,000 was exhausted by reasoning on 8 passages and every answer errored
 PASSAGES_PER_QUESTION = 8
+FACT_SLOTS = 2  # of those, at most this many go to the fact query's new top hits (exception questions only)
 PER_DOC_CAP = 3  # at most this many passages from one document, so one document cannot fill the list
 CANDIDATE_MULTIPLIER = 4  # candidates pulled per passage kept, before the program filter and the cap
 ANSWER_WORKERS = 3  # answers run this many at a time
@@ -425,12 +429,54 @@ def retrieve_passages(retriever, question: str, jurisdiction: str, k: int = PASS
     return select_passages(hits, k=k, per_doc_cap=per_doc_cap, exclude=exclude)
 
 
-def _passage_refs(items) -> list[dict]:
-    """[{chunk_id, doc_id, title, page}] from Hits or from formatted passages."""
+def fact_query(case: dict, route: Route) -> str | None:
+    """The short fact-anchored query for an exception question (Oct 29, third pass, dc-026): the letter's fact
+    words (relevance.case_letter_facts), then the service's content words, then the program label, for example
+    "rosacea azelaic acid gel prescribed Medicare Part D". None when the letter states no fact, so a case
+    without one retrieves exactly as before."""
+    from .relevance import GENERIC, case_letter_facts
+    from .textnorm import tokens
+
+    facts = case_letter_facts(case).facts
+    if not facts:
+        return None
+    service = tokens(str(_val(case.get("card"), "service") or ""))
+    words: list[str] = []
+    for w in [w for f in facts for w in f.words] + [t for t in service if t not in GENERIC and not t.isdigit()]:
+        if w not in words:
+            words.append(w)
+    return " ".join(words + [program_label(route.program)])
+
+
+def question_passages(retriever, question: str, jurisdiction: str, fact_q: str | None = None, k: int = PASSAGES_PER_QUESTION, per_doc_cap: int | None = PER_DOC_CAP,
+                      exclude=frozenset(), trace: Trace | None = None, fid: str | None = None) -> tuple[list, set[str]]:
+    """The passages one question sees, and the chunk ids that came from the fact query.
+
+    The main query's passages in rank order, as retrieve_passages gives them. With `fact_q` (exception questions of
+    a case whose letter states a fact), a second query in the same jurisdiction: its top FACT_SLOTS hits that the
+    main query did not return take the last slots, so the list stays `k` long and the main order is kept."""
+    trace = trace or Trace("passages")
+    with trace.span("retrieve", id=fid, jurisdiction=jurisdiction, k=k):
+        hits = retrieve_passages(retriever, question, jurisdiction, k=k, per_doc_cap=per_doc_cap, exclude=exclude)
+    if not fact_q:
+        return hits, set()
+    with trace.span("retrieve", id=fid, jurisdiction=jurisdiction, k=k, query="fact"):
+        top = retrieve_passages(retriever, fact_q, jurisdiction, k=k, per_doc_cap=per_doc_cap, exclude=exclude)[:FACT_SLOTS]
+    seen = {h.chunk.get("chunk_id") for h in hits}
+    new = [h for h in top if h.chunk.get("chunk_id") not in seen]
+    return hits[: k - len(new)] + new, {h.chunk.get("chunk_id") for h in new}
+
+
+def _passage_refs(items, fact_ids=frozenset()) -> list[dict]:
+    """[{chunk_id, doc_id, title, page}] from Hits or from formatted passages; a passage the fact query added
+    also carries "source": "fact"."""
     out = []
     for it in items:
         c = it.chunk if hasattr(it, "chunk") else it
-        out.append({"chunk_id": c.get("chunk_id"), "doc_id": c.get("doc_id"), "title": c.get("title"), "page": c.get("page")})
+        ref = {"chunk_id": c.get("chunk_id"), "doc_id": c.get("doc_id"), "title": c.get("title"), "page": c.get("page")}
+        if c.get("chunk_id") in fact_ids:
+            ref["source"] = "fact"
+        out.append(ref)
     return out
 
 
@@ -523,19 +569,21 @@ def _emit(on_progress, inv: dict, trace: Trace | None) -> None:
     on_progress(snap)
 
 
-def _answer_one(fid: str, q: PlannedQuestion, jurisdiction: str, route: Route, retriever, provider, k: int, per_doc_cap: int | None, exclude: set[str], max_tokens: int, trace: Trace, model: str) -> dict:
+def _answer_one(fid: str, q: PlannedQuestion, jurisdiction: str, route: Route, retriever, provider, k: int, per_doc_cap: int | None, exclude: set[str], max_tokens: int, trace: Trace, model: str,
+                fact_q: str | None = None) -> dict:
     """One question in one jurisdiction, run in a worker thread. Never raises."""
     tq = time.perf_counter()
     hits: list = []
+    fact_ids: set[str] = set()
     with trace.span("question", id=fid, topic=q.topic, jurisdiction=jurisdiction):
         try:
-            with trace.span("retrieve", id=fid, jurisdiction=jurisdiction, k=k):
-                hits = retrieve_passages(retriever, q.question, jurisdiction, k=k, per_doc_cap=per_doc_cap, exclude=exclude)
+            hits, fact_ids = question_passages(retriever, q.question, jurisdiction, fact_q, k=k, per_doc_cap=per_doc_cap, exclude=exclude, trace=trace, fid=fid)
             with trace.span("generate", id=fid, model=model, passages=len(hits)):
                 ans = answer_question(q.question, hits, provider, max_tokens=max_tokens, context=program_sentence(route, jurisdiction))
             finding = finding_from_answer(fid, q, jurisdiction, ans)
+            finding["passages"] = _passage_refs(ans.passages, fact_ids)
         except Exception as e:  # noqa: BLE001 - one question must not kill the case
-            finding = _finding_from_error(fid, q, jurisdiction, model, e, 0.0, passages=_passage_refs(hits))
+            finding = _finding_from_error(fid, q, jurisdiction, model, e, 0.0, passages=_passage_refs(hits, fact_ids))
     finding["latency_ms"] = round((time.perf_counter() - tq) * 1000, 1)
     return finding
 
@@ -563,9 +611,13 @@ def investigate_case(case: dict, retriever, provider, on_progress=None, k: int =
         jobs = [(q, j) for q in questions for j in route.jurisdictions]
         inv["questions_planned"] = len(jobs)
         exclude = program_excludes(route.program)
+        from .relevance import is_exception_finding
+
+        fq = fact_query(case, route)  # None when the letter states no fact: no second query anywhere
         slots: list[dict | None] = [None] * len(jobs)
         with ThreadPoolExecutor(max_workers=max(1, max_workers), thread_name_prefix="investigate") as pool:
-            futures = {pool.submit(_answer_one, f"f{i + 1}", q, j, route, retriever, provider, k, per_doc_cap, exclude, max_tokens, trace, model): i for i, (q, j) in enumerate(jobs)}
+            futures = {pool.submit(_answer_one, f"f{i + 1}", q, j, route, retriever, provider, k, per_doc_cap, exclude, max_tokens, trace, model,
+                                   fq if is_exception_finding({"question": q.question}) else None): i for i, (q, j) in enumerate(jobs)}
             for fut in as_completed(futures):
                 i = futures[fut]
                 try:
