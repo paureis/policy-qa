@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { TEXT_MAX, TEXT_MIN } from "@/lib/case";
+import { SAMPLE_LETTERS, type SampleLetter } from "@/lib/sample-letters";
 import { INTRO } from "./Frame";
 
 export interface EntryFormProps {
@@ -13,7 +14,13 @@ export interface EntryFormProps {
   onChooseFile: () => void;
   onSubmitText: () => void;
   focusText?: boolean;
+  /* The sample letters list under the third door, desktop only (case-page-brief section 16). */
+  lettersOpen?: boolean;
+  onLettersOpen?: (open: boolean) => void;
 }
+
+/* The list's id: the landing's "Try a sample letter" links to /case/new#sample-letters (J5). */
+export const SAMPLE_LETTERS_ID = "sample-letters";
 
 /* A way in. Under 1024 px a 72 px panel with its hint inside; at desktop a secondary button (bond, 1 px ink edge, 48 px). */
 const WAY =
@@ -48,16 +55,32 @@ export function EntryForm({
   onChooseFile,
   onSubmitText,
   focusText = false,
+  lettersOpen = false,
+  onLettersOpen = () => {},
 }: EntryFormProps) {
   const textareaId = useId();
   const countId = useId();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const submitRef = useRef<HTMLButtonElement>(null);
+  const lettersDoorRef = useRef<HTMLButtonElement>(null);
+  const [loaded, setLoaded] = useState<{ n: number; message: string }>({ n: 0, message: "" });
   const length = text.trim().length;
   const inRange = length >= TEXT_MIN && length <= TEXT_MAX;
 
   useEffect(() => {
     if (textOpen && focusText) textareaRef.current?.focus();
   }, [textOpen, focusText]);
+
+  /* After a sample letter loads, focus goes to "Read this letter", enabled in the same render (J4). */
+  useEffect(() => {
+    if (loaded.n > 0) submitRef.current?.focus();
+  }, [loaded.n]);
+
+  const chooseLetter = (letter: SampleLetter) => {
+    onTextChange(letter.text);
+    onLettersOpen(false);
+    setLoaded((l) => ({ n: l.n + 1, message: `Sample letter loaded: ${letter.service}, ${letter.payer}.` }));
+  };
 
   return (
     <section aria-labelledby="entry-heading" className="lg:grid lg:desk-cols lg:items-start" data-desk="entry">
@@ -120,6 +143,69 @@ export function EntryForm({
             </button>
           </li>
         </ul>
+
+        {/*
+          The third door, desktop only (section 16, J2 to J4): the ten demo letters as a list of buttons
+          under it. Under 1024 px it is display: none, so the phone and tablet render as before (J6).
+        */}
+        <div
+          className="hidden lg:mt-8 lg:block"
+          data-desk-letters="true"
+          onKeyDown={(e) => {
+            /* Escape on the door or in the open list closes it; focus goes to the door. */
+            if (e.key !== "Escape" || !lettersOpen) return;
+            e.preventDefault();
+            onLettersOpen(false);
+            lettersDoorRef.current?.focus();
+          }}
+        >
+          <p className={LABEL}>Or start from a sample</p>
+          <button
+            ref={lettersDoorRef}
+            type="button"
+            className={`${WAY} lg:mt-2`}
+            aria-expanded={lettersOpen}
+            aria-controls={SAMPLE_LETTERS_ID}
+            aria-describedby={`${textareaId}-letters-hint`}
+            onClick={() => onLettersOpen(!lettersOpen)}
+          >
+            <span className={WAY_TITLE}>Try a sample letter</span>
+          </button>
+          <p id={`${textareaId}-letters-hint`} className={DOOR_HINT}>
+            Ten letters written for this demo. Pick one and read it as your own.
+          </p>
+          {/* The message's node is keyed on the load count, so choosing the same letter again is read again. */}
+          <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+            <span key={loaded.n}>{loaded.message}</span>
+          </p>
+          {/* Always rendered, so the door's aria-controls resolves; the hidden attribute closes it. */}
+          <div className="mt-6" hidden={!lettersOpen}>
+            <p id={`${textareaId}-letters-label`} className="text-[14px] text-muted">
+              Sample letters
+            </p>
+            <ul id={SAMPLE_LETTERS_ID} aria-labelledby={`${textareaId}-letters-label`} className="mt-2 space-y-2">
+              {SAMPLE_LETTERS.map((letter) => (
+                <li key={letter.id}>
+                  <button
+                    type="button"
+                    onClick={() => chooseLetter(letter)}
+                    aria-label={`${letter.service}, ${letter.payer}. ${letter.program}. ${letter.reason}`}
+                    className="block min-h-11 w-full border border-edge bg-bond p-3 text-left text-ink hover:border-ink hover:bg-paper"
+                  >
+                    <span className="block text-[16px] leading-snug">
+                      <span className="font-semibold">{letter.service}</span>
+                      <span className="text-muted">{"\u00a0· "}</span>
+                      {letter.payer}
+                    </span>
+                    <span className="mt-1 line-clamp-2 text-[14px] leading-snug text-muted">
+                      {letter.program} · {letter.reason}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </div>
 
       {/*
@@ -155,6 +241,7 @@ export function EntryForm({
         </p>
         <div className="sticky bottom-0 -mx-4 mt-4 border-t border-hairline bg-bond px-4 py-3 lg:static lg:mx-0 lg:mt-5 lg:border-0 lg:px-0 lg:py-0">
           <button
+            ref={submitRef}
             type="submit"
             disabled={!inRange}
             className="inline-flex min-h-12 w-full items-center justify-center bg-ink px-5 text-[18px] font-semibold text-bond disabled:cursor-not-allowed disabled:bg-hairline disabled:text-muted lg:w-auto"

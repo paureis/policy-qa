@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   ACCEPTED_FILE_TYPES,
   INTAKE_MODE,
@@ -21,7 +21,7 @@ import {
 } from "@/lib/case";
 import { Band } from "./Band";
 import { CaseCard } from "./CaseCard";
-import { EntryForm } from "./EntryForm";
+import { EntryForm, SAMPLE_LETTERS_ID } from "./EntryForm";
 import { ErrorNotice } from "./ErrorNotice";
 import { FRAME_MAIN, FRAME_WIDTH, INTRO, TOP_SHEET } from "./Frame";
 import { ProgressStages, STAGES } from "./ProgressStages";
@@ -31,6 +31,9 @@ type Phase = "entry" | "processing" | "error" | "reviewing" | "confirming" | "co
 type Investigation = "pending" | "started" | "failed";
 
 const STAGE_MS = 2000;
+
+/* The hash is read, not watched: nothing subscribes, so a later change of the hash opens nothing. */
+const noSubscribe = () => () => {};
 
 /*
   The intake screen. Three states on the brief (uploading, reviewing,
@@ -51,6 +54,19 @@ export function IntakeFlow() {
   const [today, setToday] = useState<Date>(() => new Date(0));
   const [saveError, setSaveError] = useState<string | null>(null);
   const [investigation, setInvestigation] = useState<Investigation>("pending");
+  /*
+    The sample letters list (section 16): held here, not in EntryForm, so a return to the entry state shows
+    it closed (J7). Until the reader opens or closes it, or a letter is submitted, it follows the hash the
+    page opened with: the landing's "Try a sample letter" links to /case/new#sample-letters (J5). The server
+    render has no hash, so it renders closed and the client opens it after hydration.
+  */
+  const [lettersChoice, setLettersChoice] = useState<boolean | null>(null);
+  const openedOnLetters = useSyncExternalStore(
+    noSubscribe,
+    () => window.location.hash === `#${SAMPLE_LETTERS_ID}`,
+    () => false,
+  );
+  const lettersOpen = lettersChoice ?? openedOnLetters;
 
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -78,6 +94,7 @@ export function IntakeFlow() {
       setInput(next);
       setError(null);
       setStage(0);
+      setLettersChoice(false);
       setPhase("processing");
 
       for (let i = 1; i < STAGES.length; i += 1) {
@@ -304,6 +321,8 @@ export function IntakeFlow() {
               text={text}
               textOpen={textOpen}
               focusText={focusText}
+              lettersOpen={lettersOpen}
+              onLettersOpen={setLettersChoice}
               onTextChange={setText}
               onTextOpen={setTextOpen}
               onTakePhoto={() => cameraRef.current?.click()}

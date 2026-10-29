@@ -40,6 +40,12 @@ export default function Home() {
             >
               See a sample case
             </Link>
+            <Link
+              href="/case/new#sample-letters"
+              className="hidden min-h-11 items-center text-[17px] font-semibold underline underline-offset-4 lg:inline-flex"
+            >
+              Try a sample letter
+            </Link>
           </div>
         </div>
       </main>

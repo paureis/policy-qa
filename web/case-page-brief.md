@@ -1240,3 +1240,55 @@ run is blind; desktop only until the weekend's phone pass. Made by the orchestra
   J1 to J10 with the captures before the orchestrator looks.
 
 Decided by the builder, with the reason (filled in by the builder):
+
+- The program labels are read from `policyqa/investigate.py` itself (the `PROGRAM_LABELS` block), not
+  copied into the script, so the two maps cannot drift; a program with no label refuses the write.
+- The letter text is stored with LF line endings (as git stores the files). The working copy on Windows
+  has CRLF (autocrlf), so "as is" byte for byte would make the module differ by checkout and put `\r`
+  into the textarea's state and its character count. The comparison for "nothing changed" also ignores
+  CR, so a CRLF checkout of the committed module still reads as current.
+- The script also refuses a letter over 6,000 characters (the intake's other limit) and refuses to write
+  a module that would contain any of the five answer-key words (case-insensitive), so J1's grep is also
+  enforced at generation. `SAMPLE_LETTERS_CASES` points it at a copy of the cases folder, to prove the
+  refusal without touching `cases/`. No `package.json` entry: `sample-case` has none.
+- The first sentence is the text up to the first `.`, `!` or `?` followed by a space or the end; it
+  is right for all ten reasons as written.
+- The list's open state lives in `IntakeFlow`, not `EntryForm`, because `EntryForm` remounts on every
+  return to the entry state and a mount-time hash read there would reopen the list after Cancel (J7).
+  It is "the reader's choice, or else the hash the page opened with": the hash is read through
+  `useSyncExternalStore` with no subscription (the repo's pattern; a setState in a mount effect fails
+  lint), so the server renders it closed and the client opens it after hydration; any press of the
+  door, and every submit, set the choice and the hash is no longer consulted. The landing's link opens
+  it on client navigation too (checked).
+- The door reuses the two file doors' class strings (`WAY`, `WAY_TITLE`, `DOOR_HINT`, `LABEL`), so its
+  style is theirs by construction (measured equal at 1280: 48 px, 1 px ink, bond, 18 px at 600). Its
+  group sits 32 px under the file door's hint, more than the 20 px between the two file doors, so it
+  reads as a second group under its own label.
+- The list's label sits 24 px under the door's hint; the label is 14 px faded ink at 400 (DESIGN.md's
+  label); rows are 8 px apart. A row's hover is the phone door's: ink border and the paper ground.
+- The status line is a `role="status"` paragraph (polite, atomic, `sr-only`) inside the desktop-only
+  group, present before any letter loads; its message node is keyed on the load count, so choosing the
+  same letter again replaces the node and is read again (fix round).
+
+Fix round after the evaluation (Oct 29, 2026):
+
+- Line 1 is the service, a middle dot in faded ink with the spaces line 2 uses, then the payer; each row's `aria-label` is "<service>, <payer>. <program>. <reason>", which also covers the dot.
+- The list (its label and the `ul`) is always rendered and closed with the `hidden` attribute, so the door's `aria-controls` resolves in both states.
+- Escape closes the open list from anywhere in the door's group, the door included, and returns focus to the door.
+
+Fresh evaluation (Oct 29, 2026, about 1:30 pm, an Opus evaluator that had not seen the build; its own fixture build on
+another port, a worktree of ca7b9dd for the before captures, byte comparison): J1 to J10, accessibility and craft all
+PASS. The generator's refusals proven on a copy (a missing letter, a 145-character letter, a forbidden word in a CSV
+reason); the module's ten entries checked key by key against the CSV and PROGRAM_LABELS; the door measured equal to the
+file door (387 by 48, 1 px ink, 18 px at 600); contrast 8.96:1 for faded ink on bond, 5.07:1 for the row border; the
+landing and the intake at 390 and 768 and c_sample at 1280 and 390 byte-identical before and after, with the landing at
+1280 as the control that differs. Four low defects, fixed by the builder in one round and re-checked, all PASS: a repeat
+choice of the same letter was not announced (the status node is now keyed on the load count); the row's reader name had
+a stray space before the hidden comma (an aria-label "service, payer. program. reason" now); aria-controls named an
+element that did not exist while closed (the list always renders, closed with hidden); Escape closed the list only from
+inside it (the door's group handles it now). One craft item from the orchestrator's look, added in the same round: a
+visible middle dot between the service and the payer on line 1, as line 2 has. The re-check found the dot could sit
+alone at a line's end when the payer wraps (4 of 10 rows at 1024); the orchestrator made the space before the dot
+non-breaking, so the dot stays with the service and the payer wraps whole (tsc and lint clean; measured at 1024 and
+1280). Alvaro's decision on the open list's look (the left column empty under "Read this letter" while the ten rows run
+down the right column, about 1,050 px at 1280): keep it.
