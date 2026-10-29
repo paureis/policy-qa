@@ -39,7 +39,7 @@ Taken from the latest run in `results/` on recording day (Oct 29 run: `results/c
 - 71 of 71 appeal-letter claims verified against the policy page; none struck.
 - The second opinion (Muse Spark Open) agreed on 26 of 28.
 - The judge checked against a person: 84% agreement on 50 answers, kappa 0.70.
-- About $0.10 and 40 seconds a case on Muse Spark 1.3.
+- About $0.10 and under a minute a case on Muse Spark 1.3 (39 s mean in the eval run; 52 s on the site in the Oct 29 rehearsal, `video/rehearsal-2026-10-29.md`).
 - The 160-row golden set and the 64 public documents are the disclosed dataset, built before the event.
 
 ## Recording day checklist
@@ -49,12 +49,12 @@ Taken from the latest run in `results/` on recording day (Oct 29 run: `results/c
 3. Browser at 1280 by 800, zoom 100%, no extensions in frame; the site at https://recourse-murex.vercel.app.
 4. The letter text from `cases/letters/` for dc-001 in the clipboard; the backup take is `/case/c_sample`.
 5. Never film dc-002 or dc-017 live; they miss on most runs.
-6. Capture the dc-010 not-settled stamp from its fixture page separately.
+6. Run dc-010 live once before filming ($0.10) and capture its stamp from its own case page; the `c_notsettled` fixture carries synthetic labels ("synthetic fixture quote", "Model: fixture") and must not be filmed.
 7. Keep the golden-set build, the harness and the review pages out of frame.
 
 ## Risks
 
-- The run takes 38 to 48 seconds on the site (up to 69 in the eval runs with three at a time); the timer cut handles it, and the backup take covers a slow run.
+- The run takes 38 to 52 seconds on the site (51.7 s in the Oct 29 rehearsal, the Trust stage 16 s of it; up to 69 in the eval runs with three at a time); the timer cut handles it, and the backup take covers a slow run.
 - A cold container would pass the intake timeout; the warm-up case proves it is warm.
 - Run-to-run variance is about two cases in thirty; dc-001 has been right on every run.
 - Under 1024 px the old look shows; film at 1280.
@@ -62,4 +62,4 @@ Taken from the latest run in `results/` on recording day (Oct 29 run: `results/c
 
 ## Next step
 
-Oct 30: the script. Each row of the table becomes one to three spoken sentences, about 420 words in all at a measured pace, with the on-screen action noted beside each sentence. Then the demo path is rehearsed once on the site, end to end, with a stopwatch.
+Oct 30: the script. Each row of the table becomes one to three spoken sentences, about 420 words in all at a measured pace, with the on-screen action noted beside each sentence. The demo path was rehearsed once on the site on Oct 29 (`video/rehearsal-2026-10-29.md`: c_80f7a1, reviewed at 51.7 s, 5 of 5, the second opinion agreeing, 0 console errors; Confirm sits about 1,900 px down the case card, so the take scrolls).
