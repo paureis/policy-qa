@@ -129,6 +129,10 @@ Then fill it. Option 1 is the recommended one: it ships the exact index the gold
     Done against the API alone on Oct 28 at about 7:55 pm, before Vercel, with `curl`-style calls from a script (intake as form text, investigate, poll every 3 s): dc-001 became case `c_2cbfeb`, intake in 4.3 s, `reviewed` at 47.7 s, inconsistent, 6 of 6 findings supported, 4 of 4 letter claims verified, the critic found and fixed 2 issues, the second opinion (Muse Spark Open) agreed in 3.2 s; $0.11 in model credits. So the background thread finishes a case on Modal and the second opinion runs there from the one secret.
     Done from the site at about 10:00 pm with a headless browser (Playwright at 1280 by 800 on `https://recourse-murex.vercel.app/case/new`, the dc-001 text pasted, "Read this letter", "Looks right", "Confirm"): case `c_0f9a1f`, investigating at 1 s after the confirm, deciding at 24 s, drafting at 27 s, reviewing at 33 s, reviewed at 42 s; 6 of 6 findings verified, the second opinion agrees; 29 requests from the page to the Modal URL, 0 console errors, so CORS holds from the real origin.
 
+### Rotating a key (done once, Oct 28, about 10:40 pm)
+
+A running container keeps the environment it started with, so a new key takes three steps: `modal secret create --force recourse-muse-spark ...` with every name again (values from the environment, never typed), then `modal deploy deploy/modal_app.py` with `RECOURSE_CORS_ORIGINS` set in the same shell (a deploy without it puts the placeholder origin back and the site loses CORS), then one model call through the deployed API to prove the new key (`POST /doc/fl-04/page/5/vision-check` with a quote, about $0.005; `/health` alone does not prove a key). The Baseten key cannot be rotated: it is issued once by email link and has no dashboard rotation.
+
 ## Settings you may want to change
 
 | Setting | Where | Default | Change it when |
