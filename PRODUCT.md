@@ -69,7 +69,7 @@ Terminology (use exactly): case, case card, program, finding, verifier, verified
 
 Language (confirmed): English UI in plain language for a reader with no insurance background. **Spanish is a stretch feature**, not a commitment of this build. Appeal letters to the payer are in English.
 
-Explicitly undecided or stretch: Spanish UI; voice intake with Muse Voice Transcribe; saving the letter as a file; dual-eligible side by side if the core slips. Accessibility conformance level is not yet decided (see below).
+Explicitly undecided or stretch: Spanish UI; voice intake with Muse Voice Transcribe; saving the letter as a file. Dual-eligible side by side is built and live (Oct 30). Accessibility conformance level is not yet decided (see below).
 
 ## Brand Commitments
 

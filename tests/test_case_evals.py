@@ -104,7 +104,9 @@ def fixture_api(monkeypatch, tmp_path):
 ROW_KEYS = {"id", "program", "jurisdiction", "trap", "demo", "intended", "got", "correct", "refused", "route_program",
             "route_reason", "stage_errors", "findings", "letter", "critique", "cost_usd", "stage_cost_usd", "seconds", "error",
             # Oct 27, second pass: each miss traces to a stage
-            "proposed_outcome", "decisive_fact", "settled_by", "relies_on_exception", "plan_source", "planned_questions", "exceptions", "hinge", "miss"}
+            "proposed_outcome", "decisive_fact", "settled_by", "relies_on_exception", "plan_source", "planned_questions", "exceptions", "hinge", "miss",
+            # Oct 30: whether the route ran both programs side by side
+            "route_dual", "route_jurisdictions"}
 
 
 def test_three_cases_end_to_end_through_the_cli(fixture_api, tmp_path):
@@ -583,3 +585,89 @@ def test_a_row_whose_chain_never_reached_the_verdict_says_so():
     r = ce.build_row(DC002_ROW, {"refused": None, "case": _with_second(None)}, 1.0)
     assert r["second_status"] == "skipped"
     assert r["second_reason"] == "the chain did not reach the verdict"
+
+
+# ---- dual routes, Oct 30: how many cases ran under both programs side by side, and how they did ----------
+
+
+DUAL_ROUTE = {"program": "florida_medicaid_ltc", "jurisdictions": ["Florida", "Federal"], "dual": True, "reason": "member 65 or older", "outside_corpus": False}
+
+
+def _dual_case(route=DUAL_ROUTE):
+    case = fake_case()
+    case["route"] = dict(route)
+    return case
+
+
+def test_a_row_records_whether_its_route_was_dual_and_its_jurisdictions():
+    r = ce.build_row(DC002_ROW, {"refused": None, "case": _dual_case()}, 1.0)
+    assert r["route_dual"] is True and r["route_jurisdictions"] == ["Florida", "Federal"]
+    single = ce.build_row(DC002_ROW, {"refused": None, "case": fake_case()}, 1.0)
+    assert single["route_dual"] is False and single["route_jurisdictions"] == ["Florida"]
+    # before routing (no case at all) both are None, like route_program
+    none = ce.build_row(DC002_ROW, None, 1.0, error="boom")
+    assert none["route_dual"] is None and none["route_jurisdictions"] is None
+
+
+def _dual_rows():
+    """dc-012 and dc-021 routed dual, dc-021 called wrong; dc-002 routed single."""
+    dc012 = ce.build_row({**DC002_ROW, "id": "dc-012", "intended_outcome": "inconsistent"}, {"refused": None, "case": _dual_case()}, 1.0)
+    dc021 = ce.build_row({**DC002_ROW, "id": "dc-021", "intended_outcome": "consistent"}, {"refused": None, "case": _dual_case()}, 1.0)
+    single = ce.build_row({**DC002_ROW, "id": "dc-001", "intended_outcome": "inconsistent"}, {"refused": None, "case": fake_case()}, 1.0)
+    return [single, dc012, dc021]
+
+
+def test_the_summary_counts_dual_routes_and_how_they_did():
+    d = ce.summarize(_dual_rows())["dual_routes"]
+    assert d["recorded"] is True and d["routed"] == 2 and d["correct"] == 1
+    assert d["cases"] == [{"id": "dc-012", "intended": "inconsistent", "got": "inconsistent", "correct": True},
+                          {"id": "dc-021", "intended": "consistent", "got": "inconsistent", "correct": False}]
+    none = ce.summarize([_dual_rows()[0]])["dual_routes"]
+    assert none == {"recorded": True, "routed": 0, "correct": 0, "cases": []}
+
+
+def _md(rows):
+    return ce.render_markdown({"config": {"date": "2026-10-30", "model": "m", "critic_rounds": 1}, "summary": ce.summarize(rows), "rows": rows})
+
+
+def test_the_markdown_reports_dual_routes_in_the_summary_table():
+    single, dc012, dc021 = _dual_rows()
+    dc021 = ce.build_row({**DC002_ROW, "id": "dc-021", "intended_outcome": "inconsistent"}, {"refused": None, "case": _dual_case()}, 1.0)
+    md = _md([single, dc012, dc021])
+    assert "| Dual routes (side by side) | 2 / 2 (dc-012, dc-021) |" in md
+    # inside the summary table: after the measures header, before the Program table
+    assert md.index("| Measure | Value |") < md.index("| Dual routes (side by side) |") < md.index("| Program | Correct |")
+    assert "| Dual routes (side by side) | 1 / 2 (dc-012, dc-021) |" in _md(_dual_rows())
+    assert "| Dual routes (side by side) | 0 |" in _md([single])
+
+
+def test_an_old_result_file_without_the_dual_keys_still_loads_and_reports(tmp_path):
+    """Result files written before Oct 30 have no route_dual or route_jurisdictions on a row and no dual_routes in the
+    summary; re-summarizing and re-rendering them must still work, and must say the count was not recorded rather than
+    0 (the Oct 29 file's route reasons show dc-012 and dc-021 did run side by side)."""
+    rows = _dual_rows()
+    res = {"config": {"date": "2026-10-29", "model": "m", "critic_rounds": 1}, "summary": ce.summarize(rows), "rows": rows}
+    del res["summary"]["dual_routes"]
+    for r in res["rows"]:
+        del r["route_dual"], r["route_jurisdictions"]
+    path = tmp_path / "case-evals-2026-10-29.json"
+    path.write_text(json.dumps(res), encoding="utf-8")
+    old = json.loads(path.read_text(encoding="utf-8"))
+    md = ce.render_markdown(old)
+    assert "| Dual routes (side by side) | not recorded (before Oct 30) |" in md
+    assert "| Dual routes (side by side) | 0 |" not in md
+    assert ce.summarize(old["rows"])["dual_routes"] == {"recorded": False, "routed": 0, "correct": 0, "cases": []}
+
+
+def test_the_row_keeps_a_copy_of_the_route_jurisdictions_not_the_router_list():
+    case = _dual_case()
+    r = ce.build_row(DC002_ROW, {"refused": None, "case": case}, 1.0)
+    assert r["route_jurisdictions"] == case["route"]["jurisdictions"]
+    assert r["route_jurisdictions"] is not case["route"]["jurisdictions"]
+
+
+def test_a_route_without_jurisdictions_records_none_not_an_empty_list():
+    case = _dual_case()
+    del case["route"]["jurisdictions"]
+    r = ce.build_row(DC002_ROW, {"refused": None, "case": case}, 1.0)
+    assert r["route_dual"] is True and r["route_jurisdictions"] is None

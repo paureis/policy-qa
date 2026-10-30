@@ -335,7 +335,8 @@ def build_row(row: dict, result: dict | None, seconds: float, error: str | None 
     rec = {
         "id": row["id"], "program": row.get("program"), "jurisdiction": row.get("jurisdiction"), "trap": row.get("trap"),
         "demo": row.get("demo"), "intended": intended_of(row), "intended_csv": row.get("intended_outcome"), "got": None,
-        "correct": False, "refused": refused, "route_program": None, "route_reason": None, "route_outside_corpus": None, "stage_errors": [],
+        "correct": False, "refused": refused, "route_program": None, "route_reason": None, "route_outside_corpus": None,
+        "route_dual": None, "route_jurisdictions": None, "stage_errors": [],
         "findings": {s: 0 for s in FINDING_STATUSES}, "letter": None, "critique": None, "cost_usd": 0.0,
         "stage_cost_usd": {s: 0.0 for s in STAGES}, "seconds": round(seconds, 1), "error": error,
         "proposed_outcome": None, "decisive_fact": None, "settled_by": None, "relies_on_exception": None, "plan_source": None,
@@ -354,6 +355,10 @@ def build_row(row: dict, result: dict | None, seconds: float, error: str | None 
         rec["route_program"] = route.get("program")
         rec["route_outside_corpus"] = route.get("outside_corpus")
         rec["route_reason"] = route.get("reason")
+        if route:  # a routed case: dual is a bool (missing means single), jurisdictions the list the router gave
+            rec["route_dual"] = bool(route.get("dual"))
+            j = route.get("jurisdictions")
+            rec["route_jurisdictions"] = list(j) if j is not None else None
         counts = Counter(f.get("status") for f in inv.get("findings") or [] if isinstance(f, dict))
         rec["findings"] = {s: counts.get(s, 0) for s in FINDING_STATUSES}
         if isinstance(letter, dict) and letter.get("status") == "done":
@@ -533,7 +538,17 @@ def summarize(rows: list[dict]) -> dict:
         "misses": misses,
         "misses_by_stage": dict(Counter(m["stage"] for m in misses)),
         "second_opinion": summarize_second(rows),
+        "dual_routes": summarize_dual(rows),
     }
+
+
+def summarize_dual(rows: list[dict]) -> dict:
+    """The cases the router sent down both programs side by side (Florida Medicaid and Medicare): how many, how
+    many were scored correct, and each one's intended and got. Rows from result files written before Oct 30 have no
+    route_dual key; when no row has one, recorded is False and the count means "not recorded", not "none"."""
+    dual = [r for r in rows if r.get("route_dual") is True]
+    return {"recorded": any("route_dual" in r for r in rows), "routed": len(dual), "correct": sum(1 for r in dual if r.get("correct")),
+            "cases": [{"id": r["id"], "intended": r.get("intended"), "got": r.get("got"), "correct": bool(r.get("correct"))} for r in dual]}
 
 
 def summarize_second(rows: list[dict]) -> dict:
@@ -594,6 +609,11 @@ def render_markdown(res: dict) -> str:
     lt, cr = s["letters"], s["critic"]
     effort = cfg.get("reasoning_effort") or "default"
     so = s.get("second_opinion") or summarize_second(rows)
+    dr = s.get("dual_routes") or summarize_dual(rows)  # older result files have no dual_routes block
+    if not dr.get("recorded", True):
+        dual_cell = "not recorded (before Oct 30)"
+    else:
+        dual_cell = f"{dr['correct']} / {dr['routed']} ({', '.join(c['id'] for c in dr['cases'])})" if dr["routed"] else "0"
     second_model = cfg.get("second_model") or ", ".join(so.get("models") or [])
     second_on = bool(second_model)  # "not configured" only when no second model is named, by the run or by a row
     second_line = f"Second opinion: {second_model}, {so.get('ran', 0)} ran." if second_on else "Second opinion: not configured."
@@ -619,6 +639,7 @@ def render_markdown(res: dict) -> str:
         f"| Errors (scored wrong) | {len(s['errors'])} |",
         f"| Template letters (left out of the rates) | {s['letter_failures']} |",
         f"| Critic failures (letter kept as drafted) | {s['critic_failures']} |",
+        f"| Dual routes (side by side) | {dual_cell} |",
     ]
     reasons = "; ".join(f"{k} ({v})" for k, v in sorted((so.get("skip_reasons") or {}).items())) or "no reason recorded"
     if second_on and so.get("ran"):
