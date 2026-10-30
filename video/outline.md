@@ -33,13 +33,13 @@ Decided Oct 29, 2026 (Alvaro, from three drafted shapes). The script is written 
 
 ## The numbers card
 
-Taken from the latest run in `results/` on recording day (Oct 29 run: `results/case-evals-2026-10-29.*`):
+Taken from the two full runs of the same code (Oct 29 and Oct 30: `results/case-evals-2026-10-29.*` and `results/case-evals-2026-10-30.*`; the range, decided by Alvaro on Oct 30, because the same code gave 28 and then 26 of 30):
 
-- Verdict right on 28 of 30 reviewed denial letters (93%), 13 of 13 where the denial was inconsistent with the policy.
-- 71 of 71 appeal-letter claims verified against the policy page; none struck.
-- The second opinion (Muse Spark Open) agreed on 26 of 28.
+- Verdict right on 26 to 28 of 30 reviewed denial letters across two runs (87 to 93%), 12 or 13 of 13 where the denial was inconsistent with the policy.
+- All 146 appeal-letter claims across the two runs verified against the policy page (71 of 71, 75 of 75); none struck.
+- The second opinion (Muse Spark Open) agreed on 54 of 56 (26 of 28, 28 of 28).
 - The judge checked against a person: 84% agreement on 50 answers, kappa 0.70.
-- About $0.10 and about a minute a case on Muse Spark 1.3 (39 s mean in the eval run; 52 s on the site in the Oct 29 rehearsal, `video/rehearsal-2026-10-29.md`; 73 s in the Oct 29 evening shots, `video/shots-2026-10-29.md`).
+- About $0.10 and about a minute a case on Muse Spark 1.3 (39 s mean in the Oct 29 eval run, 45 s on Oct 30; 52 s on the site in the Oct 29 rehearsal, `video/rehearsal-2026-10-29.md`; 73 s in the Oct 29 evening shots, `video/shots-2026-10-29.md`).
 - The 160-row golden set and the 64 public documents are the disclosed dataset, built before the event.
 
 ## Recording day checklist

@@ -1,0 +1,673 @@
+{
+  "config": {
+    "date": "2026-10-30",
+    "model": "muse-spark-1.3",
+    "reasoning_effort": "low",
+    "prices": {
+      "input_usd_per_m": 1.25,
+      "output_usd_per_m": 4.25
+    },
+    "second_model": "meta-models/muse-spark-open-1026",
+    "modes": {
+      "intake": "muse-spark-1.3",
+      "investigation": "muse-spark-1.3",
+      "verdict": "muse-spark-1.3",
+      "critic": "muse-spark-1.3"
+    },
+    "critic_rounds": 1,
+    "concurrency": 2,
+    "cases": "C:\\Users\\pau\\recourse\\cases\\cases.csv",
+    "ids": [
+      "dc-002",
+      "dc-009",
+      "dc-013",
+      "dc-017"
+    ],
+    "limit": null,
+    "alternates": {
+      "dc-008": [
+        "not_settled"
+      ],
+      "dc-020": [
+        "consistent"
+      ]
+    },
+    "refusal_ids": [
+      "dc-011"
+    ],
+    "wall_s": 126.7
+  },
+  "summary": {
+    "n": 4,
+    "correct": 1,
+    "accuracy": 0.25,
+    "by_intended": {
+      "consistent": {
+        "n": 1,
+        "correct": 0,
+        "accuracy": 0.0
+      },
+      "inconsistent": {
+        "n": 1,
+        "correct": 1,
+        "accuracy": 1.0
+      },
+      "not_settled": {
+        "n": 2,
+        "correct": 0,
+        "accuracy": 0.0
+      }
+    },
+    "by_program": {
+      "florida_kidcare": {
+        "n": 1,
+        "correct": 0,
+        "accuracy": 0.0
+      },
+      "florida_medicaid_ltc": {
+        "n": 1,
+        "correct": 1,
+        "accuracy": 1.0
+      },
+      "florida_medicaid_mma": {
+        "n": 2,
+        "correct": 0,
+        "accuracy": 0.0
+      }
+    },
+    "by_jurisdiction": {
+      "Florida": {
+        "n": 4,
+        "correct": 1,
+        "accuracy": 0.25
+      }
+    },
+    "refusal_correct": null,
+    "letter_failures": 0,
+    "critic_failures": 0,
+    "outside_corpus": [],
+    "letters": {
+      "applicable": 3,
+      "claims": 16,
+      "verified": 16,
+      "struck": 0,
+      "verification_rate": 1.0,
+      "struck_rate": 0.0
+    },
+    "critic": {
+      "reviewed": 3,
+      "accepted": 1,
+      "skipped": 1,
+      "errors": 0,
+      "issues_found": 1,
+      "issues_fixed": 1
+    },
+    "cost_usd": {
+      "total": 0.411676,
+      "mean": 0.102919,
+      "p50": 0.103129
+    },
+    "seconds": {
+      "total": 233.4,
+      "mean": 58.4,
+      "p50": 56.7
+    },
+    "confusion": {
+      "consistent": {
+        "not_settled": 1
+      },
+      "inconsistent": {
+        "inconsistent": 1
+      },
+      "not_settled": {
+        "consistent": 1,
+        "inconsistent": 1
+      }
+    },
+    "errors": [],
+    "wrong": [
+      {
+        "id": "dc-002",
+        "intended": "consistent",
+        "got": "not_settled",
+        "refused": null,
+        "error": null
+      },
+      {
+        "id": "dc-009",
+        "intended": "not_settled",
+        "got": "consistent",
+        "refused": null,
+        "error": null
+      },
+      {
+        "id": "dc-017",
+        "intended": "not_settled",
+        "got": "inconsistent",
+        "refused": null,
+        "error": null
+      }
+    ],
+    "misses": [
+      {
+        "id": "dc-002",
+        "intended": "consistent",
+        "got": "not_settled",
+        "stage": "retrieval",
+        "why": "no question's passages reached the hinge page fl-04 p4 (5 questions planned, plan from the model)"
+      },
+      {
+        "id": "dc-009",
+        "intended": "not_settled",
+        "got": "consistent",
+        "stage": "verdict",
+        "why": "the hinge page fl-10 p5 was quoted (f1, f2, f3, f5); the model proposed consistent, decisive fact \"The request was for 300 test strips for one month\" (letter); exceptions: f5 unchecked"
+      },
+      {
+        "id": "dc-017",
+        "intended": "not_settled",
+        "got": "inconsistent",
+        "stage": "verdict",
+        "why": "the hinge page fl-27 p31 was quoted (f1, f2, f3, f4); the model proposed inconsistent, decisive fact \"the prescription specified \"dispense as written\"\" (letter); exceptions: f3 unchecked"
+      }
+    ],
+    "misses_by_stage": {
+      "retrieval": 1,
+      "verdict": 2
+    },
+    "second_opinion": {
+      "configured": true,
+      "models": [
+        "meta-models/muse-spark-open-1026"
+      ],
+      "ran": 4,
+      "done": 4,
+      "failed": 0,
+      "timeout": 0,
+      "skipped": 0,
+      "skip_reasons": {},
+      "both_done": 4,
+      "agree": 3,
+      "agreement_rate": 0.75,
+      "second_right_primary_wrong": [
+        "dc-009"
+      ],
+      "primary_right_second_wrong": [],
+      "cost_usd": {
+        "total": 0.033416,
+        "mean": 0.008354,
+        "p50": 0.007838
+      },
+      "latency_ms": {
+        "total": 16573.6,
+        "mean": 4143.4,
+        "p50": 3804.3
+      }
+    },
+    "dual_routes": {
+      "recorded": true,
+      "routed": 0,
+      "correct": 0,
+      "cases": []
+    }
+  },
+  "rows": [
+    {
+      "id": "dc-002",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "yes",
+      "demo": "yes",
+      "intended": "consistent",
+      "intended_csv": "consistent",
+      "got": "not_settled",
+      "correct": false,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "route_dual": false,
+      "route_jurisdictions": [
+        "Florida"
+      ],
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 5,
+        "verified": 5,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.107754,
+      "stage_cost_usd": {
+        "intake": 0.00727,
+        "investigation": 0.05465,
+        "verdict": 0.015845,
+        "letter": 0.014701,
+        "critique": 0.015288
+      },
+      "seconds": 70.1,
+      "error": null,
+      "proposed_outcome": "not_settled",
+      "decisive_fact": "whether the private duty nursing policy limits coverage to members under age 21",
+      "settled_by": "outside_documents",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is private duty nursing covered by Florida Medicaid managed care for an adult?"
+        },
+        {
+          "topic": "limits",
+          "question": "What limits does Florida Medicaid managed care place on private duty nursing, such as 12 hours per day?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Florida Medicaid managed care say about covering private duty nursing only for members under age 21?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception under Florida Medicaid managed care that covers private duty nursing for a member who is age 21 and turned 21 before the dates of service even though the under age 21 rule applies?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the Florida Medicaid managed care appeal process for an adverse benefit determination, including the deadline and where to file a grievance or appeal with the plan and how and where to request a Medicaid Fair Hearing after the plan appeal?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f4",
+          "question": "Is there an exception under Florida Medicaid managed care that covers private duty nursing for a member who is age 21 and turned 21 before the dates of service even though the under age 21 rule applies?",
+          "status": "supported",
+          "state": "not_relevant",
+          "relevant": false,
+          "reason": "it names none of the letter's facts (checked: \"plan appeal a medicaid fair\")"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-04",
+        "page": 4,
+        "reached": [],
+        "cited": []
+      },
+      "miss": {
+        "stage": "retrieval",
+        "why": "no question's passages reached the hinge page fl-04 p4 (5 questions planned, plan from the model)"
+      },
+      "second_status": "done",
+      "second_reason": null,
+      "second_model": "meta-models/muse-spark-open-1026",
+      "second_outcome": "not_settled",
+      "second_agrees": true,
+      "second_cost_usd": 0.010283,
+      "second_latency_ms": 5625.3
+    },
+    {
+      "id": "dc-009",
+      "program": "florida_medicaid_mma",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "consistent",
+      "correct": false,
+      "refused": null,
+      "route_program": "florida_medicaid_mma",
+      "route_reason": "The letter is about Florida Medicaid (MMA), so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "route_dual": false,
+      "route_jurisdictions": [
+        "Florida"
+      ],
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": false,
+        "claims": 0,
+        "verified": 0,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 0,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": true,
+        "error": null
+      },
+      "cost_usd": 0.087377,
+      "stage_cost_usd": {
+        "intake": 0.006676,
+        "investigation": 0.0625,
+        "verdict": 0.018201,
+        "letter": 0.0,
+        "critique": 0.0
+      },
+      "seconds": 49.9,
+      "error": null,
+      "proposed_outcome": "consistent",
+      "decisive_fact": "The request was for 300 test strips for one month",
+      "settled_by": "letter",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Does Florida Medicaid cover blood glucose test strips for an adult?"
+        },
+        {
+          "topic": "limits",
+          "question": "How many blood glucose test strips will Florida Medicaid cover in one month for an adult?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What does Florida Medicaid require to approve a prior authorization for more blood glucose test strips than the usual monthly limit?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Florida Medicaid say about denying blood glucose test strips when the amount asked for is more than the plan's quantity limit and the request for a higher amount was not approved?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Even though Florida Medicaid has a quantity limit for blood glucose test strips, is there an exception that still covers 300 strips for one month when the prescription orders 300 strips for one month on a pharmacy claim?"
+        },
+        {
+          "topic": "appeal",
+          "question": "How does a person with Florida Medicaid appeal a denial, how long do they have to file an appeal or ask for a fair hearing, and where do they file it?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f5",
+          "question": "Even though Florida Medicaid has a quantity limit for blood glucose test strips, is there an exception that still covers 300 strips for one month when the prescription orders 300 strips for one month on a pharmacy claim?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "it quotes the same rule as f1, so it is the rule, not an exception"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-10",
+        "page": 5,
+        "reached": [
+          "f1",
+          "f2",
+          "f3",
+          "f5"
+        ],
+        "cited": [
+          "f1",
+          "f2",
+          "f3",
+          "f5"
+        ]
+      },
+      "miss": {
+        "stage": "verdict",
+        "why": "the hinge page fl-10 p5 was quoted (f1, f2, f3, f5); the model proposed consistent, decisive fact \"The request was for 300 test strips for one month\" (letter); exceptions: f5 unchecked"
+      },
+      "second_status": "done",
+      "second_reason": null,
+      "second_model": "meta-models/muse-spark-open-1026",
+      "second_outcome": "not_settled",
+      "second_agrees": false,
+      "second_cost_usd": 0.007858,
+      "second_latency_ms": 3339.7
+    },
+    {
+      "id": "dc-013",
+      "program": "florida_medicaid_ltc",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "inconsistent",
+      "intended_csv": "inconsistent",
+      "got": "inconsistent",
+      "correct": true,
+      "refused": null,
+      "route_program": "florida_medicaid_ltc",
+      "route_reason": "The letter is about Florida Medicaid Long-term Care, so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "route_dual": false,
+      "route_jurisdictions": [
+        "Florida"
+      ],
+      "stage_errors": [],
+      "findings": {
+        "supported": 6,
+        "not_settled": 1,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 7,
+        "verified": 7,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 1,
+        "issues_fixed": 1,
+        "accepted": true,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.118041,
+      "stage_cost_usd": {
+        "intake": 0.006919,
+        "investigation": 0.069212,
+        "verdict": 0.011581,
+        "letter": 0.013497,
+        "critique": 0.016832
+      },
+      "seconds": 57.2,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "Installation of ramps is expressly listed as a covered home accessibility adaptation under LTC",
+      "settled_by": "documents",
+      "relies_on_exception": false,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is a home entry ramp covered under the Florida Medicaid long-term care program?"
+        },
+        {
+          "topic": "limits",
+          "question": "What dollar limits, frequency limits, or lifetime limits apply to a home entry ramp under the Florida Medicaid long-term care program?"
+        },
+        {
+          "topic": "conditions",
+          "question": "What prior authorization, medical necessity, or documentation rules apply to a home entry ramp under the Florida Medicaid long-term care program?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does the Florida Medicaid long-term care program say about the denial reason that home modifications such as ramps are not covered and ramps are excluded from durable medical equipment benefits for a home entry ramp?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Even if ramps are excluded from durable medical equipment benefits, is a home entry ramp covered as a home accessibility adaptation under the Florida Medicaid long-term care program for a member who uses a wheelchair and cannot enter the home without help?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the appeal process under the Florida Medicaid long-term care program, including the adverse benefit determination, the grievance or appeal, the fair hearing, the deadline, and where to file?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Is there an exception under Florida Medicaid Long-term Care that covers home accessibility adaptation, entry ramp even though home modifications such as ramps are not covered. Ramps are excluded from durable medical equipment benefits?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f7",
+          "question": "Is there an exception under Florida Medicaid Long-term Care that covers home accessibility adaptation, entry ramp even though home modifications such as ramps are not covered. Ramps are excluded from durable medical equipment benefits?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "the letter states no specific fact an exception could turn on (a procedure, what the drug is for, a program such as QMB), so the quote could not be checked against one"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-16",
+        "page": 7,
+        "reached": [
+          "f4",
+          "f5",
+          "f7"
+        ],
+        "cited": [
+          "f4",
+          "f5",
+          "f7"
+        ]
+      },
+      "miss": null,
+      "second_status": "done",
+      "second_reason": null,
+      "second_model": "meta-models/muse-spark-open-1026",
+      "second_outcome": "inconsistent",
+      "second_agrees": true,
+      "second_cost_usd": 0.007456,
+      "second_latency_ms": 3802.1
+    },
+    {
+      "id": "dc-017",
+      "program": "florida_kidcare",
+      "jurisdiction": "Florida",
+      "trap": "no",
+      "demo": "no",
+      "intended": "not_settled",
+      "intended_csv": "not_settled",
+      "got": "inconsistent",
+      "correct": false,
+      "refused": null,
+      "route_program": "florida_kidcare",
+      "route_reason": "The letter is about Florida KidCare, so the Florida Medicaid rules decide this case.",
+      "route_outside_corpus": false,
+      "route_dual": false,
+      "route_jurisdictions": [
+        "Florida"
+      ],
+      "stage_errors": [],
+      "findings": {
+        "supported": 5,
+        "not_settled": 0,
+        "unsupported": 0,
+        "error": 0
+      },
+      "letter": {
+        "applicable": true,
+        "claims": 4,
+        "verified": 4,
+        "struck": 0,
+        "error": null
+      },
+      "critique": {
+        "rounds": 1,
+        "issues_found": 0,
+        "issues_fixed": 0,
+        "accepted": false,
+        "skipped": false,
+        "error": null
+      },
+      "cost_usd": 0.098504,
+      "stage_cost_usd": {
+        "intake": 0.006924,
+        "investigation": 0.04922,
+        "verdict": 0.012905,
+        "letter": 0.011023,
+        "critique": 0.018432
+      },
+      "seconds": 56.2,
+      "error": null,
+      "proposed_outcome": "inconsistent",
+      "decisive_fact": "the prescription specified \"dispense as written\"",
+      "settled_by": "letter",
+      "relies_on_exception": true,
+      "plan_source": "model",
+      "planned_questions": [
+        {
+          "topic": "coverage",
+          "question": "Is a brand-name prescription drug covered under Florida KidCare?"
+        },
+        {
+          "topic": "reason",
+          "question": "What does Florida KidCare say about covering a brand-name prescription drug when a generic version is available and the brand-name is covered only when a generic cannot be used?"
+        },
+        {
+          "topic": "exclusions",
+          "question": "Under Florida KidCare, is there an exception that covers a brand-name prescription drug even when a generic is available if the prescription says dispense as written?"
+        },
+        {
+          "topic": "conditions",
+          "question": "Under Florida KidCare, what prior authorization or medical necessity rules must be met for a brand-name prescription drug to be covered?"
+        },
+        {
+          "topic": "appeal",
+          "question": "What is the appeal process under Florida KidCare, including the adverse benefit determination, how to file a grievance or appeal or request a fair hearing, the deadline, and where to file?"
+        }
+      ],
+      "exceptions": [
+        {
+          "finding_id": "f3",
+          "question": "Under Florida KidCare, is there an exception that covers a brand-name prescription drug even when a generic is available if the prescription says dispense as written?",
+          "status": "supported",
+          "state": "unchecked",
+          "relevant": null,
+          "reason": "the letter states no specific fact an exception could turn on (a procedure, what the drug is for, a program such as QMB), so the quote could not be checked against one"
+        }
+      ],
+      "hinge": {
+        "doc_id": "fl-27",
+        "page": 31,
+        "reached": [
+          "f1",
+          "f2",
+          "f3",
+          "f4"
+        ],
+        "cited": [
+          "f1",
+          "f2",
+          "f3",
+          "f4"
+        ]
+      },
+      "miss": {
+        "stage": "verdict",
+        "why": "the hinge page fl-27 p31 was quoted (f1, f2, f3, f4); the model proposed inconsistent, decisive fact \"the prescription specified \"dispense as written\"\" (letter); exceptions: f3 unchecked"
+      },
+      "second_status": "done",
+      "second_reason": null,
+      "second_model": "meta-models/muse-spark-open-1026",
+      "second_outcome": "inconsistent",
+      "second_agrees": true,
+      "second_cost_usd": 0.007819,
+      "second_latency_ms": 3806.5
+    }
+  ]
+}

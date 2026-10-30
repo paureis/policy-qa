@@ -9,11 +9,13 @@ Decisions it follows:
 5. No phone in the video. Film at 1280 by 800.
 6. Muse Code is not named: it was not used beyond the model APIs (Alvaro, Oct 29).
 
-Target: about 420 spoken words. This draft: 381 (390 before the evening's two changes).
+Target: about 420 spoken words. This draft: 389 (381 after Oct 29's two changes, 390 before them).
 
 Decided by Alvaro (Oct 29, by prompt): the KFF line stays the range; row 7 closes on ten cents a case; the not-settled shot comes from a live dc-010 run on recording day. The alternatives at the end stay for the edit only.
 
 Decided by Alvaro (Oct 29, evening, by prompt, after the shots in `video/shots-2026-10-29.md`): the Check line is dropped from row 2 (the evening's dc-001 read flagged no row, so the beat cannot be relied on); row 3 says "about a minute" (the evening runs reached reviewed at 73 s against 52 s at noon). Spoken words after the change: 381.
+
+Decided by Alvaro (Oct 30, by prompt, after the full eval run on the same code gave 26 of 30 against 28 on Oct 29): row 7 quotes the range across the two runs, not one run: twenty-six to twenty-eight of thirty; twelve or thirteen of thirteen; all 146 letter claims (71 of 71 and 75 of 75); the open model fifty-four of fifty-six (26 of 28 and 28 of 28). README carries the four-case table. Spoken words after the change: 389.
 
 ## The script
 
@@ -25,7 +27,7 @@ Decided by Alvaro (Oct 29, evening, by prompt, after the shots in `video/shots-2
 | 4 | 1:10 to 1:40 | "The letter says" beside the policy. Click "See the page": the real page, the quote in red, "Muse Spark vision check: ... matches the quote." | Here is the gap. The letter says eight hours a day. The policy says up to twenty-four hours a day when the criteria are met, and it states no eight-hour limit. Click See the page. Every quote is located on the real page, and when the page opens, Muse Spark vision reads it back. Here, it matches. Nothing is taken on trust. | sample-case.ts:899,918; PageViewer.tsx:236-239 |
 | 5 | 1:40 to 2:05 | The appeal letter and sidenotes. "Appeal by Dec 6, 2026" with the day count. "Second opinion: Muse Spark Open agrees." | Then the appeal letter, drafted for you. Every claim in it carries a citation that passed the same check. The deadline comes from the letter, December sixth, with the days left. Last, a second opinion. The same decision runs again on Muse Spark Open, Meta's open-weights model. Here, it agrees. | README step 6, "Second opinion"; DeadlineStamp.tsx:113; case.ts:1305 |
 | 6 | 2:05 to 2:15 | dc-010, run live once before filming and shown from its own case page: "The documents do not settle it." (two seconds) | Sometimes the papers cannot decide. Here the documents do not settle it, and Recourse says so, plainly. That is a real answer too. | case.ts:1237; results, dc-010 |
-| 7 | 2:15 to 2:45 | The numbers card, one line per sentence. | We tested it on thirty reviewed denial letters. The verdict was right on twenty-eight of thirty, and on all thirteen where the denial did not match the policy. Seventy-one of seventy-one letter claims were verified against the page. The open model agreed on twenty-six of twenty-eight. About ten cents a case. The test data was built before the event, and every number is in the repo. | case-evals-2026-10-29.md; README Timeline |
+| 7 | 2:15 to 2:45 | The numbers card, one line per sentence. | We tested it on thirty reviewed denial letters, twice. The verdict was right on twenty-six to twenty-eight of thirty, and on twelve or thirteen of the thirteen where the denial did not match the policy. All one hundred forty-six letter claims were verified against the page. The open model agreed on fifty-four of fifty-six. About ten cents a case. The test data was built before the event, and every number is in the repo. | case-evals-2026-10-29.md and case-evals-2026-10-30.md; README, Run-to-run variance; README Timeline |
 | 8 | 2:45 to 3:00 | The landing, recourse-murex.vercel.app and paureis/recourse. | Recourse is live now, at recourse-murex dot vercel dot app. Paste your own letter, or open the sample case. The code is public on GitHub, at paureis slash recourse. | README:9; page.tsx:35,41 |
 
 [^1]: KFF's analysis of 14 insurers' prior authorization data for calendar year 2025 (published 2026; quoted in README.md:11): among appealed standard-request denials, 67% were overturned in Medicare Advantage, 47% in Medicaid managed care and 43% in the ACA Marketplace; denials were rarely appealed. Checked Oct 29 against the press coverage of the KFF analysis (https://www.fiercehealthcare.com/payers/insurers-denied-between-12-18-prior-auth-requests-2025-kff). Scope: prior authorization denials, standard requests.
