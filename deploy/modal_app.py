@@ -15,6 +15,8 @@ and reads the index from ROOT/data with no env override, so the source goes to /
     /root/data/pdfs/<doc_id>.pdf                     RECOURSE_PDF_DIR
     /root/data/pages/                                RECOURSE_PAGE_CACHE (rendered PNGs, rebuilt on demand)
     /root/data/cases/                                RECOURSE_CASE_DIR (one JSON file per case)
+    /root/data/vision/                               RECOURSE_VISION_CACHE (one JSON file per vision check;
+                                                     the API also commits the volume after each write)
 
 Why one container (max_containers=1, min_containers=1, many concurrent inputs):
 - The case store (api/cases.py) is a dict in process memory, loaded from RECOURSE_CASE_DIR once at
@@ -33,7 +35,9 @@ repo's tests run in a venv that never installed Modal (see deploy/test_modal_app
 from __future__ import annotations
 
 import csv
+import logging
 import os
+import threading
 from pathlib import Path
 
 try:  # the owner installs Modal by hand (`pip install modal`); it is not in pyproject
@@ -101,6 +105,7 @@ RUNTIME_ENV = {
     "RECOURSE_PDF_DIR": f"{DATA_MOUNT}/pdfs",
     "RECOURSE_PAGE_CACHE": f"{DATA_MOUNT}/pages",
     "RECOURSE_CASE_DIR": f"{DATA_MOUNT}/cases",
+    "RECOURSE_VISION_CACHE": f"{DATA_MOUNT}/vision",  # committed after each write (build_asgi wires the hook)
     "RECOURSE_CORS_ORIGINS": CORS_ORIGINS,
     "RECOURSE_CRITIC_ROUNDS": "1",
     "HF_HUB_OFFLINE": "1",  # the models are in the image; never reach the Hub at run time
@@ -130,14 +135,36 @@ def missing_pdfs(rows: list[dict], pdf_dir: str | os.PathLike) -> list[dict]:
     return out
 
 
+def guarded_commit(volume):
+    """volume.commit() as the API's vision cache hook: one commit at a time, a failure logged, never raised."""
+    lock = threading.Lock()
+
+    def commit() -> None:
+        with lock:
+            try:
+                volume.commit()
+            except Exception as e:  # noqa: BLE001 - the answer is already served and on the container's disk
+                logging.getLogger("recourse.deploy").warning("data volume commit failed: %r", e)
+
+    return commit
+
+
 def build_asgi():
     """Import the API inside the container (the volume is mounted by then) and warm the retriever.
 
     Warming loads BM25, the dense matrix and both sentence-transformers models before the first
     request, so the first case does not pay for it. RECOURSE_WARM_RETRIEVER=0 skips it.
+    The vision cache's commit hook commits the data volume after each cache file is written. Modal's
+    background commits would persist the file later anyway (deploy/README.md); the explicit commit
+    makes the save prompt and safe against a crash before the next background commit.
+    Volume.commit() reloads the volume afterwards and may log a failure while other files are open;
+    guarded_commit runs it off the request thread and only logs a failure, so it never reaches a request.
     """
     from api import main
 
+    volume = globals().get("data_volume")  # defined below only when the modal package is installed
+    if volume is not None:
+        main.VISION_CACHE_COMMIT = guarded_commit(volume)
     if os.environ.get("RECOURSE_WARM_RETRIEVER", "1") == "1":
         try:
             main.retriever()

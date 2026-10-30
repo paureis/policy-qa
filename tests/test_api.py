@@ -745,7 +745,9 @@ needs_fl04 = pytest.mark.skipif(not (FL04_PDF.exists() and FL04_PDF.stat().st_si
 @pytest.fixture()
 def page_cache(monkeypatch, tmp_path):
     monkeypatch.setenv("RECOURSE_PAGE_CACHE", str(tmp_path / "pages"))
+    monkeypatch.setenv("RECOURSE_VISION_CACHE", str(tmp_path / "vision"))
     monkeypatch.delenv("RECOURSE_PDF_DIR", raising=False)
+    monkeypatch.setattr(api_main, "VISION_CACHE_COMMIT", None, raising=False)
     api_main.VISION_CACHE.clear()
     yield tmp_path
     api_main.VISION_CACHE.clear()
@@ -820,7 +822,11 @@ def test_vision_check_route_fixture_mode_and_cache(page_cache, monkeypatch):
     import policyqa.pages as pages_mod
 
     monkeypatch.setattr(pages_mod, "vision_check", lambda *a, **k: (_ for _ in ()).throw(AssertionError("ran twice")))
-    assert client.post("/doc/fl-04/page/5/vision-check", json={"quote": PDN_QUOTE}).json() == b
+    again = client.post("/doc/fl-04/page/5/vision-check", json={"quote": PDN_QUOTE}).json()
+    assert b["vision"]["cached"] is False and again["vision"]["cached"] is True
+    first = {k: v for k, v in b["vision"].items() if k not in ("cached", "latency_ms", "cost_usd")}
+    assert {k: v for k, v in again["vision"].items() if k in first} == first
+    assert {k: v for k, v in again.items() if k != "vision"} == {k: v for k, v in b.items() if k != "vision"}
 
 
 @needs_fl04
@@ -848,6 +854,264 @@ def test_vision_check_route_live_mode_uses_the_provider(page_cache, monkeypatch)
 def test_vision_check_route_short_quote_is_422(page_cache):
     r = client.post("/doc/fl-04/page/5/vision-check", json={"quote": "too short"})
     assert r.status_code == 422 and r.json()["detail"]["field"] == "quote"
+
+
+# ---- the disk-backed vision cache (no PDF needed: highlight and the model are faked) ----
+
+FAKE_HL = {"doc_id": "fl-04", "title": "Florida Medicaid PDN", "page": 5, "dpi": 110, "width_px": 935, "height_px": 1210,
+           "boxes_px": [{"x0": 10, "y0": 20, "x1": 300, "y1": 40}], "score": 1.0, "found": True, "matched": PDN_QUOTE,
+           "image_url": "/doc/fl-04/page/5.png?dpi=110"}
+
+
+@pytest.fixture()
+def vision_route(page_cache, monkeypatch):
+    """The vision-check route over a fake highlight and a counting fake model; the cache dir is page_cache/vision."""
+    import policyqa.pages as pages_mod
+
+    import threading
+
+    class Vp:
+        model = "muse-spark-1.3"
+
+    vp = Vp()
+    runs = {"n": 0, "result": None, "vp": vp, "thread": None}
+
+    def fake_check(doc_id, page, quote, provider, dpi=110, hl=None):
+        runs["n"] += 1
+        runs["thread"] = threading.get_ident()  # the request's worker thread (TestClient does not run it on pytest's)
+        if runs["result"] is not None:
+            return dict(runs["result"])
+        return {"checked": True, "model": provider.model, "text_in_highlight": quote, "agrees": True,
+                "input_tokens": 1200, "output_tokens": 40, "reasoning_tokens": 0, "latency_ms": 3100.0, "cost_usd": 0.005}
+
+    monkeypatch.setattr(pages_mod, "highlight", lambda doc_id, page, quote, dpi=110: dict(FAKE_HL, dpi=dpi))
+    monkeypatch.setattr(pages_mod, "vision_check", fake_check)
+    monkeypatch.setattr(api_main, "vision_provider", lambda: vp)
+    return runs
+
+
+VISION_KEY = ("fl-04", 5, PDN_QUOTE, 110, "muse-spark-1.3")  # the key _vision_post makes under vision_route
+
+
+def _vision_post(dpi=110):
+    r = client.post("/doc/fl-04/page/5/vision-check", json={"quote": PDN_QUOTE, "dpi": dpi})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_vision_cache_survives_a_restart(vision_route, page_cache):
+    first = _vision_post()
+    assert first["vision"]["cached"] is False and first["vision"]["latency_ms"] == 3100.0 and first["vision"]["cost_usd"] == 0.005
+    files = list((page_cache / "vision").glob("*.json"))
+    assert len(files) == 1
+    api_main.VISION_CACHE.clear()  # a redeploy or a restart empties the memory cache
+    again = _vision_post()
+    assert vision_route["n"] == 1  # read from disk: the model did not run again
+    v = again["vision"]
+    assert v["cached"] is True and v["latency_ms"] == 0 and v["cost_usd"] == 0
+    assert v["source_latency_ms"] == 3100.0 and v["source_cost_usd"] == 0.005
+    assert v["agrees"] is True and v["text_in_highlight"] == PDN_QUOTE and v["model"] == "muse-spark-1.3"
+    assert {k: x for k, x in again.items() if k != "vision"} == FAKE_HL
+
+
+def test_vision_cache_memory_hit_is_marked_cached(vision_route):
+    _vision_post()
+    v = _vision_post()["vision"]
+    assert vision_route["n"] == 1
+    assert v["cached"] is True and v["latency_ms"] == 0 and v["cost_usd"] == 0 and v["source_latency_ms"] == 3100.0
+
+
+def test_vision_cache_key_includes_the_dpi(vision_route, page_cache):
+    _vision_post(110)
+    assert _vision_post(150)["vision"]["cached"] is False and vision_route["n"] == 2
+    assert len(list((page_cache / "vision").glob("*.json"))) == 2
+
+
+def test_vision_cache_never_stores_a_failure(vision_route, page_cache):
+    vision_route["result"] = {"checked": False, "model": "muse-spark-1.3", "error": "ReadTimeout: timed out", "latency_ms": 30000.0}
+    assert _vision_post()["vision"]["cached"] is False
+    v = _vision_post()["vision"]
+    assert vision_route["n"] == 2 and v["cached"] is False and v["error"].startswith("ReadTimeout")
+    assert not list((page_cache / "vision").glob("*.json"))  # glob on a missing dir is empty too
+
+
+def test_vision_cache_corrupt_file_is_ignored_and_overwritten(vision_route, page_cache):
+    _vision_post()
+    (f,) = list((page_cache / "vision").glob("*.json"))
+    f.write_text("{not json", encoding="utf-8")
+    api_main.VISION_CACHE.clear()
+    v = _vision_post()["vision"]
+    assert vision_route["n"] == 2 and v["cached"] is False
+    assert json.loads(f.read_text(encoding="utf-8"))  # rewritten whole
+    assert not list((page_cache / "vision").glob("*.tmp"))
+
+
+def test_vision_cache_write_error_is_logged_not_raised(vision_route, page_cache, monkeypatch, caplog):
+    blocker = page_cache / "a-file"
+    blocker.write_text("x", encoding="utf-8")
+    monkeypatch.setenv("RECOURSE_VISION_CACHE", str(blocker / "vision"))  # a dir under a file: mkdir fails
+    commits = []
+    monkeypatch.setattr(api_main, "VISION_CACHE_COMMIT", lambda: commits.append(1))
+    with caplog.at_level("WARNING", logger="recourse.api"):
+        v = _vision_post()["vision"]
+    assert v["checked"] is True and v["cached"] is False
+    assert any("vision cache" in r.getMessage() for r in caplog.records)
+    import threading
+
+    threading.Event().wait(0.3)  # time for a commit thread, had one been started
+    assert commits == []  # nothing was written, so nothing is committed
+
+
+def test_vision_cache_unencodable_answer_is_logged_not_raised(vision_route, page_cache, monkeypatch, caplog):
+    vision_route["result"] = {"checked": True, "model": "muse-spark-1.3", "text_in_highlight": PDN_QUOTE, "agrees": True,
+                              "latency_ms": 3100.0, "cost_usd": 0.005, "odd": {1, 2}}  # a set: json.dumps raises TypeError
+    commits = []
+    monkeypatch.setattr(api_main, "VISION_CACHE_COMMIT", lambda: commits.append(1))
+    with caplog.at_level("WARNING", logger="recourse.api"):
+        v = _vision_post()["vision"]
+    assert v["checked"] is True and v["cached"] is False
+    assert any("vision cache" in r.getMessage() for r in caplog.records)
+    assert not list((page_cache / "vision").glob("*"))  # neither the final file nor a tmp
+    import threading
+
+    threading.Event().wait(0.3)
+    assert commits == []
+
+
+def test_vision_cache_key_includes_the_model(vision_route, page_cache):
+    vision_route["vp"].model = "model-a"
+    _vision_post()
+    vision_route["vp"].model = "model-b"
+    assert _vision_post()["vision"]["cached"] is False and vision_route["n"] == 2
+    assert len(list((page_cache / "vision").glob("*.json"))) == 2
+    api_main.VISION_CACHE.clear()
+    assert _vision_post()["vision"]["model"] == "model-b"
+    vision_route["vp"].model = "model-a"
+    v = _vision_post()["vision"]
+    assert v["cached"] is True and v["model"] == "model-a" and vision_route["n"] == 2  # both were disk hits
+
+
+def test_vision_cache_write_is_tmp_then_os_replace(vision_route, page_cache, monkeypatch):
+    real, moves = os.replace, []
+
+    def spy(src, dst):
+        moves.append((Path(src), Path(dst)))
+        return real(src, dst)
+
+    monkeypatch.setattr(api_main.os, "replace", spy)
+    _vision_post()
+    final = api_main._vision_cache_path(VISION_KEY)
+    assert len(moves) == 1
+    src, dst = moves[0]
+    assert src.name.endswith(".tmp") and src.parent == final.parent and dst == final and final.is_file()
+
+
+def _store_by_hand(stored: dict) -> None:
+    path = api_main._vision_cache_path(VISION_KEY)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(stored), encoding="utf-8")
+
+
+def test_vision_cache_a_stored_failure_is_not_served(vision_route):
+    _store_by_hand({"key": list(VISION_KEY), "vision": {"checked": False, "model": "muse-spark-1.3", "error": "boom"}})
+    v = _vision_post()["vision"]
+    assert vision_route["n"] == 1 and v["cached"] is False and v["checked"] is True
+
+
+def test_vision_cache_a_file_with_another_key_is_not_served(vision_route):
+    other = list(VISION_KEY[:4]) + ["another-model"]
+    _store_by_hand({"key": other, "vision": {"checked": True, "model": "another-model", "text_in_highlight": "x", "agrees": False,
+                                             "latency_ms": 1.0, "cost_usd": 0.0}})
+    v = _vision_post()["vision"]
+    assert vision_route["n"] == 1 and v["cached"] is False and v["model"] == "muse-spark-1.3"
+
+
+def test_vision_cache_a_disk_hit_goes_back_into_memory(vision_route):
+    _vision_post()
+    api_main.VISION_CACHE.clear()
+    assert _vision_post()["vision"]["cached"] is True
+    assert VISION_KEY in api_main.VISION_CACHE and "cached" not in api_main.VISION_CACHE[VISION_KEY]
+
+
+def test_vision_cache_empty_env_means_memory_only(vision_route, page_cache, monkeypatch):
+    monkeypatch.setenv("RECOURSE_VISION_CACHE", "")
+    monkeypatch.setattr(api_main, "DATA", page_cache / "data")
+    _vision_post()
+    assert not (page_cache / "data" / "vision").exists() and not (page_cache / "vision").exists()
+    api_main.VISION_CACHE.clear()
+    assert _vision_post()["vision"]["cached"] is False and vision_route["n"] == 2
+
+
+def test_vision_cache_defaults_to_data_vision(vision_route, page_cache, monkeypatch):
+    monkeypatch.delenv("RECOURSE_VISION_CACHE", raising=False)
+    monkeypatch.setattr(api_main, "DATA", page_cache / "data")
+    _vision_post()
+    assert len(list((page_cache / "data" / "vision").glob("*.json"))) == 1
+
+
+def test_vision_cache_commit_hook_runs_once_per_disk_write_in_a_thread(vision_route, monkeypatch):
+    import threading
+
+    calls, done = [], threading.Event()
+
+    def hook():
+        calls.append((threading.get_ident(), threading.current_thread().name))
+        done.set()
+
+    monkeypatch.setattr(api_main, "VISION_CACHE_COMMIT", hook)
+    _vision_post()
+    request_thread = vision_route["thread"]  # the worker thread that ran the first request (later posts may use another)
+    assert done.wait(5)
+    _vision_post()  # memory hit: no write
+    api_main.VISION_CACHE.clear()
+    _vision_post()  # disk hit: no write
+    vision_route["result"] = {"checked": False, "model": "muse-spark-1.3", "error": "boom"}
+    _vision_post(150)  # failure: no write
+    threading.Event().wait(0.3)
+    assert len(calls) == 1
+    hook_thread, hook_thread_name = calls[0]
+    assert request_thread is not None and hook_thread != request_thread  # not run inline on the request's thread
+    assert hook_thread_name == "vision-cache-commit"
+
+
+def test_vision_cache_commit_failure_is_logged_not_raised(caplog):
+    def hook():
+        raise RuntimeError("volume busy")
+
+    with caplog.at_level("WARNING", logger="recourse.api"):
+        api_main._commit_vision_cache(hook)  # the thread's target
+    assert any("volume busy" in r.getMessage() for r in caplog.records)
+
+
+def test_modal_sets_the_vision_cache_and_wires_a_guarded_commit(monkeypatch, caplog):
+    from unittest import mock
+
+    import deploy.modal_app as modal_app
+
+    assert modal_app.RUNTIME_ENV["RECOURSE_VISION_CACHE"] == "/root/data/vision"
+    vol = mock.MagicMock(name="volume")
+    monkeypatch.setattr(modal_app, "data_volume", vol, raising=False)
+    monkeypatch.setattr(api_main, "VISION_CACHE_COMMIT", None)
+    monkeypatch.setenv("RECOURSE_WARM_RETRIEVER", "0")
+    assert modal_app.build_asgi() is api_main.app
+    hook = api_main.VISION_CACHE_COMMIT
+    assert callable(hook)
+    hook()
+    vol.commit.assert_called_once_with()
+    vol.commit.side_effect = RuntimeError("commit refused")
+    with caplog.at_level("WARNING"):
+        hook()  # guarded: logged, never raised
+    assert any("commit refused" in r.getMessage() for r in caplog.records)
+
+
+def test_modal_without_a_volume_wires_no_commit(monkeypatch):
+    import deploy.modal_app as modal_app
+
+    monkeypatch.delattr(modal_app, "data_volume", raising=False)  # as when the modal package is not installed
+    monkeypatch.setattr(api_main, "VISION_CACHE_COMMIT", None)
+    monkeypatch.setenv("RECOURSE_WARM_RETRIEVER", "0")
+    modal_app.build_asgi()
+    assert api_main.VISION_CACHE_COMMIT is None
 
 
 def test_health_counts_pdfs(page_cache):

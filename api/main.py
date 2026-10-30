@@ -42,8 +42,12 @@ Surface:
                                  score, found, matched, image_url}: the quote located on the page (policyqa/pages.py)
   POST  /doc/{doc_id}/page/{page}/vision-check  {quote, dpi?}
                                  the highlight plus `vision`: Muse Spark reads the boxed text and confirms it holds
-                                 the quote (FixtureVision without POLICYQA_LLM_*); cached in memory per (doc, page,
-                                 quote, dpi, model). 404 not_found / bad_page, 503 no_pdf (RECOURSE_PDF_DIR).
+                                 the quote (FixtureVision without POLICYQA_LLM_*); cached per (doc, page, quote,
+                                 dpi, model) in memory and on disk (RECOURSE_VISION_CACHE, default data/vision, empty
+                                 = memory only; VISION_CACHE_COMMIT runs after each write). `vision.cached` says
+                                 which; a cached answer has latency_ms and cost_usd 0 and the first run's as
+                                 source_latency_ms and source_cost_usd. Failures are never cached.
+                                 404 not_found / bad_page, 503 no_pdf (RECOURSE_PDF_DIR).
   GET   /case/{id}/letter.txt    the appeal letter as plain text (the final paragraphs: the accepted revision
                                  once reviewed): struck sentences left out, "[cite: title,
                                  p. N]" after each verified claim. 404 not_ready until drafted, 409
@@ -68,6 +72,8 @@ Run: uvicorn api.main:app --reload --port 8000
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 import logging
 import os
 import threading
@@ -91,6 +97,7 @@ FIXTURE_DELAY = 0.8  # seconds between fixture findings, so progress is visible 
 INVESTIGATION_THREADS: dict[str, threading.Thread] = {}
 SECOND_THREADS: dict[str, threading.Thread] = {}  # case_id -> the running second opinion's thread; it removes itself when done
 VISION_CACHE: dict[tuple, dict] = {}  # (doc_id, page, quote, dpi, model) -> vision result; a second open costs nothing
+VISION_CACHE_COMMIT = None  # callable or None: run in a background thread after each vision cache file is written (Modal commits its volume)
 log = logging.getLogger("recourse.api")
 
 app = FastAPI(title="Recourse API", version="0.1.0")
@@ -668,9 +675,94 @@ def doc_page_vision_check(doc_id: str, page: int, req: VisionCheckRequest):
         key = (doc_id, page, req.quote, req.dpi, getattr(vp, "model", "?"))
         vision = VISION_CACHE.get(key)
         if vision is None:
-            vision = pages.vision_check(doc_id, page, req.quote, vp, dpi=req.dpi, hl=hl)
-            if vision.get("checked"):  # failures are not cached, so the next open retries
+            vision = _vision_cache_read(key)
+            if vision is not None:
                 VISION_CACHE[key] = vision
+        if vision is not None:
+            return {**hl, "vision": _served_from_cache(vision)}
+        vision = pages.vision_check(doc_id, page, req.quote, vp, dpi=req.dpi, hl=hl)
+        if vision.get("checked"):  # failures are not cached, so the next open retries
+            VISION_CACHE[key] = vision
+            _vision_cache_write(key, vision)
     except pages.PageError as e:
         raise _page_err(e)
-    return {**hl, "vision": vision}
+    return {**hl, "vision": {**vision, "cached": False}}
+
+
+# ---- the vision cache on disk (survives a restart; on Modal it lives on the data volume) ----
+
+
+def vision_cache_dir() -> Path | None:
+    """RECOURSE_VISION_CACHE, default data/vision; an empty value means memory only."""
+    v = os.environ.get("RECOURSE_VISION_CACHE")
+    if v is None:
+        return DATA / "vision"
+    return Path(v) if v.strip() else None
+
+
+def _vision_cache_path(key: tuple) -> Path | None:
+    d = vision_cache_dir()
+    if d is None:
+        return None
+    digest = hashlib.sha256(json.dumps(list(key), ensure_ascii=False).encode("utf-8")).hexdigest()
+    return d / f"{digest}.json"
+
+
+def _vision_cache_read(key: tuple) -> dict | None:
+    """The stored answer for key, or None when there is none or the file is unreadable (the check then runs again)."""
+    path = _vision_cache_path(key)
+    if path is None or not path.is_file():
+        return None
+    try:
+        stored = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        log.warning("ignoring unreadable vision cache file %s: %s", path, e)
+        return None
+    if not isinstance(stored, dict) or stored.get("key") != list(key):
+        return None
+    vision = stored.get("vision")
+    if not isinstance(vision, dict) or vision.get("checked") is not True:
+        return None
+    return vision
+
+
+def _vision_cache_write(key: tuple, vision: dict) -> None:
+    """Write the answer atomically (tmp file, then os.replace). A write error is logged, not raised."""
+    path = _vision_cache_path(key)
+    if path is None:
+        return
+    tmp = path.with_name(f"{path.stem}.{os.getpid()}.{threading.get_ident()}.tmp")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp.write_text(json.dumps({"key": list(key), "vision": vision}, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, path)
+    except (OSError, TypeError, ValueError) as e:  # TypeError/ValueError: a value JSON cannot encode
+        log.warning("could not write vision cache file %s: %s", path, e)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return
+    hook = VISION_CACHE_COMMIT
+    if hook is not None:
+        threading.Thread(target=_commit_vision_cache, args=(hook,), daemon=True, name="vision-cache-commit").start()
+
+
+def _commit_vision_cache(hook) -> None:
+    """Run the commit hook; a failure is logged, never raised (the answer is already served and on disk)."""
+    try:
+        hook()
+    except Exception as e:  # noqa: BLE001 - a failed commit must not reach the request
+        log.warning("vision cache commit failed: %r", e)
+
+
+def _served_from_cache(vision: dict) -> dict:
+    """A cached answer costs nothing this call; the first run's numbers travel as source_*."""
+    return {
+        **vision,
+        "cached": True,
+        "latency_ms": 0,
+        "cost_usd": 0,
+        "source_latency_ms": vision.get("latency_ms", 0),
+        "source_cost_usd": vision.get("cost_usd", 0),
+    }

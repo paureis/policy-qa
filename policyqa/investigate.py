@@ -34,7 +34,8 @@ Steps (PRODUCT.md vocabulary): Routing, then Investigation.
 Finding shape: {id, question, topic, jurisdiction, status, answer, citations, struck,
 passages: [{chunk_id, doc_id, title, page}, plus "source": "fact" on a passage the fact
 query added] (what the model saw, in order), error,
-model, input_tokens, output_tokens, reasoning_tokens, latency_ms, cost_usd}.
+model, input_tokens, output_tokens, reasoning_tokens, latency_ms, cost_usd}; on a dual route also
+planned_question (the plan's wording; `question` is the column's own wording, question_for_jurisdiction).
 Investigation coverage: {claims, supported, errors}.
 
 Muse Spark 1.3 is a reasoning model: completion tokens include its reasoning, so every
@@ -389,16 +390,121 @@ def program_excludes(program: str | None) -> set[str]:
     return set()
 
 
+def jurisdiction_program(route: Route, jurisdiction: str) -> str:
+    """The program one jurisdiction's half of the case is under: the route's own program when it belongs to
+    that jurisdiction, else Medicare (Federal) or Florida Medicaid (Florida)."""
+    program = route.program
+    if program.startswith("florida_") and jurisdiction == "Florida" or program.startswith("medicare_") and jurisdiction == "Federal":
+        return program_label(program)
+    return "Medicare" if jurisdiction == "Federal" else "Florida Medicaid"
+
+
 def program_sentence(route: Route, jurisdiction: str) -> str:
     """The case sentence the answer prompt carries. On a dual route the other jurisdiction's
     half names that jurisdiction's program (Medicare or Florida Medicaid), so its own
     passages are not ruled out."""
-    program = route.program
-    if program.startswith("florida_") and jurisdiction == "Florida" or program.startswith("medicare_") and jurisdiction == "Federal":
-        label = program_label(program)
-    else:
-        label = "Medicare" if jurisdiction == "Federal" else "Florida Medicaid"
-    return f"The case is under {label}. Prefer passages about that program; if a passage is about another program, do not use it."
+    return f"The case is under {jurisdiction_program(route, jurisdiction)}. Prefer passages about that program; if a passage is about another program, do not use it."
+
+
+# ---- per-jurisdiction wording (dual routes only) -------------------------------
+# Oct 30, dc-012 (c_d8240f): the Federal column asked Florida-worded questions of the federal documents and four of
+# five came back not settled. On a dual route each column asks the planned question in its own program's terms.
+# The governing program phrase (the first program phrase that is not a mention) is swapped for the column's program
+# (jurisdiction_program), and so is any later phrase of that program right after "under", "by", "does" and the like.
+# Never swapped: the card's service and denial reason; mentions of a program's own vocabulary ("Medicare
+# cost-sharing", "has Medicare Part A", "a Medicaid waiver", "Statewide Medicaid Managed Care", "a Part D drug",
+# "Medicare.gov"). In the Federal column "the Medicaid Fair Hearing", which Medicare does not have, becomes Medicare's
+# own appeal levels. Asked as written: a QMB question (D2, the cost-sharing rule is about both programs), and a
+# question in which both programs act ("Does Florida Medicaid pay when Medicare denied ...?"). A question that names
+# no program gets the column's: "the rules" becomes "the <program> rules", else " under <program>" before the "?".
+# A single route asks every question as planned.
+
+_PARTS = r"(?:Part\s+[ABCD](?:\s+(?:and|or|&)\s+Part\s+[ABCD])*|Parts\s+[ABCD](?:\s*(?:,|and|or|&)\s*[ABCD])*)"  # after "Medicare": any case
+_PARTS_ALONE = _PARTS.replace("[ABCD]", "(?-i:[ABCD])")  # without "Medicare" an upper-case letter only: "what part a member pays" is English
+_FLORIDA_CORE = (
+    r"(?:(?:Florida|FL)\s+Medicaid(?:\s+(?:\((?:MMA|LTC)\)|MMA|LTC|SMMC|managed\s+medical\s+assistance(?:\s+\(MMA\))?|long[-\s]term\s+care(?:\s+\(LTC\))?|managed\s+care))?"
+    r"|(?:Florida\s+)?KidCare|(?:Florida\s+)?Healthy\s+Kids|Medicaid)"
+)
+_MEDICARE_CORE = r"(?:(?:Original\s+)?Medicare(?:\s+(?:" + _PARTS + r"|Advantage(?:\s+\(MA\))?|prescription\s+drug))?|" + _PARTS_ALONE + r")"
+_ANY_CORE = f"(?:{_FLORIDA_CORE}|{_MEDICARE_CORE})"
+_PLAN_TAIL = r"(?P<tail>\s+(?:program|plan))?(?!\w)"
+_FLORIDA_PROGRAM = re.compile(r"\b(?:(?P<art>the|a|an)\s+)?" + _FLORIDA_CORE + _PLAN_TAIL, re.I)
+_MEDICARE_PROGRAM = re.compile(r"\b(?:(?P<art>the|a|an)\s+)?" + _MEDICARE_CORE + _PLAN_TAIL, re.I)
+_EITHER_PROGRAM = re.compile(r"\b(?:Florida\s+)?Medicaid\s+(?:or|and/or)\s+Medicare\b|\bMedicare\s+(?:or|and/or)\s+(?:Florida\s+)?Medicaid\b", re.I)
+_MEDICAID_HEARING = re.compile(r"\b(?:(?:the|a)\s+)?(?:(?:Florida|FL)\s+)?Medicaid\s+fair\s+hearings?\b", re.I)
+MEDICARE_APPEAL_LEVELS = "the Medicare appeal levels (redetermination, reconsideration, hearing)"
+_MENTION = re.compile(
+    r"\b(?:(?:Florida|FL)\s+)?Medicaid\s+fair\s+hearings?\b"
+    r"|\bStatewide\s+Medicaid\s+Managed\s+Care(?:\s+\(SMMC\))?"
+    r"|\b(?:Medicare|Medicaid)\.gov\b"
+    r"|\bMedicare[-\s]Medicaid(?:\s+plans?)?\b|\bMedicaid[-\s]Medicare\b"
+    r"|\bboth\s+" + _ANY_CORE + r"\s+and\s+" + _ANY_CORE + r"(?!\w)"
+    r"|\b(?:has|have|having|had|with|both)\s+" + _ANY_CORE + r"(?!\w)"
+    r"|\b" + _ANY_CORE + r"(?:'s)?\s+(?:cost[-\s]sharing|co-?insurance|deductibles?|co-?pay(?:ment)?s?|premiums?|beneficiar(?:y|ies)|numbers?|cards?"
+    r"|savings\s+programs?|summary\s+notices?|as\s+(?:the\s+)?(?:primary|secondary)|primary|secondary|waivers?|drugs?)\b",
+    re.I,
+)
+_QMB = re.compile(r"\bQMB\b|qualified medicare beneficiar", re.I)
+_GOVERNING_BEFORE = re.compile(r"\b(?:under|by|does|do|did|will|would|can|may|from)\s+$", re.I)
+_RULES_SLOT = re.compile(r"\bthe rules\b", re.I)
+_HOLD = 0xE000  # private-use characters stand in for held text while the rewrite runs
+
+
+def _protected_spans(card) -> list[str]:
+    """The card's service and denial reason (raw and as the templates quote it), longest first."""
+    raw = " ".join(str(_val(card, "denial_reason") or "").split())
+    spans = {str(_val(card, "service") or "").strip(), raw, _clean_reason(raw) or ""}
+    return sorted((s for s in spans if len(s) >= 3), key=len, reverse=True)
+
+
+def _hold(text: str, pattern: re.Pattern, held: list[str], replace=None) -> str:
+    """Replace each match of `pattern` by one private-use character; `held` keeps what goes back (the match, or `replace(m)`)."""
+    def keep(m: re.Match) -> str:
+        held.append(replace(m) if replace else m.group(0))
+        return chr(_HOLD + len(held) - 1)
+
+    return pattern.sub(keep, text)
+
+
+def question_for_jurisdiction(q: PlannedQuestion, route: Route, jurisdiction: str, card=None) -> PlannedQuestion:
+    """The planned question as asked under `jurisdiction`. A single route returns `q` itself; see the block comment."""
+    if not route.dual:
+        return q
+    held: list[str] = []
+    spans = _protected_spans(card)
+    text = _hold(q.question, re.compile("|".join(re.escape(s) for s in spans), re.I), held) if spans else q.question
+    if _QMB.search(text):  # D2: about both programs
+        return q
+    label = jurisdiction_program(route, jurisdiction)
+    if jurisdiction == "Federal":
+        text = _hold(text, _MEDICAID_HEARING, held, lambda m: MEDICARE_APPEAL_LEVELS)
+    text = _hold(text, _MENTION, held)
+    own, other = (_FLORIDA_PROGRAM, _MEDICARE_PROGRAM) if jurisdiction == "Florida" else (_MEDICARE_PROGRAM, _FLORIDA_PROGRAM)
+    n_held = len(held)
+    text = _hold(text, _EITHER_PROGRAM, held, lambda m: label)  # neither program alone: the column's own
+    either = len(held) > n_held
+    found = sorted([(m.start(), "own") for m in own.finditer(text)] + [(m.start(), "other") for m in other.finditer(text)])
+    if found and {kind for _, kind in found} == {"own", "other"} and not either:  # both programs act in the question
+        return q
+    if found and found[0][1] == "other":
+        first = True
+
+        def swap(m: re.Match) -> str:
+            nonlocal first
+            if not (first or _GOVERNING_BEFORE.search(text[: m.start()])):
+                return m.group(0)
+            first = False
+            return f"{m.group('art')} {label}" if m.group("art") and not m.group("tail") else label
+
+        text = other.sub(swap, text)
+    elif not found and not either:
+        if _RULES_SLOT.search(text):
+            text = _RULES_SLOT.sub(lambda m: f"{m.group(0)[:3]} {label} rules", text, count=1)
+        else:
+            text = text.rstrip()
+            text = f"{text[:-1].rstrip()} under {label}?" if text.endswith("?") else f"{text} under {label}"
+    text = re.sub(f"[{chr(_HOLD)}-{chr(_HOLD + max(len(held), 1) - 1)}]", lambda m: held[ord(m.group(0)) - _HOLD], text) if held else text
+    return q if text == q.question else PlannedQuestion(q.topic, text)
 
 
 def select_passages(hits: list, k: int = PASSAGES_PER_QUESTION, per_doc_cap: int | None = PER_DOC_CAP, exclude=frozenset()) -> list:
@@ -570,12 +676,14 @@ def _emit(on_progress, inv: dict, trace: Trace | None) -> None:
 
 
 def _answer_one(fid: str, q: PlannedQuestion, jurisdiction: str, route: Route, retriever, provider, k: int, per_doc_cap: int | None, exclude: set[str], max_tokens: int, trace: Trace, model: str,
-                fact_q: str | None = None) -> dict:
-    """One question in one jurisdiction, run in a worker thread. Never raises."""
+                fact_q: str | None = None, planned: PlannedQuestion | None = None) -> dict:
+    """One question in one jurisdiction, run in a worker thread. Never raises. `q` is the question as asked;
+    `planned` (dual routes only) is the plan's wording, recorded on the finding as planned_question."""
     tq = time.perf_counter()
     hits: list = []
     fact_ids: set[str] = set()
-    with trace.span("question", id=fid, topic=q.topic, jurisdiction=jurisdiction):
+    asked = {} if planned is None else {"question": q.question}
+    with trace.span("question", id=fid, topic=q.topic, jurisdiction=jurisdiction, **asked):
         try:
             hits, fact_ids = question_passages(retriever, q.question, jurisdiction, fact_q, k=k, per_doc_cap=per_doc_cap, exclude=exclude, trace=trace, fid=fid)
             with trace.span("generate", id=fid, model=model, passages=len(hits)):
@@ -585,6 +693,8 @@ def _answer_one(fid: str, q: PlannedQuestion, jurisdiction: str, route: Route, r
         except Exception as e:  # noqa: BLE001 - one question must not kill the case
             finding = _finding_from_error(fid, q, jurisdiction, model, e, 0.0, passages=_passage_refs(hits, fact_ids))
     finding["latency_ms"] = round((time.perf_counter() - tq) * 1000, 1)
+    if planned is not None:
+        finding["planned_question"] = planned.question
     return finding
 
 
@@ -608,7 +718,8 @@ def investigate_case(case: dict, retriever, provider, on_progress=None, k: int =
         with trace.span("plan", model=model):
             questions = plan_questions(card, route, provider, stats=plan_stats, summary=summary)
         inv["plan"] = {**plan_stats, "questions": len(questions)}
-        jobs = [(q, j) for q in questions for j in route.jurisdictions]
+        # (asked, jurisdiction, planned): on a dual route each column asks in its own program's terms
+        jobs = [(question_for_jurisdiction(q, route, j, card), j, q if route.dual else None) for q in questions for j in route.jurisdictions]
         inv["questions_planned"] = len(jobs)
         exclude = program_excludes(route.program)
         from .relevance import is_exception_finding
@@ -617,14 +728,16 @@ def investigate_case(case: dict, retriever, provider, on_progress=None, k: int =
         slots: list[dict | None] = [None] * len(jobs)
         with ThreadPoolExecutor(max_workers=max(1, max_workers), thread_name_prefix="investigate") as pool:
             futures = {pool.submit(_answer_one, f"f{i + 1}", q, j, route, retriever, provider, k, per_doc_cap, exclude, max_tokens, trace, model,
-                                   fq if is_exception_finding({"question": q.question}) else None): i for i, (q, j) in enumerate(jobs)}
+                                   fq if is_exception_finding({"question": q.question}) else None, planned): i for i, (q, j, planned) in enumerate(jobs)}
             for fut in as_completed(futures):
                 i = futures[fut]
                 try:
                     slots[i] = fut.result()
                 except BaseException as e:  # noqa: BLE001 - _answer_one does not raise; belt and braces
-                    q, j = jobs[i]
+                    q, j, planned = jobs[i]
                     slots[i] = _finding_from_error(f"f{i + 1}", q, j, model, e, 0.0)
+                    if planned is not None:
+                        slots[i]["planned_question"] = planned.question
                 inv["findings"] = [f for f in slots if f is not None]
                 _roll_up(inv)
                 inv["latency_ms"] = round((time.perf_counter() - t0) * 1000, 1)

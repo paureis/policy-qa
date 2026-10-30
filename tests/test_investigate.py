@@ -385,7 +385,10 @@ def test_investigate_case_dual_route_runs_each_question_per_jurisdiction():
     inv = investigate_case(case, FakeRetriever(), FakeAnswerProvider())
     assert inv["questions_planned"] == 14 and len(inv["findings"]) == 14
     assert [f["jurisdiction"] for f in inv["findings"]][:4] == ["Florida", "Federal", "Florida", "Federal"]
-    assert inv["findings"][0]["question"] == inv["findings"][1]["question"]
+    # one planned question, asked in each column's own program's terms (Oct 30)
+    assert inv["findings"][0]["planned_question"] == inv["findings"][1]["planned_question"] == "Is private duty nursing, 8 hours/day covered under Florida Medicaid or Medicare for a member under 21?"
+    assert inv["findings"][0]["question"] == "Is private duty nursing, 8 hours/day covered under Florida Medicaid for a member under 21?"
+    assert inv["findings"][1]["question"] == "Is private duty nursing, 8 hours/day covered under Medicare for a member under 21?"
 
 
 def test_investigate_case_fails_only_outside_the_loop():
@@ -861,3 +864,314 @@ def test_the_fact_query_is_traced_as_its_own_retrieve_span_and_adds_no_model_cal
     assert [s.get("query") for s in spans if s["id"] == exc_id] == [None, "fact"]
     assert all("query" not in s for s in spans if s["id"] != exc_id)
     assert len(prov.users) == len(inv["findings"]) == 7  # one answer call per finding, as before
+
+
+# ---- Oct 30: on a dual route each column asks in its own program's terms ------------------------
+
+DC001_CARD = dict(payer_name="Sample Health Plan", program="florida_medicaid_mma", member_age_group="under_21", service="Private duty nursing, 16 hours per day", service_code="T1000",
+                  amount_billed=11520.0, denial_reason="Florida Medicaid limits private duty nursing to 8 hours per day. The request for 16 hours per day exceeds this limit.")
+
+# Captured on Oct 30 before the dual wording change. The single-route path must stay byte-identical.
+PLAN_SYSTEM_PROMPT_OCT30 = 'You plan the investigation of a health coverage denial. You will be given a case card (the program, the service, the payer\'s stated reason for the denial, and the member\'s age group). Write 4 to 7 questions that a public policy document (a Florida Medicaid coverage policy, a managed care contract, a Medicare manual, or a Medicare booklet) could answer with a verbatim quote.\n\nRules:\n1. Each question names the service and the program in plain words, as a reader with no insurance background would say them. One question per line of inquiry. The exception is the appeal question (rule 2).\n2. Topics, one per question: coverage (is the service covered), limits (hours, visits, amounts, frequency), conditions (prior authorization, medical necessity criteria, documentation), exclusions, appeal, reason (what the rules say about the payer\'s stated denial reason), other. An appeal question asks about the program\'s appeal process: the adverse benefit determination, the grievance or appeal, the fair hearing, the deadline, and where to file. Appeal questions name the program but do not name the service.\n3. Include at least one appeal question, at least one reason question about the letter\'s stated denial reason, and one exception question (topic exclusions): is there an exception, or a second rule or program, that covers this service or this member even though the stated reason applies? Policies often state an exclusion on one page and its exception on the next. Name in the exception question the facts the letter states that an exception could turn on: a related surgery or procedure, what the prescription says the drug is for, the member\'s other coverage (Medicaid, the Qualified Medicare Beneficiary (QMB) program). When the member has both Medicare and Medicaid, ask whether a provider may bill the member for Medicare cost-sharing.\n4. Ask only about coverage, billing, and appeal rules. Never ask about treatment, diagnosis, medication, dosage, or whether the care was needed. This tool never gives medical advice.\n5. Return JSON only, matching the schema: {"questions": [{"topic": "...", "question": "..."}]}'
+DC001_SUMMARY_OCT30 = "Case card:\nProgram: Florida Medicaid (MMA) (jurisdictions: Florida)\nPayer: Sample Health Plan\nService: Private duty nursing, 16 hours per day\nService code: T1000\nMember age group: under_21\nPayer's stated denial reason: Florida Medicaid limits private duty nursing to 8 hours per day. The request for 16 hours per day exceeds this limit.\nAmount billed: 11520.0\n\nPlan the questions. Return JSON only."
+DC001_TEMPLATE_OCT30 = [
+    ("coverage", "Is Private duty nursing, 16 hours per day covered under Florida Medicaid (MMA) for a member under 21?"),
+    ("limits", "What limits apply to Private duty nursing, 16 hours per day under Florida Medicaid (MMA) for a member under 21, such as hours, visits, or amounts?"),
+    ("conditions", "What conditions or prior authorization does Florida Medicaid (MMA) require for Private duty nursing, 16 hours per day?"),
+    ("exclusions", "What exclusions apply to Private duty nursing, 16 hours per day under Florida Medicaid (MMA)?"),
+    ("appeal", "How does a member appeal an adverse benefit determination under Florida Medicaid (MMA): the appeal or grievance, the fair hearing, the deadline, and where to file?"),
+    ("reason", "What do the rules say when florida Medicaid limits private duty nursing to 8 hours per day. The request for 16 hours per day exceeds this limit?"),
+    ("exclusions", "Is there an exception under Florida Medicaid (MMA) that covers Private duty nursing, 16 hours per day even though florida Medicaid limits private duty nursing to 8 hours per day. The request for 16 hours per day exceeds this limit?"),
+]
+
+
+class PlanThenAbstain(FakePlanProvider):
+    """Plans from `content`, then abstains on every answer, recording each user message."""
+
+    def __init__(self, content, raise_exc=None):
+        super().__init__(content, raise_exc)
+        self.users = []
+        self.lock = threading.Lock()
+
+    def complete(self, system, user, max_tokens=600):
+        with self.lock:
+            self.users.append(user)
+        return json.dumps({"answer": ABSTAIN_TEXT, "abstain": True, "citations": []}), 10, 5
+
+
+def test_the_single_route_plan_inputs_and_questions_are_byte_identical_to_oct_30():
+    """D3: the dual wording change leaves a non-dual route alone: system prompt, card summary, templates, questions asked."""
+    from policyqa.investigate import PLAN_SYSTEM_PROMPT, _card_summary_for_plan
+
+    c = card(**DC001_CARD)
+    r = route_case(c)
+    assert r.jurisdictions == ["Florida"] and r.dual is False
+    assert PLAN_SYSTEM_PROMPT == PLAN_SYSTEM_PROMPT_OCT30
+    assert _card_summary_for_plan(c, r) == DC001_SUMMARY_OCT30
+    assert [(q.topic, q.question) for q in template_questions(c, r)] == DC001_TEMPLATE_OCT30
+    # the model plan: the call carries exactly these strings, and every finding asks the planned question as written
+    p = PlanThenAbstain(json.dumps(GOOD_PLAN))
+    inv = investigate_case({"case_id": "c_dc001", "card": c}, FakeRetriever(), p)
+    assert p.calls[0]["system"] == PLAN_SYSTEM_PROMPT_OCT30 and p.calls[0]["parts"] == [{"type": "text", "text": DC001_SUMMARY_OCT30}]
+    assert [f["question"] for f in inv["findings"]] == [q["question"] for q in GOOD_PLAN["questions"]] + [DC001_TEMPLATE_OCT30[-1][1]]
+    assert all("planned_question" not in f for f in inv["findings"])
+    # the template plan: the same
+    inv = investigate_case({"case_id": "c_dc001t", "card": c}, FakeRetriever(), PlanThenAbstain("not json"))
+    assert inv["plan"]["source"] == "template"
+    assert [(f["topic"], f["question"]) for f in inv["findings"]] == DC001_TEMPLATE_OCT30
+    assert all("planned_question" not in f for f in inv["findings"])
+    q_spans = [s for s in inv["trace"]["spans"] if s["name"] == "question"]
+    assert all(set(s) == {"name", "ms", "id", "topic", "jurisdiction"} for s in q_spans)
+
+
+DC012_CARD = dict(payer_name="Sample Long-Term Care Plan", program="florida_medicaid_ltc", member_age_group="65_plus", service="Home-delivered meals, 1 meal per day", service_code="S5170",
+                  amount_billed=378.0, denial_reason="Home-delivered meals are not a covered benefit of the Long-term Care program.")
+# The model plan of the live dc-012 case on Oct 30 (c_d8240f): every question names Florida Medicaid Long-term Care.
+DC012_PLAN = {"questions": [
+    {"topic": "coverage", "question": "Are home-delivered meals covered by Florida Medicaid Long-term Care?"},
+    {"topic": "limits", "question": "What limits does Florida Medicaid Long-term Care put on home-delivered meals, such as how many meals per day or how many days can be billed?"},
+    {"topic": "conditions", "question": "What does Florida Medicaid Long-term Care require for home-delivered meals, such as prior approval or proof that the member has difficulty shopping for and preparing food without help?"},
+    {"topic": "exclusions", "question": "Even when home-delivered meals are said not to be covered, does Florida Medicaid Long-term Care make an exception that covers home-delivered meals when the member has difficulty shopping for and preparing food without help and also has Medicare Part A and Part B, and may a provider bill the member for Medicare cost-sharing?"},
+    {"topic": "reason", "question": "What does Florida Medicaid Long-term Care say about denying home-delivered meals for the reason that home-delivered meals are not a covered benefit of the Long-term Care program?"},
+    {"topic": "appeal", "question": "What is the Florida Medicaid Long-term Care appeal process for an adverse benefit determination, including the plan grievance or appeal, the Medicaid Fair Hearing, the deadline to file, and where to file?"},
+]}
+DC012_FEDERAL = [
+    "Are home-delivered meals covered by Medicare?",
+    "What limits does Medicare put on home-delivered meals, such as how many meals per day or how many days can be billed?",
+    "What does Medicare require for home-delivered meals, such as prior approval or proof that the member has difficulty shopping for and preparing food without help?",
+    # the governing program is swapped; the member's other coverage and "Medicare cost-sharing" are mentions and stay
+    "Even when home-delivered meals are said not to be covered, does Medicare make an exception that covers home-delivered meals when the member has difficulty shopping for and preparing food without help and also has Medicare Part A and Part B, and may a provider bill the member for Medicare cost-sharing?",
+    "What does Medicare say about denying home-delivered meals for the reason that home-delivered meals are not a covered benefit of the Long-term Care program?",
+    # Medicare has no fair hearing: its appeal levels are redetermination, reconsideration and a hearing
+    "What is the Medicare appeal process for an adverse benefit determination, including the plan grievance or appeal, the Medicare appeal levels (redetermination, reconsideration, hearing), the deadline to file, and where to file?",
+]
+
+
+def _by_jurisdiction(inv):
+    return {j: [f["question"] for f in inv["findings"] if f["jurisdiction"] == j] for j in ("Florida", "Federal")}
+
+
+def test_a_dual_route_asks_the_federal_column_in_medicare_terms_model_plan():
+    """D1, dc-012 shape (Oct 30, c_d8240f): the Federal column asked Florida-worded questions of the federal documents
+    and four of five came back not settled. Each column now asks in its own program's terms."""
+    c = card(**DC012_CARD)
+    p = PlanThenAbstain(json.dumps(DC012_PLAN))
+    inv = investigate_case({"case_id": "c_dc012", "card": c}, FakeRetriever(), p)
+    assert inv["plan"]["source"] == "model" and inv["status"] == "done"
+    got = _by_jurisdiction(inv)
+    assert got["Florida"] == [q["question"] for q in DC012_PLAN["questions"]]  # the route's own program: as planned
+    assert got["Federal"] == DC012_FEDERAL
+    # the question asked is the one sent to the model and recorded in the trace
+    assert all(any(u.rstrip().endswith("Question: " + q) or ("Question: " + q) in u for u in p.users) for q in DC012_FEDERAL)
+    spans = {s["id"]: s for s in inv["trace"]["spans"] if s["name"] == "question"}
+    assert all(spans[f["id"]]["question"] == f["question"] for f in inv["findings"])
+
+
+def test_a_dual_route_asks_the_federal_column_in_medicare_terms_template_plan():
+    c = card(**DC012_CARD)
+    inv = investigate_case({"case_id": "c_dc012t", "card": c}, FakeRetriever(), PlanThenAbstain("not json"))
+    assert inv["plan"]["source"] == "template"
+    got = _by_jurisdiction(inv)
+    service, reason = "Home-delivered meals, 1 meal per day", "home-delivered meals are not a covered benefit of the Long-term Care program"
+    assert got["Florida"] == [
+        f"Is {service} covered under Florida Medicaid Long-term Care for a member who is 65 or older?",
+        f"What limits apply to {service} under Florida Medicaid Long-term Care for a member who is 65 or older, such as hours, visits, or amounts?",
+        f"What conditions or prior authorization does Florida Medicaid Long-term Care require for {service}?",
+        f"What exclusions apply to {service} under Florida Medicaid Long-term Care?",
+        "How does a member appeal an adverse benefit determination under Florida Medicaid Long-term Care: the appeal or grievance, the fair hearing, the deadline, and where to file?",
+        f"What do the Florida Medicaid Long-term Care rules say when {reason}?",
+        f"Is there an exception under Florida Medicaid Long-term Care that covers {service} even though {reason}?",
+    ]
+    assert got["Federal"] == [
+        f"Is {service} covered under Medicare for a member who is 65 or older?",
+        f"What limits apply to {service} under Medicare for a member who is 65 or older, such as hours, visits, or amounts?",
+        f"What conditions or prior authorization does Medicare require for {service}?",
+        f"What exclusions apply to {service} under Medicare?",
+        "How does a member appeal an adverse benefit determination under Medicare: the appeal or grievance, the fair hearing, the deadline, and where to file?",
+        f"What do the Medicare rules say when {reason}?",
+        f"Is there an exception under Medicare that covers {service} even though {reason}?",
+    ]
+
+
+DC021_CARD = dict(program="medicare_b", payer_name="Sample Medical Group", member_age_group="65_plus", service="Office visit, established patient", service_code="99214", amount_billed=135.3,
+                  denial_reason="Florida Medicaid did not pay the Medicare coinsurance for this visit, so the remaining balance is the patient's responsibility.")
+# The model plan of dc-021 on Oct 30: a Medicare Part B letter whose plan asked in Florida Medicaid terms.
+DC021_PLAN = {"questions": [
+    {"topic": "coverage", "question": "Is an office visit with an established patient covered by Florida Medicaid?"},
+    {"topic": "conditions", "question": "What prior authorization, medical necessity, or documentation rules does Florida Medicaid require for an office visit with an established patient?"},
+    {"topic": "reason", "question": "What do Florida Medicaid rules say about Florida Medicaid not paying the Medicare coinsurance for an office visit with an established patient and leaving the remaining balance as the patient's responsibility?"},
+    {"topic": "exclusions", "question": "For an office visit with an established patient under Florida Medicaid, when the member has both Medicare Part B as primary and Florida Medicaid secondary under the Qualified Medicare Beneficiary (QMB) program, may a provider bill the member for the Medicare coinsurance?"},
+    {"topic": "appeal", "question": "For Florida Medicaid, what are the rules for an adverse benefit determination, grievance or appeal, and fair hearing, including the deadline and where to file?"},
+]}
+
+
+def test_the_question_about_both_programs_is_asked_as_written_in_both_columns():
+    """D2, dc-021 shape: the QMB cost-sharing question is about both programs; the Federal column of a Medicare
+    Part B letter asks the rest in Medicare Part B terms, the Florida column in Florida Medicaid terms."""
+    c = card(**DC021_CARD)
+    r = route_case(c)
+    assert r.dual and r.jurisdictions == ["Florida", "Federal"]
+    inv = investigate_case({"case_id": "c_dc021t", "card": c}, FakeRetriever(), PlanThenAbstain("not json"))
+    got = _by_jurisdiction(inv)
+    service = "Office visit, established patient"
+    reason = "florida Medicaid did not pay the Medicare coinsurance for this visit, so the remaining balance is the patient's responsibility"
+    qmb = f"Can a provider bill a member in the Qualified Medicare Beneficiary (QMB) program, or a member with both Medicare and Medicaid, for Medicare cost-sharing (deductible, coinsurance, or copayment) for {service}?"
+    assert got["Florida"][-1] == got["Federal"][-1] == qmb
+    assert got["Florida"][0] == f"Is {service} covered under Florida Medicaid for a member who is 65 or older?"
+    assert got["Federal"][0] == f"Is {service} covered under Medicare Part B for a member who is 65 or older?"
+    # the reason names both programs, yet it is the reason: never rewritten; the column's program fills "the rules"
+    assert got["Florida"][5] == f"What do the Florida Medicaid rules say when {reason}?"
+    assert got["Federal"][5] == f"What do the Medicare Part B rules say when {reason}?"
+    # the model plan
+    inv = investigate_case({"case_id": "c_dc021", "card": c}, FakeRetriever(), PlanThenAbstain(json.dumps(DC021_PLAN)))
+    got = _by_jurisdiction(inv)
+    assert got["Florida"] == [q["question"] for q in DC021_PLAN["questions"]]
+    assert got["Federal"] == [
+        "Is an office visit with an established patient covered by Medicare Part B?",
+        "What prior authorization, medical necessity, or documentation rules does Medicare Part B require for an office visit with an established patient?",
+        # the governing "Florida Medicaid rules" is swapped; the rest is the letter's own fact and stays
+        "What do Medicare Part B rules say about Florida Medicaid not paying the Medicare coinsurance for an office visit with an established patient and leaving the remaining balance as the patient's responsibility?",
+        DC021_PLAN["questions"][3]["question"],  # QMB
+        "For Medicare Part B, what are the rules for an adverse benefit determination, grievance or appeal, and fair hearing, including the deadline and where to file?",
+    ]
+
+
+@pytest.mark.parametrize("phrase", [
+    "Florida Medicaid", "florida medicaid", "Florida Medicaid MMA", "Florida Medicaid (MMA)", "FLORIDA MEDICAID LONG-TERM CARE", "Florida Medicaid Long-term Care",
+    "Florida Medicaid managed care", "the Florida Medicaid long-term care program", "Florida KidCare", "Medicaid",
+])
+def test_each_florida_program_phrase_becomes_medicare_in_the_federal_column(phrase):
+    from policyqa.investigate import question_for_jurisdiction
+
+    c = card(**DC012_CARD)
+    r = route_case(c)
+    tail = "even though home-delivered meals are not a covered benefit of the Long-term Care program?"
+    q = PlannedQuestion("coverage", f"Are Home-delivered meals, 1 meal per day covered by {phrase} {tail}")
+    assert question_for_jurisdiction(q, r, "Federal", c).question == f"Are Home-delivered meals, 1 meal per day covered by Medicare {tail}"
+    assert question_for_jurisdiction(q, r, "Florida", c) is q  # the route's own program: as planned
+
+
+@pytest.mark.parametrize("phrase", [
+    "Medicare", "medicare", "Medicare Part B", "Medicare Part A and Part B", "Medicare Advantage", "a Medicare Advantage plan", "Medicare Part D", "Part D",
+    "the Medicare program", "Medicare or Florida Medicaid", "Florida Medicaid or Medicare",
+])
+def test_each_medicare_program_phrase_becomes_florida_medicaid_in_the_florida_column(phrase):
+    from policyqa.investigate import question_for_jurisdiction
+
+    c = card(program="medicare_part_d", payer_name="Sunshine Health Medicare-Medicaid Plan", member_age_group="65_plus", service="Azelaic acid 15% gel",
+             denial_reason="Medicare does not cover drugs used for cosmetic purposes.")
+    r = route_case(c)
+    assert r.dual
+    tail = "say about Azelaic acid 15% gel when medicare does not cover drugs used for cosmetic purposes?"
+    q = PlannedQuestion("reason", f"What does {phrase} {tail}")
+    assert question_for_jurisdiction(q, r, "Florida", c).question == f"What does Florida Medicaid {tail}"
+    fed = question_for_jurisdiction(q, r, "Federal", c).question
+    if " or " in phrase:  # neither program alone: each column names its own
+        assert fed == f"What does Medicare Part D {tail}"
+    else:  # the route's own program: as planned
+        assert fed == q.question
+
+
+def test_the_rewrite_keeps_articles_and_falls_back_to_naming_the_program():
+    from policyqa.investigate import question_for_jurisdiction
+
+    c = card(program="unknown")
+    r = route_case(c)
+
+    def ask(text, j):
+        return question_for_jurisdiction(PlannedQuestion("other", text), r, j, c).question
+
+    assert ask("What do the Florida Medicaid rules say about hours?", "Federal") == "What do the Medicare rules say about hours?"
+    assert ask("Does a Medicare Advantage plan limit the hours?", "Florida") == "Does Florida Medicaid limit the hours?"
+    assert ask("How many hours does the policy allow?", "Federal") == "How many hours does the policy allow under Medicare?"
+    assert ask("How many hours does the policy allow?", "Florida") == "How many hours does the policy allow under Florida Medicaid?"
+    assert ask("Does Florida Medicaid pay when Medicare denied the hours?", "Federal") == "Does Florida Medicaid pay when Medicare denied the hours?"  # both programs
+    # a single route never rewrites
+    single = route_case(card())
+    q = PlannedQuestion("other", "How many hours does Medicare allow?")
+    assert question_for_jurisdiction(q, single, "Florida", card()) is q
+
+
+def test_a_dual_route_keeps_the_plan_count_ids_order_and_lists_each_planned_question_once():
+    """D4: questions_planned, the finding ids and order, the plan record and the eval's planned_questions keep their shape."""
+    from policyqa.case_evals import planned_questions
+
+    c = card(**DC012_CARD)
+    inv = investigate_case({"case_id": "c_d4", "card": c}, FakeRetriever(), PlanThenAbstain(json.dumps(DC012_PLAN)))
+    n = len(DC012_PLAN["questions"])
+    assert inv["plan"]["questions"] == n and inv["questions_planned"] == 2 * n == len(inv["findings"])
+    assert [f["id"] for f in inv["findings"]] == [f"f{i}" for i in range(1, 2 * n + 1)]
+    assert [f["jurisdiction"] for f in inv["findings"]] == ["Florida", "Federal"] * n
+    assert [f["topic"] for f in inv["findings"]] == [q["topic"] for q in DC012_PLAN["questions"] for _ in range(2)]
+    assert [f["planned_question"] for f in inv["findings"]] == [q["question"] for q in DC012_PLAN["questions"] for _ in range(2)]
+    assert planned_questions(inv) == DC012_PLAN["questions"]
+    assert inv["plan"]["cost_usd"] == 0.001 and inv["plan"]["input_tokens"] == 100
+
+
+def test_both_program_words_inside_the_letters_reason_do_not_freeze_the_column_wording():
+    """The QMB and cost-sharing words make a question about both programs only when the planner wrote them, not
+    when they sit inside the card's denial reason that the template quotes."""
+    c = card(program="unknown", denial_reason="The plan does not pay Medicare cost-sharing for this visit.")
+    inv = investigate_case({"case_id": "c_cs", "card": c}, FakeRetriever(), PlanThenAbstain("not json"))
+    got = _by_jurisdiction(inv)
+    assert got["Federal"][5] == "What do the Medicare rules say when the plan does not pay Medicare cost-sharing for this visit?"
+    assert got["Florida"][5] == "What do the Florida Medicaid rules say when the plan does not pay Medicare cost-sharing for this visit?"
+
+
+# ---- Oct 30 fix round: only the governing program phrase is swapped ---------------------------
+
+PART_D_DUAL = dict(program="medicare_part_d", payer_name="Sunshine Health Medicare-Medicaid Plan", member_age_group="65_plus", service="Azelaic acid 15% gel",
+                   denial_reason="This drug is not on the plan's formulary.")
+
+
+@pytest.mark.parametrize("jurisdiction, card_over, planned, asked", [
+    # a program word inside a term of that program's own vocabulary is not the governing program
+    ("Federal", DC012_CARD, "Does the Statewide Medicaid Managed Care program cover home-delivered meals under Florida Medicaid Long-term Care?",
+     "Does the Statewide Medicaid Managed Care program cover home-delivered meals under Medicare?"),
+    ("Federal", DC012_CARD, "Does a Medicaid waiver cover home-delivered meals under Florida Medicaid?", "Does a Medicaid waiver cover home-delivered meals under Medicare?"),
+    ("Federal", DC012_CARD, "Does FL Medicaid cover home-delivered meals?", "Does Medicare cover home-delivered meals?"),
+    ("Florida", PART_D_DUAL, "Does Medicare Part D cover azelaic acid gel, as Medicare.gov describes it?", "Does Florida Medicaid cover azelaic acid gel, as Medicare.gov describes it?"),
+    ("Florida", PART_D_DUAL, "Does medicare part d cover azelaic acid gel?", "Does Florida Medicaid cover azelaic acid gel?"),
+    ("Florida", PART_D_DUAL, "Is a Part D drug like azelaic acid gel covered by Medicare Part D?", "Is a Part D drug like azelaic acid gel covered by Florida Medicaid?"),
+    # the governing program named twice: both swapped (the second sits after "does")
+    ("Federal", DC012_CARD, "Under Florida Medicaid, is widget therapy covered, and how does Florida Medicaid handle appeals?",
+     "Under Medicare, is widget therapy covered, and how does Medicare handle appeals?"),
+    # an English "part a" or "part b" is not a Medicare Part; a lower-case letter counts only after "Medicare"
+    ("Florida", PART_D_DUAL, "What part a member pays for widget therapy under Medicare?", "What part a member pays for widget therapy under Florida Medicaid?"),
+    ("Florida", PART_D_DUAL, "Which part b of the Medicare rules applies to widget therapy?", "Which part b of the Florida Medicaid rules applies to widget therapy?"),
+    # the Florida column keeps the Medicaid Fair Hearing, which is Florida Medicaid's own appeal step
+    ("Florida", DC021_CARD, "What is the Medicare Part B appeal process, including the Medicaid Fair Hearing and the deadline to file?",
+     "What is the Florida Medicaid appeal process, including the Medicaid Fair Hearing and the deadline to file?"),
+])
+def test_only_the_governing_program_phrase_is_swapped(jurisdiction, card_over, planned, asked):
+    from policyqa.investigate import question_for_jurisdiction
+
+    c = card(**card_over)
+    assert question_for_jurisdiction(PlannedQuestion("coverage", planned), route_case(c), jurisdiction, c).question == asked
+
+
+def test_a_qmb_question_is_asked_as_written_even_when_it_names_only_medicare():
+    """D2: the QMB billing question is about both programs whatever program words it uses."""
+    from policyqa.investigate import question_for_jurisdiction
+
+    c = card(**DC021_CARD)
+    q = PlannedQuestion("other", "May a provider bill a Qualified Medicare Beneficiary (QMB) for Medicare cost-sharing for an office visit?")
+    assert question_for_jurisdiction(q, route_case(c), "Florida", c) is q
+    assert question_for_jurisdiction(q, route_case(c), "Federal", c) is q
+
+
+@pytest.mark.parametrize("service", ["Medicaid waiver home-delivered meals", "Medicaid home-delivered meals"])
+def test_the_service_is_never_rewritten_even_when_it_names_a_program(service):
+    c = card(**{**DC012_CARD, "service": service})
+    inv = investigate_case({"case_id": "c_svc", "card": c}, FakeRetriever(), PlanThenAbstain("not json"))
+    fed = _by_jurisdiction(inv)["Federal"]
+    assert fed[0] == f"Is {service} covered under Medicare for a member who is 65 or older?"
+    assert all(service in q for q in fed if "appeal" not in q and "rules say" not in q)
+
+
+def test_a_lower_case_quote_of_the_reason_is_never_rewritten():
+    from policyqa.investigate import question_for_jurisdiction
+
+    c = card(**{**DC012_CARD, "denial_reason": "Florida Medicaid does not cover meals."})
+    q = PlannedQuestion("reason", "What do the rules say when florida medicaid does not cover meals?")
+    assert question_for_jurisdiction(q, route_case(c), "Federal", c).question == "What do the Medicare rules say when florida medicaid does not cover meals?"

@@ -225,15 +225,17 @@ def stage_errors(case: dict) -> list[dict]:
 
 
 def planned_questions(inv: dict) -> list[dict]:
-    """The planner's questions, once each and in planned order ({topic, question}); a dual route asks each twice."""
+    """The planner's questions, once each and in planned order ({topic, question}); a dual route asks each twice,
+    each column in its own program's terms, so its findings carry the plan's wording as planned_question (Oct 30)."""
     out, seen = [], set()
     for f in (inv or {}).get("findings") or []:
         if not isinstance(f, dict):
             continue
-        key = (f.get("topic"), f.get("question"))
+        question = f.get("planned_question") or f.get("question")
+        key = (f.get("topic"), question)
         if key not in seen:
             seen.add(key)
-            out.append({"topic": f.get("topic"), "question": f.get("question")})
+            out.append({"topic": f.get("topic"), "question": question})
     return out
 
 
