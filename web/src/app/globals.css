@@ -98,6 +98,25 @@ body {
   caret-color: var(--ink);
 }
 
+/*
+  iOS Safari draws a native date control at its own width, so the three date fields on the
+  intake's case card ran past the sheet's edge on Alvaro's phone (Oct 30, 2026) while every
+  other field fit. The rule applies only where -webkit-touch-callout exists, which is iOS:
+  Chromium and desktop WebKit never see it, so every capture there stays byte-identical.
+*/
+@supports (-webkit-touch-callout: none) {
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    max-width: 100%;
+  }
+  input[type="date"]::-webkit-date-and-time-value {
+    min-height: 1.4em;
+    text-align: left;
+  }
+}
+
 /* Visible focus for keyboard users, same ring everywhere: ink, 3 px, offset off the control. */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 3px solid var(--ink);
