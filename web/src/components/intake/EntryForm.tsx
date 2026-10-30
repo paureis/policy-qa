@@ -38,6 +38,7 @@ const LABEL = "block text-[14px] font-semibold tracking-wide text-muted uppercas
 
 const PHOTO = { title: "Take a photo", hint: "Use your phone camera. Lay the letter flat in good light." };
 const FILE = { title: "Choose a PDF or image", hint: "JPEG, PNG, WebP, or PDF up to 10 MB." };
+const LETTERS_HINT = "Ten letters written for this demo. Pick one and read it as your own.";
 
 /*
   Three equal ways in: a photo, a file, or pasted text (under 1024 px, as
@@ -63,6 +64,7 @@ export function EntryForm({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
   const lettersDoorRef = useRef<HTMLButtonElement>(null);
+  const phoneLettersDoorRef = useRef<HTMLButtonElement>(null);
   const [loaded, setLoaded] = useState<{ n: number; message: string }>({ n: 0, message: "" });
   const length = text.trim().length;
   const inRange = length >= TEXT_MIN && length <= TEXT_MAX;
@@ -79,8 +81,48 @@ export function EntryForm({
   const chooseLetter = (letter: SampleLetter) => {
     onTextChange(letter.text);
     onLettersOpen(false);
+    /* Under 1024 px the paste box opens with the letter in it (section 17, K9); at desktop it is always open. */
+    onTextOpen(true);
     setLoaded((l) => ({ n: l.n + 1, message: `Sample letter loaded: ${letter.service}, ${letter.payer}.` }));
   };
+
+  /* Escape on a door or in its open list closes the list; focus goes back to that door. */
+  const closeLettersOnEscape = (door: "desk" | "phone") => (e: React.KeyboardEvent) => {
+    if (e.key !== "Escape" || !lettersOpen) return;
+    e.preventDefault();
+    onLettersOpen(false);
+    (door === "desk" ? lettersDoorRef : phoneLettersDoorRef).current?.focus();
+  };
+
+  /* The ten rows (J3), shared by the desktop column and the phone's fourth door; ids differ, the rows do not. */
+  const letterRows = (labelId: string, listId: string) => (
+    <>
+      <p id={labelId} className="text-[14px] text-muted">
+        Sample letters
+      </p>
+      <ul id={listId} aria-labelledby={labelId} className="mt-2 space-y-2">
+        {SAMPLE_LETTERS.map((letter) => (
+          <li key={letter.id}>
+            <button
+              type="button"
+              onClick={() => chooseLetter(letter)}
+              aria-label={`${letter.service}, ${letter.payer}. ${letter.program}. ${letter.reason}`}
+              className="block min-h-11 w-full border border-edge bg-bond p-3 text-left text-ink hover:border-ink hover:bg-paper"
+            >
+              <span className="block text-[16px] leading-snug">
+                <span className="font-semibold">{letter.service}</span>
+                <span className="text-muted">{"\u00a0· "}</span>
+                {letter.payer}
+              </span>
+              <span className="mt-1 line-clamp-2 text-[14px] leading-snug text-muted">
+                {letter.program} · {letter.reason}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
 
   return (
     <section aria-labelledby="entry-heading" className="lg:grid lg:desk-cols lg:items-start" data-desk="entry">
@@ -95,7 +137,7 @@ export function EntryForm({
 
       <div className="lg:col-start-2 lg:row-start-2 lg:mt-6" data-desk-doors="true">
         <p className={`hidden lg:block ${LABEL}`}>Or add the letter as a file</p>
-        <ul className="mt-6 space-y-3 lg:mt-2 lg:space-y-5" aria-label="Three ways to add the letter">
+        <ul className="mt-6 space-y-3 lg:mt-2 lg:space-y-5" aria-label="Ways to add the letter">
           <li>
             <button
               type="button"
@@ -142,23 +184,42 @@ export function EntryForm({
               <span className="text-[15px] text-muted">Copy in the words of the letter. 200 to 6,000 characters.</span>
             </button>
           </li>
+          {/*
+            The fourth door under 1024 px (section 17, K9; J6 reversed): "Try a sample letter" in the three doors'
+            style, the ten rows (J3) opening under it. Choosing a row opens the paste box with the letter in it,
+            as J4 does. The list's open state is the desktop list's (one shows at a width), so the landing's
+            link opens it on the phone too. Display: none from 1024 px, where the desktop door stands (J2).
+          */}
+          <li className="lg:hidden" data-phone-letters="true" onKeyDown={closeLettersOnEscape("phone")}>
+            <button
+              ref={phoneLettersDoorRef}
+              type="button"
+              className={`${WAY} ${lettersOpen ? "border-ink" : ""}`}
+              aria-label="Try a sample letter"
+              aria-describedby={`${textareaId}-letters-hint`}
+              aria-expanded={lettersOpen}
+              aria-controls={`${SAMPLE_LETTERS_ID}-phone`}
+              onClick={() => onLettersOpen(!lettersOpen)}
+            >
+              <span className={WAY_TITLE}>Try a sample letter</span>
+              <span className={WAY_HINT} aria-hidden="true">
+                {LETTERS_HINT}
+              </span>
+            </button>
+            <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+              <span key={loaded.n}>{loaded.message}</span>
+            </p>
+            <div className="mt-4 mb-2" hidden={!lettersOpen}>
+              {letterRows(`${textareaId}-letters-label-phone`, `${SAMPLE_LETTERS_ID}-phone`)}
+            </div>
+          </li>
         </ul>
 
         {/*
           The third door, desktop only (section 16, J2 to J4): the ten demo letters as a list of buttons
           under it. Under 1024 px it is display: none, so the phone and tablet render as before (J6).
         */}
-        <div
-          className="hidden lg:mt-8 lg:block"
-          data-desk-letters="true"
-          onKeyDown={(e) => {
-            /* Escape on the door or in the open list closes it; focus goes to the door. */
-            if (e.key !== "Escape" || !lettersOpen) return;
-            e.preventDefault();
-            onLettersOpen(false);
-            lettersDoorRef.current?.focus();
-          }}
-        >
+        <div className="hidden lg:mt-8 lg:block" data-desk-letters="true" onKeyDown={closeLettersOnEscape("desk")}>
           <p className={LABEL}>Or start from a sample</p>
           <button
             ref={lettersDoorRef}
@@ -172,7 +233,7 @@ export function EntryForm({
             <span className={WAY_TITLE}>Try a sample letter</span>
           </button>
           <p id={`${textareaId}-letters-hint`} className={DOOR_HINT}>
-            Ten letters written for this demo. Pick one and read it as your own.
+            {LETTERS_HINT}
           </p>
           {/* The message's node is keyed on the load count, so choosing the same letter again is read again. */}
           <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
@@ -180,30 +241,7 @@ export function EntryForm({
           </p>
           {/* Always rendered, so the door's aria-controls resolves; the hidden attribute closes it. */}
           <div className="mt-6" hidden={!lettersOpen}>
-            <p id={`${textareaId}-letters-label`} className="text-[14px] text-muted">
-              Sample letters
-            </p>
-            <ul id={SAMPLE_LETTERS_ID} aria-labelledby={`${textareaId}-letters-label`} className="mt-2 space-y-2">
-              {SAMPLE_LETTERS.map((letter) => (
-                <li key={letter.id}>
-                  <button
-                    type="button"
-                    onClick={() => chooseLetter(letter)}
-                    aria-label={`${letter.service}, ${letter.payer}. ${letter.program}. ${letter.reason}`}
-                    className="block min-h-11 w-full border border-edge bg-bond p-3 text-left text-ink hover:border-ink hover:bg-paper"
-                  >
-                    <span className="block text-[16px] leading-snug">
-                      <span className="font-semibold">{letter.service}</span>
-                      <span className="text-muted">{"\u00a0· "}</span>
-                      {letter.payer}
-                    </span>
-                    <span className="mt-1 line-clamp-2 text-[14px] leading-snug text-muted">
-                      {letter.program} · {letter.reason}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            {letterRows(`${textareaId}-letters-label`, SAMPLE_LETTERS_ID)}
           </div>
         </div>
       </div>

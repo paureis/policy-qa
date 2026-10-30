@@ -5,7 +5,7 @@ import { secondOpinionLine, verdictHeadline, type CaseCard, type CitationRef, ty
 import { CitationChips } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
 import { Disclosure, Mark } from "@/components/investigation/Marks";
-import { OPENING_H2, PHONE_SHEET, PHONE_SHEET_ONLY, SectionTitle } from "@/components/investigation/SectionTitle";
+import { OPENING_H2, PHONE_SHEET, SectionTitle } from "@/components/investigation/SectionTitle";
 import { useDesktop } from "@/components/investigation/PageViewer";
 import { ExhibitPair } from "./ExhibitPair";
 
@@ -102,6 +102,10 @@ export function VerdictSection({
   n = null,
   card = null,
   secondOpinion = null,
+  cardLine = null,
+  lead = null,
+  phoneStatus = null,
+  letterPending = false,
 }: {
   /* Null while the case runs before the verdict: the section then holds the slip alone. */
   verdict: Verdict | null;
@@ -121,6 +125,21 @@ export function VerdictSection({
   card?: CaseCard | null;
   /* The second opinion on the verdict (Muse Spark Open), shown as one line under the counts; absent, null or skipped shows nothing. */
   secondOpinion?: SecondOpinion | null;
+  /*
+    The phone's top sheet (section 17, under 1024 px; each node is display: none from 1024 px). cardLine: the
+    case as one line, the sheet's first line while the case runs and under the counts once the verdict exists
+    (keyed, so it moves without remounting). lead: the Lead line under the stamp. phoneStatus: the running
+    stage's words under the counts from the verdict until the chain is done.
+  */
+  cardLine?: React.ReactNode;
+  lead?: React.ReactNode;
+  phoneStatus?: React.ReactNode;
+  /*
+    An appeal letter is coming (the inconsistent verdict, its letter not done yet): under 1024 px the counts hold
+    the two letter lines' places from decided (unseen spacers), so the counts fill in place and nothing under
+    them moves when the letter lands (section 17, fix round).
+  */
+  letterPending?: boolean;
 }) {
   const [steelOpen, setSteelOpen] = useState(false);
   const steelId = useId();
@@ -139,9 +158,13 @@ export function VerdictSection({
     drifted out of step when the second opinion line was added).
   */
   const slipNode = <Fragment key="slip">{slip}</Fragment>;
+  /* The same for the phone's card line: the sheet's first line before the verdict, under the counts after it (K6). */
+  const cardLineNode = <Fragment key="card-line">{cardLine}</Fragment>;
   if (maybeVerdict === null) {
+    /* Shown at every width: under 1024 px it holds the card line and the slip, the phone's top sheet during the run (K5). */
     return (
-      <section className="hidden lg:block" data-verdict-pending="true">
+      <section data-verdict-pending="true">
+        {cardLineNode}
         {slipNode}
       </section>
     );
@@ -159,7 +182,12 @@ export function VerdictSection({
   return (
     <section
       aria-labelledby="verdict-h2"
-      className={`${parts ? "" : "land"} ${first ? "mt-8" : "mt-10"} ${folder ? `${PHONE_SHEET_ONLY} lg:mt-0` : PHONE_SHEET}`}
+      /*
+        In the folder the section is part of the top sheet at every width (section 17): under 1024 px the sheet
+        is the page's top sheet, so the section has no sheet, no margin and no land of its own; the stamp's
+        press is the one motion at decided (K6).
+      */
+      className={folder ? "" : `land ${first ? "mt-8" : "mt-10"} ${PHONE_SHEET}`}
       data-verdict={outcome}
     >
       {/*
@@ -171,24 +199,43 @@ export function VerdictSection({
       <p
         id="verdict-heading"
         aria-hidden="true"
-        className={`mt-1 text-[22px] leading-tight font-bold ${folder ? `${OPENING_H2} lg:mt-0 lg:text-[20px] tabs:sr-only` : ""}`}
+        /* Under 1024 px in the folder the stamp opens the top sheet (section 17, K2), so the opening is not shown there. */
+        className={`mt-1 text-[22px] leading-tight font-bold ${folder ? `max-lg:hidden ${OPENING_H2} lg:mt-0 lg:text-[20px] tabs:sr-only` : ""}`}
       >
         <SectionTitle title="What the documents say" short="Verdict" n={annotated ? n : null} />
       </p>
 
       <h1
-        className={`stamp stamp-in mt-6 text-[28px] text-balance sm:text-[34px] ${folder ? "lg:mt-6 lg:max-w-[calc(100%-380px)] lg:text-[32px] xl:max-w-[calc(100%-480px)] xl:text-[38px] tabs:mt-3" : ""}`}
+        /*
+          In the folder under 1024 px the stamp is the sheet's first line, set down so its turned right end (it rises
+          about 15 px at 390 and 26 px at 768) stays about 14 px inside the sheet's edge: 8 px, 20 px from 640.
+        */
+        className={`stamp stamp-in ${folder ? "mt-2 sm:mt-5" : "mt-6"} text-[28px] text-balance sm:text-[34px] ${folder ? "lg:mt-6 lg:max-w-[calc(100%-380px)] lg:text-[32px] xl:max-w-[calc(100%-480px)] xl:text-[38px] tabs:mt-3" : ""}`}
         data-headline={outcome}
       >
         {verdictHeadline(verdict)}
       </h1>
-      {/* The section's heading, after the h1 so the outline reads h1, h2, then the h3s (G4); unseen at every width. */}
+      {/*
+        The section's heading, after the h1 so the outline reads h1, h2, then the h3s (G4); unseen at every width.
+        Under 1024 px in the folder it is "Verdict" (K8), the visible opening being gone there.
+      */}
       <h2 id="verdict-h2" className="sr-only">
-        <SectionTitle title="What the documents say" short="Verdict" n={annotated ? n : null} />
+        {folder ? (
+          <>
+            <span className="lg:hidden">Verdict</span>
+            <span className="max-lg:hidden">
+              <SectionTitle title="What the documents say" short="Verdict" n={annotated ? n : null} />
+            </span>
+          </>
+        ) : (
+          <SectionTitle title="What the documents say" short="Verdict" n={annotated ? n : null} />
+        )}
       </h2>
+      {lead}
       {marks.length > 0 ? (
         <p
-          className={`${parts} mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[17px] leading-snug text-ink tabular-nums ${folder ? "lg:mt-6 lg:gap-x-4 lg:text-[15px] xl:flex-nowrap" : ""}`}
+          /* One count per line under 1024 px in the folder (K2). */
+          className={`${parts} mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[17px] leading-snug text-ink tabular-nums ${folder ? "max-lg:flex-col lg:mt-6 lg:gap-x-4 lg:text-[15px] xl:flex-nowrap" : ""}`}
           data-verdict-proof="true"
         >
           {marks.map((m, i) => (
@@ -198,6 +245,15 @@ export function VerdictSection({
               {i < marks.length - 1 ? <span className="sr-only">. </span> : null}
             </span>
           ))}
+          {/* The letter's two count lines held while it is drafted (phone only, unseen, out of the accessibility tree). */}
+          {letterPending
+            ? ["0 of 0 letter sentences verified", "0 struck"].map((t) => (
+                <span key={`pending-${t}`} aria-hidden="true" className="invisible inline-flex items-center gap-2 lg:hidden" data-proof-pending="true">
+                  <Mark kind="ring" />
+                  <span>{t}</span>
+                </span>
+              ))
+            : null}
         </p>
       ) : null}
 
@@ -221,6 +277,8 @@ export function VerdictSection({
         </p>
       ) : null}
 
+      {phoneStatus}
+      {cardLineNode}
       {slipNode}
 
       {folder && card ? <ExhibitPair card={card} citation={ruleCitation} unsupported={verdict.rule?.unsupported === true} className={parts} /> : null}

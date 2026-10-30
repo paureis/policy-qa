@@ -19,12 +19,12 @@ import {
   type CaseRecord,
 } from "@/lib/case";
 import { Band } from "@/components/intake/Band";
-import { CaseHeader } from "./CaseHeader";
+import { CardLine, CaseHeader, PhoneLead } from "./CaseHeader";
 import { IndexTabs, type IndexTab } from "./IndexTabs";
 import { PHONE_SHEET, SHEET } from "./SectionTitle";
 import { FindingsList } from "./FindingsList";
 import { InvestigationProgress, progressLine } from "./InvestigationProgress";
-import { LatestFinding, RoutingSlip, type SlipFailure } from "./RoutingSlip";
+import { LatestFinding, PhoneStatus, RoutingSlip, type SlipFailure } from "./RoutingSlip";
 import { DeadlineStamp } from "@/components/intake/DeadlineStamp";
 import { RouteLine } from "./RouteLine";
 import { TrustPanel, verificationLines } from "./TrustPanel";
@@ -345,7 +345,23 @@ export function InvestigationView({ caseId }: { caseId: string }) {
     with a letter, 1024 px and up). Always the same wrapper, so nothing
     remounts when the letter lands; under 1024 px it is a plain block.
   */
-  const topSheet = folder ? "lg:flow-root lg:border lg:border-ink lg:bg-bond lg:px-10 lg:pt-8 lg:pb-10" : "";
+  /*
+    Under 1024 px (section 17, K1 and K2) the top sheet is a bond sheet at the column width too, 1 px ink edge,
+    20 px inset: the case line and the stages while the case runs; the stamp, the Lead line, the counts, the
+    case line, the exhibits, the rule and the gap once the verdict exists.
+  */
+  const topSheet = folder
+    ? "max-lg:border max-lg:border-ink max-lg:bg-bond max-lg:p-5 lg:flow-root lg:border lg:border-ink lg:bg-bond lg:px-10 lg:pt-8 lg:pb-10"
+    : "";
+
+  /* The letter's deadline (date and the API's day count) once the letter stage is done, for the Lead lines. */
+  const letterDeadline =
+    annotated && letter
+      ? {
+          iso: letter.deadline.source !== "unknown" && typeof letter.deadline.date === "string" && letter.deadline.date !== "" ? letter.deadline.date : null,
+          daysLeft: letter.deadline.days_left,
+        }
+      : null;
 
   /*
     The verdict section is mounted for the whole run (empty until the verdict exists), so the routing
@@ -362,10 +378,15 @@ export function InvestigationView({ caseId }: { caseId: string }) {
           first={outcomeFirst}
           annotated={annotated}
           folder={folder}
-          slip={<RoutingSlip record={record} failure={slipFailure} collapsed={slipDone} />}
+          slip={<RoutingSlip record={record} failure={slipFailure} collapsed={slipDone} phoneFolded={verdictDone} />}
           n={numbers?.verdict ?? null}
           card={record.card}
           secondOpinion={record.second_opinion ?? null}
+          cardLine={<CardLine record={record} today={today} titled={!verdictDone} />}
+          lead={<PhoneLead record={record} today={today} deadline={letterDeadline} className="mt-5" />}
+          /* From decided to the end, one line of the same height (fix round: nothing under it moves after decided). */
+          phoneStatus={<PhoneStatus record={record} failure={slipFailure} href={letterHref} />}
+          letterPending={verdictDone && verdict?.outcome === "inconsistent" && !letterDone}
         />
       </div>
     ) : null;
@@ -479,20 +500,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
             {record ? (
               <div data-view={record.status}>
                 <div className={topSheet} data-top-sheet={folder ? "true" : undefined}>
-                <CaseHeader
-                  record={record}
-                  today={today}
-                  register={folder}
-                  titled={!verdictDone}
-                  deadline={
-                    annotated && letter
-                      ? {
-                          iso: letter.deadline.source !== "unknown" && typeof letter.deadline.date === "string" && letter.deadline.date !== "" ? letter.deadline.date : null,
-                          daysLeft: letter.deadline.days_left,
-                        }
-                      : null
-                  }
-                />
+                <CaseHeader record={record} today={today} register={folder} titled={!verdictDone} deadline={letterDeadline} />
 
                 {record.status === "intake" ? (
                   <section className={`mt-6 ${PHONE_SHEET}`} aria-live="polite">
@@ -516,7 +524,11 @@ export function InvestigationView({ caseId }: { caseId: string }) {
                       works itself; outcome first once the verdict is reached.
                     */}
                     <div
-                      className={`mt-4 border-t border-hairline pt-4 ${folder ? "lg:mt-0 lg:border-t-0 lg:pt-0" : ""}`}
+                      /*
+                        Under 1024 px in the folder these lines are gone (section 17): the top sheet's card line, slip,
+                        latest finding and status line say the same, and the slip's live region announces the chain.
+                      */
+                      className={`mt-4 border-t border-hairline pt-4 ${folder ? "max-lg:hidden lg:mt-0 lg:border-t-0 lg:pt-0" : ""}`}
                       data-order={outcomeFirst ? "outcome-first" : "chronological"}
                     >
                       {/* At desktop the route line leads the record sheet instead. */}

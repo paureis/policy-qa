@@ -1336,8 +1336,10 @@ and DESIGN.md (K1 to K13), then by the builder where marked. Files: `VerdictSect
   the exhibit sheet, at the column width: the page at its aspect in a box no taller than 70 vh, scrollable
   inside, the highlight boxes drawn and scrolled into view, the vision line under the box; a "Close" text action
   (44 px) and Escape close it and return focus to the button; `aria-expanded` on the button; one page open at a
-  time. No Zoom button under 1024 px (the browser's own pinch zooms). Nothing else on the page moves when it
-  opens or closes.
+  time. No Zoom button under 1024 px (the browser's own pinch zooms). When the page opens or closes the window
+  does not scroll and nothing above the box moves, the toggle included; the content under the box moves by the
+  box's height, which a page growing in place cannot avoid (wording settled by the orchestrator on Oct 30 after
+  the evaluation; the first wording said "nothing else on the page moves").
 - K5. During the run (from the first poll until decided). The top sheet holds, in this order: the case card line
   (K2's line) with the deadline stamp small at its right (the DESIGN.md deadline stamp scaled to about 120 px
   wide; the card line wraps in the space left); the seven stages as a compact list of marks in two columns (four
@@ -1377,3 +1379,102 @@ and DESIGN.md (K1 to K13), then by the builder where marked. Files: `VerdictSect
   intake entry state (door closed; list open; a letter loaded) and the landing; the measured positions of K2 and
   K5 against their targets; the byte-identity set of K1 against captures from a worktree of the base. A fresh
   evaluator grades K1 to K13 with the captures before the orchestrator looks.
+
+Decided by the builder, with the reason (Oct 29, 2026):
+
+- The phone's case line is its own element (`CardLine` in `CaseHeader.tsx`), a keyed child of the verdict
+  section like the slip: the section's first child before the verdict, after the counts once it exists, so
+  React moves the node at decided instead of remounting it (measured: the same node, the disclosure still open,
+  across decided on `c_sample` and `c_consistent`). The desktop reference block (`CaseHeader`) is display: none
+  under 1024 px, and the case line is display: none from 1024 px. The header could not move itself: it floats
+  at the top of the desktop sheet, before the verdict section, and K1 forbids changing that.
+- The payer is the case line's h1 while the case runs (an inline h1 inside the line) and plain text once the
+  stamp is the h1. Each width exposes one h1; the other is display: none.
+- The phone's stage list is the routing slip itself, laid out in two columns under 1024 px and folding at decided
+  there (at the end of the chain from 1024 px). The phone's old status block (the route line, "Question 1 of
+  6…", the stage line, "Keep this screen open") is display: none under 1024 px; the slip's live region, which
+  was desktop only, now announces the chain at every width, so the phone keeps one live region. The stage's
+  words sit on their own 17 px line under the list (beside the stage from 1024 px), held at 24 px from the
+  first poll.
+- From decided until the chain is done, one more row under the counts: an open ring and the running stage's
+  words ("Drafting the appeal letter…", "Appeal letter ready." linking to the letter with a 44 px target,
+  "Checking the letter against itself…", or the words of a stage that stopped). K6 folds the slip at decided,
+  but the letter is still being drafted then, and the phone's old stage line was its only sign and its link.
+  The row goes when the desktop slip folds, so at reviewed the case line and everything under it move up one
+  row (27 px on `c_sample`); a self-check that failed is then reported only in the self-check section (the
+  desktop also has the band line).
+- The exhibits are inside the top sheet at its inner width (316 px at 390), not on the manila at 358 px: K2 and
+  K3 put them under the card line on the sheet, and the desktop clips them to the top sheet. Their side insets
+  are 20 px under 1024 px (28 from 1024), leaving the quote 274 px.
+- The crop is not a control on the phone (nothing shows that an image opens something); "See the page" is a
+  text action under the vision line. While the page is open the same button reads "Close" with
+  `aria-expanded="true"` (the pattern of "Show the full case card" and "Hide the case card"), so K4's Close and
+  the button are one control; Escape closes and focus returns to it. The page takes the crop's place inside the
+  exhibit, in flow, so the folio, the vision line, the button and everything under the exhibit move down by the
+  page's height. "Nothing else moves" is built as: the window does not scroll and nothing above the page moves.
+  Chrome's scroll anchoring scrolled the window 381 px on open (it kept the button on screen), so the open and
+  the close run with `overflow-anchor: none` on the document and the window is put back before paint (measured:
+  scrollY the same before, after open, after Close and after Escape, at 390 and at 768). At 390 the whole page
+  fits its box (314 by 406 px, under 70 vh = 591), so it does not scroll inside; at 768 it does (564 by 730 px
+  in a 717 px box, the highlight placed 15 px down). The box shows the 220 dpi raster the crop already loaded.
+- The deadline stamp on the run's case line is the DESIGN.md stamp with CSS `zoom: 0.77` (156 to 120 px), so the
+  frame, the type and the grain scale together; its 14 px small lines read about 11 px there, and its image
+  label carries the whole deadline for a screen reader.
+- The stamp sits 8 px under the sheet's inset at 390 and 20 px from 640 px: turned from its left edge, its right
+  end rises about 15 px at 390 and 26 px at 768, and at 8 px it came within 3 px of the sheet's edge at 768.
+- The visible opening ("What the documents say") is display: none under 1024 px in the folder, since the stamp
+  opens the sheet (K2); the hidden h2 after the h1 reads "Verdict" there (K8), and as before from 1024 px.
+- The counts are one per line under 1024 px (`flex-col`); the second opinion stays the line under them.
+- The intake's fourth door uses the three doors' class strings (`WAY`, `WAY_TITLE`, `WAY_HINT`): their border is
+  the pencil edge, ink on hover and while its list is open, as "Paste text" does; K9's "1 px ink border" was
+  read as a description of those doors, and "exact style" won. It is named by its title and described by the
+  desktop door's hint, like the photo and file doors. Its list shares the desktop list's open state (one shows
+  at a width), so the landing's "Try a sample letter" opens it on the phone too; it has its own polite status
+  line (the desktop one is display: none under 1024 px). Choosing a row also opens the paste box (`textOpen`); at
+  desktop the box is always open, so nothing changes there. The doors' list label read "Three ways to add the
+  letter"; it now reads "Ways to add the letter" (four on the phone, two at desktop).
+- The landing's two text actions sit in a wrapper that is a wrapping row under the button under 1024 px and
+  display: contents from 1024 px, so the desktop flex row is unchanged.
+- "The letter as read" in the case line's disclosure is a labelled, focusable scrolling frame capped at 50 vh
+  (the intake's letter-as-read frame, 15 px), under the five reference rows.
+- The byte-identity set compares two production builds: the base worktree on port 3001 and this change built in
+  `web/` and served with `next start` on port 3002 (a dev render against a production render would compare two
+  different builds; the dev server on 3000 served the look). The six 1280 captures of the base taken twice were
+  byte-identical to each other, so the set is deterministic.
+
+Fix round after the fresh evaluation (Oct 30, 2026; the evaluator's record is
+`web/phone-evaluation-2026-10-29.md`: 13 PASS, K4 and K6 FAIL, five low notes). It replaces the bullets above
+where they differ:
+
+- K4, as the orchestrator settles it: nothing above the page box moves and the window does not scroll; the
+  content under the box moves down by the box's height, which a page growing in place cannot avoid. "See the
+  page" now sits between the quote and the crop, so it stays where it was pressed and the page grows under it
+  (it sat under the vision line and moved down 381 px at 390 and 669 at 768, off the window there). Measured:
+  the button at viewport y 250.2 (390) and 339.9 (768) before the open, while open ("Close"), after Close and
+  after Escape; scrollY unchanged; the page box 314 by 408 at 390 and 564 by 717 (scrolling, 15 px down) at 768.
+  The window hold (scroll anchoring off for the change) stays.
+- K6: the phone's top sheet now moves once, at decided. On the inconsistent verdict, while its letter is not
+  done, the counts hold the two letter lines' places as unseen spacers (display: none from 1024 px), and the
+  letter's counts fill them. The letter's row is laid out from decided to the end in one line of short words of
+  its own (`phoneStatusLine`): "Verdict reached.", "Drafting the appeal letter…", "Checking the letter…" and "The
+  letter could not be drafted." with the open ring; "Appeal letter ready." (the link, kept through reviewed,
+  also when the self-check failed; the self-check section reports that) and "No appeal letter was drafted." with
+  the tick. One line at 360 px and up, truncated as a guard; the full stage line stays the live region's.
+  Measured, case line and Exhibit 1 top at decided, drafted and reviewed, equal to the pixel: `c_sample` 487 and
+  628 at 390, 464.2 and 583.2 at 768, 487 and 628 at 360 by 740; `c_consistent` 415.3 and 556.3 (390), 386.4 and
+  505.4 (768); `c_notsettled` and `c_dual` 364.5 and 505.5 (390), 359.1 and 478.1 (768); `c_checkerror` 436.3 and
+  577.3 (390), 436.8 and 555.8 (768). K2's targets still hold at 390: stamp 95.7, case line 487 (under 640),
+  Exhibit 1 628 with its head in the first screen; page 11,779 px.
+- "Show the full case card" moved out of the column beside the run's stamp to its own line under the case line
+  and the stamp, `whitespace-nowrap`, so it is one line at 360 (it wrapped in the 152 px column). The run's
+  latest-finding bottom is now 439.8 at 390 and 360, 442.1 at 768, at every poll (target under 520).
+- The letter's row takes the tick for finished states (above); a tick that replaces a ring steps in.
+- The slip's note under the stages is `aria-hidden`: the live region after the slip says the same words, so a
+  screen reader hears them once.
+- DESIGN.md records the letter's row and the one reflow at decided (Layout), with the new numbers.
+- The run's deadline stamp keeps its small lines at 12 px: they are set at 15.6 px inside the 0.77 zoom; the
+  frame and the date still scale.
+- Verified: `npx tsc --noEmit`, `npm run lint` and `npm run build` clean. K1 against a fresh base build of
+  533ce76 (production on both sides, `animations: "disabled"`): 20 of 20 desktop captures (8 fixtures, the
+  intake, the landing, 1280 and 1024 by 800) byte-identical; control at 390 (`c_sample`, intake, landing) 3 of 3
+  differ.

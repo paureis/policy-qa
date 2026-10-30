@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   PAGE_ERROR_COPY,
   PageError,
@@ -50,7 +50,10 @@ function pct(n: number): string {
 
 /* The exhibit's title, set as a heading face, not an overline. */
 const TITLE = "text-[21px] leading-tight font-semibold tracking-[-0.01em] text-ink";
-const EXHIBIT = "relative flex min-w-0 flex-col border border-ink bg-bond px-7 pt-6 pb-5";
+/* 28 px side insets from 1024 px; 20 px under it, where the exhibit is 318 px wide at 390 (section 17, K3). */
+const EXHIBIT = "relative flex min-w-0 flex-col border border-ink bg-bond px-7 pt-6 pb-5 max-lg:px-5";
+/* The crop and the open page run edge to edge inside the exhibit's frame. */
+const BLEED = "-mx-7 max-lg:-mx-5";
 
 export function ExhibitPair({
   card,
@@ -67,8 +70,15 @@ export function ExhibitPair({
   const payer = card.payer_name.value ? String(card.payer_name.value) : null;
   const dated = card.letter_date.value ? displayValue("letter_date", card.letter_date.value) : null;
   const source = [payer, dated ? `letter dated ${dated}` : null].filter(Boolean).join(", ");
+  /*
+    Under 1024 px (section 17, K3) the pair stacks at the top sheet's column width under the card line,
+    letter then policy, 48 px apart so each paper clip clears the sheet above it.
+  */
   return (
-    <div className={`mt-2 hidden lg:clear-both lg:grid lg:grid-cols-2 lg:gap-x-10 lg:pt-6 ${className}`} data-exhibits="true">
+    <div
+      className={`mt-2 hidden max-lg:mt-10 max-lg:flex max-lg:flex-col max-lg:gap-y-12 lg:clear-both lg:grid lg:grid-cols-2 lg:gap-x-10 lg:pt-6 ${className}`}
+      data-exhibits="true"
+    >
       <figure className={EXHIBIT} data-exhibit="letter">
         <PaperClip className="-top-[22px] left-8" />
         <CornerMarks />
@@ -90,7 +100,43 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
   const viewer = usePageViewer();
   const viewKey = `exhibit-${citation.doc_id}-${citation.page}`;
   const pageOpen = viewer?.state.open?.key === viewKey;
+  /* Under 1024 px "See the page" grows the page inside this exhibit (section 17, K4); from 1024 px the side panel opens. */
+  const phone = viewer !== null && !viewer.state.desktop;
+  const actions = viewer?.actions ?? null;
   const onCropLoad = () => requestAnimationFrame(() => requestAnimationFrame(() => setDrawn(true)));
+
+  /*
+    The window holds still when the page opens or closes on the phone (K4: nothing else moves). The page
+    grows in the crop's place, above "See the page", and the browser's scroll anchoring would otherwise keep
+    that button on screen by scrolling the window the page's height. So the change is made with anchoring
+    off for the document, the window is put back where it was before paint, and anchoring is restored.
+  */
+  const heldY = useRef<number | null>(null);
+  const holdPlace = () => {
+    heldY.current = window.scrollY;
+    document.documentElement.style.overflowAnchor = "none";
+  };
+  useLayoutEffect(() => {
+    const y = heldY.current;
+    if (y === null) return;
+    heldY.current = null;
+    if (Math.abs(window.scrollY - y) >= 1) window.scrollTo({ top: y, behavior: "instant" });
+    document.documentElement.style.overflowAnchor = "";
+  }, [pageOpen]);
+
+  /* Escape closes the page on the phone and returns focus to "See the page" (the provider's close does that). */
+  useEffect(() => {
+    if (!phone || !pageOpen || !actions) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      heldY.current = window.scrollY;
+      document.documentElement.style.overflowAnchor = "none";
+      actions.close();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [phone, pageOpen, actions]);
 
   /* Keyed on the citation's fields, not the object: every poll rebuilds the record, and an effect
      keyed on the object re-ran the highlight and the Muse Spark vision check on each poll (nine
@@ -149,8 +195,36 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
     body = (
       <>
         <QuoteText quote={citation.quote} />
-        <div className="-mx-7 mt-4">
-          {viewer ? (
+        {/*
+          "See the page" on the phone (K4, fix round): a text action between the quote and the crop, so it stays
+          where it was pressed and the page grows under it in the crop's place; it reads "Close" while the page
+          is open. Escape closes it too, and focus comes back here.
+        */}
+        {phone && actions ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              holdPlace();
+              actions.toggle(viewKey, citation, { returnTo: e.currentTarget });
+            }}
+            aria-expanded={pageOpen}
+            aria-controls={pageOpen ? viewerPanelId(viewKey) : undefined}
+            aria-label={pageOpen ? `Close page ${citation.page} of ${title}` : `See page ${citation.page} of ${title}`}
+            className="-ml-1 mt-2 inline-flex min-h-11 items-center self-start px-1 text-[16px] font-semibold text-ink underline underline-offset-4 lg:hidden"
+            data-exhibit-see={pageOpen ? "open" : "closed"}
+          >
+            {pageOpen ? "Close" : "See the page"}
+          </button>
+        ) : null}
+        <div className={`${BLEED} ${phone ? "mt-1" : "mt-4"}`}>
+          {phone ? (
+            /* The phone: the crop is the proof, not a control ("See the page" above it opens the page in its place). */
+            pageOpen ? (
+              <ExhibitPage highlight={h} title={title} id={viewerPanelId(viewKey)} />
+            ) : (
+              <Crop highlight={h} title={title} drawn={drawn} onLoad={onCropLoad} onError={() => setImageFailed(true)} />
+            )
+          ) : viewer ? (
             <button
               type="button"
               onClick={(e) => viewer.actions.toggle(viewKey, citation, { returnTo: e.currentTarget })}
@@ -211,6 +285,64 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
         </figcaption>
       )}
     </figure>
+  );
+}
+
+/*
+  The page itself on the phone (section 17, K4), in the crop's place inside the policy exhibit: the page at
+  its own aspect and the exhibit's full inner width, in a box no taller than 70 vh that scrolls inside, the
+  highlight boxes drawn left to right and the first one placed in the box's top third. The window does not
+  move. The same 220 dpi raster the crop shows, so nothing new loads. A focusable region, so the keyboard
+  can scroll it.
+*/
+function ExhibitPage({ highlight: h, title, id }: { highlight: PageHighlight; title: string; id: string }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [drawn, setDrawn] = useState(false);
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || h.boxes_px.length === 0) return;
+    const content = scroller.firstElementChild as HTMLElement | null;
+    if (!content) return;
+    const sy = content.clientHeight / h.height_px;
+    scroller.scrollTop = Math.max(0, h.boxes_px[0].y0 * sy - scroller.clientHeight / 3);
+  }, [h]);
+  return (
+    <div
+      ref={scrollerRef}
+      id={id}
+      tabIndex={0}
+      role="region"
+      aria-label={`Page ${h.page} of ${title}`}
+      className="max-h-[70vh] overflow-auto border-y border-hairline bg-bond [scrollbar-color:var(--ink)_var(--bond)] [scrollbar-width:thin]"
+      data-exhibit-page="open"
+    >
+      <div className="relative w-full" style={{ aspectRatio: `${h.width_px} / ${h.height_px}` }}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- the API's page PNG with the highlight geometry in percentages of it */}
+        <img
+          src={sharpSrc(pageImageSrc(h))}
+          alt={`Page ${h.page} of ${title}, with the cited text highlighted`}
+          width={h.width_px}
+          height={h.height_px}
+          onLoad={() => requestAnimationFrame(() => requestAnimationFrame(() => setDrawn(true)))}
+          draggable={false}
+          className="absolute inset-0 h-full w-full"
+        />
+        {h.boxes_px.map((b, i) => (
+          <span
+            key={i}
+            aria-hidden="true"
+            className="hl-box pointer-events-none absolute border-b-2 border-red/70 bg-red/20 mix-blend-multiply"
+            style={{
+              left: pct(b.x0 / h.width_px),
+              top: pct(b.y0 / h.height_px),
+              height: pct((b.y1 - b.y0) / h.height_px),
+              width: drawn ? pct((b.x1 - b.x0) / h.width_px) : "0px",
+            }}
+            data-highlight-box={i}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 

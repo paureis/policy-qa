@@ -7,8 +7,8 @@ import { INTAKE_MODE } from "@/lib/case";
   The landing. At 1024 px and up it is the case page's folder frame with one
   top sheet (case-page-brief section 12, E9): the h1 at the Lead size, the
   paragraph, the scope line, then the one button and one text action to the
-  sample case. Under 1024 px it is the one column as before; the sample link
-  is a desktop addition (E12: nothing changes under 1024 px).
+  sample case. Under 1024 px it is the one column as before, with the two
+  sample text actions under the button (section 17, K9).
 */
 export default function Home() {
   return (
@@ -34,18 +34,21 @@ export default function Home() {
             >
               Start with your letter
             </Link>
-            <Link
-              href="/case/c_sample"
-              className="hidden min-h-11 items-center text-[17px] font-semibold underline underline-offset-4 lg:inline-flex"
-            >
-              See a sample case
-            </Link>
-            <Link
-              href="/case/new#sample-letters"
-              className="hidden min-h-11 items-center text-[17px] font-semibold underline underline-offset-4 lg:inline-flex"
-            >
-              Try a sample letter
-            </Link>
+            {/*
+              The two sample text actions at every width (section 17, K9): under 1024 px on their own row under the
+              button; from 1024 px the wrapper is display: contents, so they sit beside it as E9 has them.
+            */}
+            <div className="mt-3 flex flex-wrap gap-x-6 lg:contents">
+              <Link href="/case/c_sample" className="inline-flex min-h-11 items-center text-[17px] font-semibold underline underline-offset-4">
+                See a sample case
+              </Link>
+              <Link
+                href="/case/new#sample-letters"
+                className="inline-flex min-h-11 items-center text-[17px] font-semibold underline underline-offset-4"
+              >
+                Try a sample letter
+              </Link>
+            </div>
           </div>
         </div>
       </main>

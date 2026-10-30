@@ -41,6 +41,42 @@ export function LatestFinding({ findings, hidden = false, className = "" }: { fi
   );
 }
 
+/*
+  The letter's row on the phone's top sheet (section 17, fix round), under the counts in their idiom, 17 px
+  ink, from decided to the end: one line that never changes height, so nothing under it moves after the
+  stamp lands (K6). Short words of its own, one line at 360 px and up (the full stage line is the live
+  region's): an open ring while a stage runs or when one stopped, a tick for a finished state. "Appeal
+  letter ready." links to the letter, a 44 px target that does not grow the line, and stays through reviewed.
+  Plain text, not a live region: the slip's live region announces the chain. Under 1024 px only.
+*/
+export function phoneStatusLine(record: CaseRecord, failure: SlipFailure | null): { text: string; mark: MarkKind; ready: boolean } {
+  const letter = record.letter;
+  if (failure?.step === "letter") return { text: "The letter could not be drafted.", mark: "ring", ready: false };
+  if (letter?.status === "done") {
+    if (!letter.applicable) return { text: "No appeal letter was drafted.", mark: "tick", ready: false };
+    if (record.status === "reviewing") return { text: "Checking the letter…", mark: "ring", ready: false };
+    return { text: "Appeal letter ready.", mark: "tick", ready: true };
+  }
+  if (record.status === "drafting") return { text: "Drafting the appeal letter…", mark: "ring", ready: false };
+  return { text: "Verdict reached.", mark: "ring", ready: false };
+}
+
+export function PhoneStatus({ record, failure, href }: { record: CaseRecord; failure: SlipFailure | null; href: string | null }) {
+  const { text, mark, ready } = phoneStatusLine(record, failure);
+  return (
+    <p className="mt-1 flex items-start gap-2 text-[17px] leading-snug text-ink lg:hidden" data-phone-status={ready ? "ready" : mark}>
+      <Mark kind={mark} className={`mt-1 h-4 w-4 ${mark === "tick" ? "tick-step" : ""}`} />
+      {href && ready ? (
+        <a href={href} className="-my-[10.5px] inline-block truncate py-[10.5px] underline underline-offset-4" data-letter-link="true">
+          {text}
+        </a>
+      ) : (
+        <span className="min-w-0 truncate">{text}</span>
+      )}
+    </p>
+  );
+}
+
 type StageState = "todo" | "doing" | "done" | "failed";
 
 interface Stage {
@@ -175,36 +211,60 @@ export function RoutingSlip({
   record,
   failure,
   collapsed,
+  phoneFolded = false,
 }: {
   record: CaseRecord;
   failure: SlipFailure | null;
   collapsed: boolean;
+  /*
+    Under 1024 px the slip is the top sheet's stage list from the first poll until the verdict exists, and
+    folds when the stamp is pressed (section 17, K5 and K6); from 1024 px it folds when the chain is done.
+  */
+  phoneFolded?: boolean;
 }) {
   const list = stages(record, failure);
   const line = slipLine(record, failure);
   /* The second opinion's news, in this live region (no new one): its words alone, or after the stage line when that changed too. */
   const news = useSecondOpinionNews(record, line);
   const live = news === null ? line : news.withLine ? `${line} ${news.text}` : news.text;
+  /* The phone's note under the list: the words of the stage that is running or stopped (the desktop sets them beside the stage). */
+  const noted = list.find((st) => st.text && (st.state === "doing" || st.state === "failed")) ?? null;
   return (
     <>
       <div
         /* Once the verdict is pressed above it, 16 px more under the slip keeps the exhibits' paper clips clear of its rule. */
-        className={collapsed ? "hidden" : `hidden lg:block lg:clear-both lg:pt-8 ${record.verdict?.status === "done" ? "lg:pb-4" : ""}`}
+        className={
+          collapsed
+            ? "hidden"
+            : `${phoneFolded ? "hidden" : "mt-4"} lg:mt-0 lg:block lg:clear-both lg:pt-8 ${record.verdict?.status === "done" ? "lg:pb-4" : ""}`
+        }
         data-routing-slip={collapsed ? "collapsed" : "open"}
       >
         <ol
           aria-label="Case stages"
-          className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-hairline py-3 text-[14px] leading-6 text-ink tabular-nums lg:min-h-[82px] xl:min-h-0"
+          /*
+            Under 1024 px: two columns of marks (four and three, 15 px), read down the first column and then the
+            second, the stage's words on their own line under the list.
+          */
+          className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-hairline py-3 text-[14px] leading-6 text-ink tabular-nums max-lg:grid max-lg:grid-flow-col max-lg:grid-cols-2 max-lg:grid-rows-4 max-lg:gap-x-4 max-lg:gap-y-0.5 max-lg:py-2 max-lg:text-[15px] lg:min-h-[82px] xl:min-h-0"
         >
           {list.map((st) => (
             <li key={st.key} className="flex min-h-6 items-center gap-2" data-slip-stage={st.key} data-state={st.state}>
               <Mark kind={st.state === "done" ? "tick" : "ring"} className={`h-4 w-4 ${st.state === "done" ? "tick-step" : ""}`} />
               <span className={st.state === "doing" || st.state === "failed" ? "font-semibold" : ""}>{st.label}</span>
               <span className="sr-only">{`, ${STATE_WORDS[st.state]}`}</span>
-              {st.text ? <span className="text-[17px] leading-6">{st.text}</span> : null}
+              {st.text ? <span className="text-[17px] leading-6 max-lg:hidden">{st.text}</span> : null}
             </li>
           ))}
         </ol>
+        {/*
+          The running stage's words under the list on the phone, its line held from the first poll (beside the stage
+          they are display: none there). Hidden from assistive technology: the live region after the slip says the
+          same words, so they are heard once (fix round).
+        */}
+        <p aria-hidden="true" className="mt-2 min-h-6 text-[17px] leading-6 text-ink lg:hidden" data-slip-note={noted?.key ?? "none"}>
+          {noted?.text ?? ""}
+        </p>
         {/*
           The latest finding under the stages, from the first poll (its line reserved while empty), so the
           exhibits never move when it fills. A run that stopped before the verdict drops it (no exhibits
@@ -213,10 +273,11 @@ export function RoutingSlip({
         <LatestFinding
           findings={record.investigation?.findings ?? []}
           hidden={failure !== null && record.verdict?.status !== "done"}
-          className="mt-3"
+          className="mt-1 lg:mt-3"
         />
       </div>
-      <p className="sr-only hidden lg:block" aria-live="polite" aria-atomic="true" data-slip-live="true">
+      {/* The page's one live region for the chain at every width (the phone's own status lines are gone, section 17). */}
+      <p className="sr-only" aria-live="polite" aria-atomic="true" data-slip-live="true">
         {live}
       </p>
     </>

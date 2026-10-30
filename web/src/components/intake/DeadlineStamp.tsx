@@ -20,6 +20,7 @@ export function DeadlineStamp({
   className = "",
   daysLeft,
   bottomText,
+  small = false,
 }: {
   deadlineIso: string | null;
   today: Date;
@@ -29,6 +30,8 @@ export function DeadlineStamp({
   daysLeft?: number | null;
   /* The foot line; CASE OPENED everywhere (one stamp, one foot line), before and after it lands. */
   bottomText?: string;
+  /* The phone's top sheet during the run (section 17, K5): the same stamp scaled to 120 px wide (zoom 0.77). */
+  small?: boolean;
 }) {
   const days = deadlineIso ? (typeof daysLeft === "number" ? daysLeft : daysUntil(deadlineIso, today)) : null;
   const missing = deadlineIso === null || days === null;
@@ -45,12 +48,13 @@ export function DeadlineStamp({
     antialiased on a turned stamp. The date stays the red, inked face.
   */
   const INKED = "[filter:url(#ink-stamp)]";
-  const SMALL = "text-[14px] leading-none font-semibold text-ink tabular-nums";
+  /* Scaled to 120 px (small), the frame and the date shrink with the stamp but the small lines stay 12 px: 15.6 px under zoom 0.77. */
+  const SMALL = `${small ? "text-[15.6px]" : "text-[14px]"} leading-none font-semibold text-ink tabular-nums`;
   return (
     <div
       role="img"
       aria-label={label}
-      className={`relative w-[156px] shrink-0 select-none text-red [transform:rotate(-2.6deg)] ${className}`}
+      className={`relative w-[156px] shrink-0 select-none text-red [transform:rotate(-2.6deg)] ${small ? "[zoom:0.77]" : ""} ${className}`}
       data-landed={landed ? "true" : "false"}
       data-stamp="deadline"
     >

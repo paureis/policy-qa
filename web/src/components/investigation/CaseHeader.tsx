@@ -133,7 +133,11 @@ export function CaseHeader({
         /* Before the verdict the deadline is this sheet's one stamp, so the header is a bond sheet and the stamp sits on bond. */
         register ? PHONE_SHEET_ONLY : PHONE_SHEET
       } ${
-        register ? "lg:relative lg:z-30 lg:float-right lg:mb-0 lg:ml-10 lg:w-[340px] lg:pt-1 xl:w-[440px]" : ""
+        /*
+          Under 1024 px the folder's top sheet carries the case as one card line (CardLine, section 17, K2 and
+          K5), so this header is display: none there; from 1024 px it is the reference block, as before.
+        */
+        register ? "max-lg:hidden lg:relative lg:z-30 lg:float-right lg:mb-0 lg:ml-10 lg:w-[340px] lg:pt-1 xl:w-[440px]" : ""
       }`}
       data-case={record.case_id}
       data-register={register ? "true" : undefined}
@@ -239,19 +243,7 @@ function Register({
      known at intake, so the rows never move at decided and the sheet is not empty during the run. While
      the case runs it repeats the deadline stamp on the sheet's left; once the verdict lands it is the
      sheet's only deadline. */
-  const { card } = record;
-  const program = card.program.value;
-  const programLabel = program && program !== "unknown" ? PROGRAM_LABELS[program as Program] : null;
-  const payer = card.payer_name.value ? String(card.payer_name.value) : displayValue("payer_name", card.payer_name.value);
-  const code = card.service_code.value ? String(card.service_code.value) : null;
-  const service = displayValue("service", card.service.value);
-  const rows: { label: string; value: React.ReactNode; key: string }[] = [
-    { key: "member", label: "Member", value: displayValue("member_age_group", card.member_age_group.value) },
-    { key: "plan", label: "Plan", value: programLabel ? `${payer}, ${programLabel}` : payer },
-    { key: "dated", label: "Letter dated", value: displayValue("letter_date", card.letter_date.value) },
-    { key: "service", label: "Service and code", value: code ? `${service} (${code})` : service },
-    { key: "amount", label: "Amount", value: displayValue("amount_billed", card.amount_billed.value) },
-  ];
+  const rows = referenceRows(record);
   return (
     <div className="hidden lg:block" data-notice-register="true">
       {/*
@@ -280,6 +272,141 @@ function Register({
           </div>
         ))}
       </dl>
+    </div>
+  );
+}
+
+/* The reference rows, shared by the desktop reference block and the phone's full case card (K7). */
+function referenceRows(record: CaseRecord): { label: string; value: string; key: string }[] {
+  const { card } = record;
+  const program = card.program.value;
+  const programLabel = program && program !== "unknown" ? PROGRAM_LABELS[program as Program] : null;
+  const payer = card.payer_name.value ? String(card.payer_name.value) : displayValue("payer_name", card.payer_name.value);
+  const code = card.service_code.value ? String(card.service_code.value) : null;
+  const service = displayValue("service", card.service.value);
+  return [
+    { key: "member", label: "Member", value: displayValue("member_age_group", card.member_age_group.value) },
+    { key: "plan", label: "Plan", value: programLabel ? `${payer}, ${programLabel}` : payer },
+    { key: "dated", label: "Letter dated", value: displayValue("letter_date", card.letter_date.value) },
+    { key: "service", label: "Service and code", value: code ? `${service} (${code})` : service },
+    { key: "amount", label: "Amount", value: displayValue("amount_billed", card.amount_billed.value) },
+  ];
+}
+
+/*
+  The Lead line on the phone's top sheet once the verdict exists (section 17, K2): "Appeal by Dec 6, 2026"
+  at 20 px and 600 with the day count under it at 400; on the consistent and the not-settled verdicts the
+  next step leads at the same size and the deadline follows at 17 px (G1). Under 1024 px only: from 1024 px
+  the reference block carries the Lead.
+*/
+export function PhoneLead({
+  record,
+  today,
+  deadline,
+  className = "",
+}: {
+  record: CaseRecord;
+  today: Date;
+  deadline: { iso: string | null; daysLeft: number | null } | null;
+  className?: string;
+}) {
+  const claimed = record.card.appeal_deadline_claimed.value;
+  const iso = deadline?.iso ?? (typeof claimed === "string" && claimed !== "" ? claimed : null);
+  const daysLeft = deadline?.daysLeft ?? null;
+  const nextStep = record.verdict?.status === "done" ? (NEXT_STEP[record.verdict.outcome] ?? null) : null;
+  return (
+    <div className={`lg:hidden ${className}`} data-phone-lead={nextStep ? "next-step" : "deadline"}>
+      {nextStep ? (
+        <NextStepLine text={nextStep} deadlineIso={iso} daysLeft={daysLeft} today={today} lead={false} />
+      ) : (
+        <DeadlineLine deadlineIso={iso} daysLeft={daysLeft} today={today} size="line" />
+      )}
+    </div>
+  );
+}
+
+/*
+  The case as one line on the phone's top sheet (section 17, K2, K5, K7), under 1024 px only: the payer at
+  600, a middle dot in faded ink, the service, 15 px, wrapping when it must; "Show the full case card"
+  under it. While the case runs it is the sheet's first line, the payer is the page's h1, and the deadline
+  stamp sits small at its right (the DESIGN.md stamp scaled to 120 px); once the verdict exists the page
+  moves this same element under the counts (a keyed child of the verdict section, so the disclosure keeps
+  its state), the payer is plain text, and the deadline is the Lead line above. The disclosure opens in
+  place: the reference rows and the letter as read. The reason the letter gives is not here: Exhibit 1
+  carries it.
+*/
+export function CardLine({ record, today, titled }: { record: CaseRecord; today: Date; titled: boolean }) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const letterHeadId = useId();
+  const { card } = record;
+  const payer = card.payer_name.value ? String(card.payer_name.value) : "Denial letter";
+  const service = displayValue("service", card.service.value);
+  const claimed = card.appeal_deadline_claimed.value;
+  const deadlineIso = typeof claimed === "string" && claimed !== "" ? claimed : null;
+  const Payer = titled ? "h1" : "span";
+  const rows = referenceRows(record);
+  const letterText = record.raw_text?.trim() ?? "";
+  return (
+    <div
+      className={`lg:hidden ${titled ? "" : "mt-5 border-t border-hairline pt-3"}`}
+      data-card-line={titled ? "run" : "verdict"}
+    >
+      <div className="flex items-start gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="text-[15px] leading-[22px] text-ink">
+            <Payer className="inline text-[15px] leading-[22px] font-semibold">{payer}</Payer>
+            <span aria-hidden="true" className="text-muted">
+              {"\u00a0· "}
+            </span>
+            {/* Read as "payer, service" (the dot is unread); as the h1 the payer is its own heading. */}
+            {titled ? null : <span className="sr-only">, </span>}
+            <span>{service}</span>
+          </div>
+        </div>
+        {titled ? <DeadlineStamp deadlineIso={deadlineIso} today={today} landed small className="mt-1 mr-1" /> : null}
+      </div>
+      {/*
+        Under the line and the stamp, at the line's full width, on one line at 360 px (fix round: beside the
+        run's stamp the column left 152 px and the action wrapped).
+      */}
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((o) => !o)}
+        className="-ml-1 inline-flex min-h-11 items-center px-1 text-left text-[16px] font-semibold whitespace-nowrap text-ink underline underline-offset-4"
+        data-card-line-toggle="true"
+      >
+        {open ? "Hide the case card" : "Show the full case card"}
+      </button>
+      {/* Always rendered, so the toggle's aria-controls resolves; the hidden attribute closes it. */}
+      <div id={panelId} hidden={!open} className="mt-1 border-t border-hairline pt-3 pb-1" data-card-line-panel="true">
+        <dl className="grid grid-cols-[112px_minmax(0,1fr)] gap-x-3 gap-y-1.5 tabular-nums">
+          {rows.map((r) => (
+            <div key={r.key} className="contents" data-card-line-row={r.key}>
+              <dt className="pt-px text-[14px] leading-5 text-muted">{r.label}</dt>
+              <dd className="text-[15px] leading-5 text-ink">{r.value}</dd>
+            </div>
+          ))}
+        </dl>
+        {letterText ? (
+          <>
+            <p id={letterHeadId} className="mt-4 text-[15px] leading-5 font-semibold text-ink">
+              The letter as read
+            </p>
+            <pre
+              tabIndex={0}
+              role="region"
+              aria-labelledby={letterHeadId}
+              /* The intake's letter-as-read frame: it scrolls and takes the keyboard, its scrollbar ink on bond. */
+              className="mt-2 max-h-[50vh] overflow-auto border border-hairline bg-bond px-3 py-2 font-sans text-[15px] leading-relaxed whitespace-pre-wrap text-ink [scrollbar-color:var(--ink)_var(--bond)] [scrollbar-width:thin]"
+            >
+              {letterText}
+            </pre>
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }
