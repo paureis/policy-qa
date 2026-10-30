@@ -1292,3 +1292,88 @@ alone at a line's end when the payer wraps (4 of 10 rows at 1024); the orchestra
 non-breaking, so the dot stays with the service and the payer wraps whole (tsc and lint clean; measured at 1024 and
 1280). Alvaro's decision on the open list's look (the left column empty under "Read this letter" while the ten rows run
 down the right column, about 1,050 px at 1280): keep it.
+
+## 17. The phone world (Oct 29, 2026)
+
+From the Impeccable critique of Oct 28 (P1, issue 1): "The full world stops at 1024 px: at 390 the stamp sits at
+about y 730 under a recap and jargon lines, no exhibits, no policy page. Fix: stamp first, both exhibits stacked
+under it, the case card collapsed to one line." PRODUCT.md puts the stressed person on a phone first, and the
+judges will open the site on whatever they hold. Measured on Oct 29 at about 9:30 pm on the local build at
+816b19e, 390 by 844, c_sample at reviewed: the band 57 px; the case card (payer, case id, the deadline ring line,
+service, reason, program, "Show the full case card") to about 650 px; two status lines; the "What the documents
+say" sheet from 768 px with the stamp's top at 826 px, so the first screen shows the card and no verdict; no
+exhibits (the pair is `hidden` under 1024), no page crop, no vision check; the rule and the gap as text with
+citation chips; the page 11,413 px tall (13.5 screens). During the run: the deadline stamp in the card,
+"Investigating under Florida Medicaid (MMA)…", "Question 1 of 6…", "Keep this screen open", and the latest-finding
+line at 905 px, below the fold (section 14, D1). The intake at 390: three stacked doors, no sample letters door;
+the landing: the h1, the paragraph, the scope line, the primary button, no sample link. Shaped with Alvaro on
+Oct 29 by prompt (four answers, every recommended reading taken). Made by the orchestrator within sections 9 to 16
+and DESIGN.md (K1 to K13), then by the builder where marked. Files: `VerdictSection.tsx`, `ExhibitPair.tsx`,
+`CaseHeader.tsx`, `RoutingSlip.tsx`, `InvestigationView.tsx`, `PageViewer.tsx`, `EntryForm.tsx`, `IntakeFlow.tsx`,
+`web/src/app/page.tsx`, `DESIGN.md`. Nothing in `api/`, `policyqa/` or `cases/`.
+
+- K1. The range. The phone world applies under 1024 px at every width (390 is the measured phone, 768 the
+  tablet): one column, the content 358 px wide at 390, sheets at the column width. Nothing changes at 1024 px and
+  up: full-page captures of every fixture, the intake and the landing at 1280 by 800 and 1024 by 800 are
+  byte-identical before and after (the control: the same captures at 390 differ).
+- K2. The first screen after the verdict. Under the band, the top sheet (bond, 1 px ink edge, 20 px inset) holds
+  in this order: the stamp as the h1 (28 px, DESIGN.md's phone size, turned and inked as on the desktop) at the
+  sheet's top; the Lead line (20 px at 600: "Appeal by Dec 6, 2026" with the day count under it at 400; on the
+  consistent and not-settled verdicts the next step leads and the deadline follows at 17 px, as G1); the counts
+  as marks, one per line (findings verified, letter sentences verified, struck, the second opinion); then the case
+  card as one line: the payer at 600, a middle dot in faded ink, the service (15 px, wrapping to two lines when
+  it must), with "Show the full case card" as a text action under it. Targets at 390 by 844 on c_sample: the
+  stamp's top under 160 px from the page top, the card line's top under 640 px, the first exhibit's head visible
+  at the fold.
+- K3. The exhibits. Under the card line, the two exhibits stacked at the column width, each a bond sheet with
+  its paper clip and corner marks: Exhibit 1 "The letter says" (the denial sentence at 19 px, the source line at
+  14 px faded ink), then Exhibit 2 "The policy says" (the cited sentence as live text with the red highlight, the
+  page crop under it at the column width with the highlight boxes drawn, the folio in mono, the vision check line
+  with its mark). The crop keeps its aspect and scales to the column; its type will be small, and that is a crop:
+  the live sentence above it carries the reading. Then the rule and the gap in one column as today, the steelman
+  strip (G2), and "What would change it" where it applies.
+- K4. See the page on the phone. Pressing "See the page" grows the page image under the policy exhibit, inside
+  the exhibit sheet, at the column width: the page at its aspect in a box no taller than 70 vh, scrollable
+  inside, the highlight boxes drawn and scrolled into view, the vision line under the box; a "Close" text action
+  (44 px) and Escape close it and return focus to the button; `aria-expanded` on the button; one page open at a
+  time. No Zoom button under 1024 px (the browser's own pinch zooms). Nothing else on the page moves when it
+  opens or closes.
+- K5. During the run (from the first poll until decided). The top sheet holds, in this order: the case card line
+  (K2's line) with the deadline stamp small at its right (the DESIGN.md deadline stamp scaled to about 120 px
+  wide; the card line wraps in the space left); the seven stages as a compact list of marks in two columns (four
+  and three, 15 px, the running stage's note under the list as today's "Drafting the appeal letter…"); the
+  latest-finding line right under the stages (G3: 17 px ink with its mark, one element changing in place, its
+  24 px line held from the first poll, gone when the slip folds). Target at 390 by 844: the latest-finding line's
+  bottom under 520 px from the page top at every poll. The findings sheet follows below as today.
+- K6. The one movement at decided. The slip folds, the stamp presses in at the sheet's top (the press motion),
+  and the card line drops to its K2 place under the marks; the deadline stamp becomes the Lead line. This is the
+  outcome-first reflow the phone already makes (section 14, D4); "nothing moves at decided" stays a rule of 1024
+  px and up. The stamp's press is the only motion; the rest is a reflow in one frame.
+- K7. The case card disclosure. "Show the full case card" opens, in place under the card line, the reference rows
+  (Member, Plan, Letter dated, Service and code, Amount) and "The letter as read"; closed by default in every
+  status; `aria-expanded`; "Hide the case card" closes it. The reason the letter gives is not repeated on the top
+  sheet: Exhibit 1 carries it.
+- K8. Heading order (G4) holds at every width: the h1 (the payer before the verdict, the stamp after) first in
+  the DOM, the h2 "Verdict" after it, the exhibits' titles and "The rule" and "The gap" under it.
+- K9. The intake door on the phone (J6 reversed). A fourth door "Try a sample letter" after "Paste text", in the
+  three doors' exact style (stacked, full width, 1 px ink border, the hint under the title); pressing it opens the
+  list of ten rows under it (J3's rows at the column width, two-line reasons clamped); choosing a row opens the
+  paste state with the letter loaded as J4 does (the text in the box, the count line updated, "Read this letter"
+  focused, the polite announcement). The landing shows "See a sample case" and "Try a sample letter" at every
+  width, as two text actions under the primary button in E9's style. The desktop door and landing (J2 to J5)
+  are unchanged.
+- K10. Accessibility (AA, DESIGN.md): every target 44 px; the stamp's text selectable and read as the h1; the
+  exhibits read letter then policy; the page viewer's Close reachable by keyboard; contrast as the world's; the
+  focus ring the world's 3 px ink outline.
+- K11. Untouched: every section after the exhibits (the letter pages, the checklist, where to file, the record,
+  the self-check, the receipt) keeps today's phone layout; the index tabs stay hidden under 1280; the c_sample
+  replay's timing; the API; every desktop capture (K1).
+- K12. DESIGN.md. The builder rewrites "Where the world lands" (the phone and tablet get the world's structure,
+  not tokens on the old one) and the Layout paragraph for under 1024 px, from what was built, measured.
+- K13. Verification the builder owes before reporting: `npx tsc --noEmit`, `npm run lint` and `npm run build`
+  clean; Playwright captures at 390 by 844 and 768 by 1024 (full page and viewport), one page at a time, of
+  c_sample during the replay (at 1, 8, 20 and 32 s) and at reviewed, of c_consistent, c_notsettled, c_dual,
+  c_rejected, c_checkerror, c_fail and c_error at reviewed, of the page viewer open on c_sample at 390, of the
+  intake entry state (door closed; list open; a letter loaded) and the landing; the measured positions of K2 and
+  K5 against their targets; the byte-identity set of K1 against captures from a worktree of the base. A fresh
+  evaluator grades K1 to K13 with the captures before the orchestrator looks.

@@ -39,7 +39,7 @@ Taken from the latest run in `results/` on recording day (Oct 29 run: `results/c
 - 71 of 71 appeal-letter claims verified against the policy page; none struck.
 - The second opinion (Muse Spark Open) agreed on 26 of 28.
 - The judge checked against a person: 84% agreement on 50 answers, kappa 0.70.
-- About $0.10 and under a minute a case on Muse Spark 1.3 (39 s mean in the eval run; 52 s on the site in the Oct 29 rehearsal, `video/rehearsal-2026-10-29.md`).
+- About $0.10 and about a minute a case on Muse Spark 1.3 (39 s mean in the eval run; 52 s on the site in the Oct 29 rehearsal, `video/rehearsal-2026-10-29.md`; 73 s in the Oct 29 evening shots, `video/shots-2026-10-29.md`).
 - The 160-row golden set and the 64 public documents are the disclosed dataset, built before the event.
 
 ## Recording day checklist
@@ -54,7 +54,7 @@ Taken from the latest run in `results/` on recording day (Oct 29 run: `results/c
 
 ## Risks
 
-- The run takes 38 to 52 seconds on the site (51.7 s in the Oct 29 rehearsal, the Trust stage 16 s of it; up to 69 in the eval runs with three at a time); the timer cut handles it, and the backup take covers a slow run.
+- The run takes 38 to 74 seconds on the site (51.7 s in the Oct 29 rehearsal, the Trust stage 16 s of it; 73.9 and 72.1 s in the Oct 29 evening shots, the investigation 38 s of it; up to 69 in the eval runs with three at a time); the timer cut handles it, and the backup take covers a slow run. The script says "about a minute".
 - A cold container would pass the intake timeout; the warm-up case proves it is warm.
 - Run-to-run variance is about two cases in thirty; dc-001 has been right on every run.
 - Under 1024 px the old look shows; film at 1280.

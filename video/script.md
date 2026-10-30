@@ -9,17 +9,19 @@ Decisions it follows:
 5. No phone in the video. Film at 1280 by 800.
 6. Muse Code is not named: it was not used beyond the model APIs (Alvaro, Oct 29).
 
-Target: about 420 spoken words. This draft: 390.
+Target: about 420 spoken words. This draft: 381 (390 before the evening's two changes).
 
 Decided by Alvaro (Oct 29, by prompt): the KFF line stays the range; row 7 closes on ten cents a case; the not-settled shot comes from a live dc-010 run on recording day. The alternatives at the end stay for the edit only.
+
+Decided by Alvaro (Oct 29, evening, by prompt, after the shots in `video/shots-2026-10-29.md`): the Check line is dropped from row 2 (the evening's dc-001 read flagged no row, so the beat cannot be relied on); row 3 says "about a minute" (the evening runs reached reviewed at 73 s against 52 s at noon). Spoken words after the change: 381.
 
 ## The script
 
 | # | Time | On screen | Spoken | Source |
 |---|---|---|---|---|
 | 1 | 0:00 to 0:20 | The dc-001 letter; a circle around "limits private duty nursing to 8 hours per day". Then: "Denials are rarely appealed. 43 to 67% of appeals succeed. (KFF, 2025 data)" | A denial letter arrives. The plan approved eight hours a day of home nursing for a nine-year-old and denied the other eight. Its reason: Florida Medicaid limits it to eight hours. Most people stop here. Denials are rarely appealed, yet forty-three to sixty-seven percent of appeals succeed.[^1] | dc-001.txt; README:11 |
-| 2 | 0:20 to 0:40 | Click "Start with your letter", "Paste text", paste, "Read this letter". Gold "Check" rows. Click "Looks right", then "Confirm". | This is Recourse, a coverage denial appeal agent. Paste the letter and click Read this letter. Muse Spark reads it into a case card. Rows it is less sure of are marked Check. Fix them or click Looks right, then Confirm. Nothing runs until you say the card is right. | EntryForm.tsx:66,118,162; CaseCard.tsx:79; IntakeFlow.tsx:358,363 |
-| 3 | 0:40 to 1:10 | The slip ticks Intake, Routing, Investigation, Steelman, Verdict, Action, Trust. Findings land. Timer, two cuts. The stamp: "The denial appears inconsistent with the policy." | Now it works the case. It plans its own questions about the policy and answers each one with the rule, quoted word for word. A verifier checks every quote, and anything it cannot support is struck out, in plain view. Before it decides, it argues the payer's side first, as strongly as the documents allow. Then the stamp. On the site this takes under a minute. | RoutingSlip.tsx:81-123; VerdictSection.tsx:301; case.ts:1236; README:9, steps 3-5 |
+| 2 | 0:20 to 0:40 | Click "Start with your letter", "Paste text", paste, "Read this letter". The case card (gold "Check" rows and "Looks right" only if the read flags a row). Click "Confirm". | This is Recourse, a coverage denial appeal agent. Paste the letter and click Read this letter. Muse Spark reads it into a case card. Fix anything wrong, then Confirm. Nothing runs until you say the card is right. | EntryForm.tsx:66,118,162; CaseCard.tsx:79; IntakeFlow.tsx:358,363 |
+| 3 | 0:40 to 1:10 | The slip ticks Intake, Routing, Investigation, Steelman, Verdict, Action, Trust. Findings land. Timer, two cuts. The stamp: "The denial appears inconsistent with the policy." | Now it works the case. It plans its own questions about the policy and answers each one with the rule, quoted word for word. A verifier checks every quote, and anything it cannot support is struck out, in plain view. Before it decides, it argues the payer's side first, as strongly as the documents allow. Then the stamp. On the site this takes about a minute. | RoutingSlip.tsx:81-123; VerdictSection.tsx:301; case.ts:1236; README:9, steps 3-5 |
 | 4 | 1:10 to 1:40 | "The letter says" beside the policy. Click "See the page": the real page, the quote in red, "Muse Spark vision check: ... matches the quote." | Here is the gap. The letter says eight hours a day. The policy says up to twenty-four hours a day when the criteria are met, and it states no eight-hour limit. Click See the page. Every quote is located on the real page, and when the page opens, Muse Spark vision reads it back. Here, it matches. Nothing is taken on trust. | sample-case.ts:899,918; PageViewer.tsx:236-239 |
 | 5 | 1:40 to 2:05 | The appeal letter and sidenotes. "Appeal by Dec 6, 2026" with the day count. "Second opinion: Muse Spark Open agrees." | Then the appeal letter, drafted for you. Every claim in it carries a citation that passed the same check. The deadline comes from the letter, December sixth, with the days left. Last, a second opinion. The same decision runs again on Muse Spark Open, Meta's open-weights model. Here, it agrees. | README step 6, "Second opinion"; DeadlineStamp.tsx:113; case.ts:1305 |
 | 6 | 2:05 to 2:15 | dc-010, run live once before filming and shown from its own case page: "The documents do not settle it." (two seconds) | Sometimes the papers cannot decide. Here the documents do not settle it, and Recourse says so, plainly. That is a real answer too. | case.ts:1237; results, dc-010 |
@@ -34,7 +36,7 @@ Decided by Alvaro (Oct 29, by prompt): the KFF line stays the range; row 7 close
 2. Rarely appealed; 43 to 67% succeed. README:11 and the KFF analysis (footnote 1). Scope: prior authorization denials, standard requests.
 3. "Most people stop here." README:11 ("Most people never file"). **Partly sourced.**
 4. Intake and Confirm; questions, quotes, strikes, steelman. README steps 1-4; IntakeFlow.tsx:363.
-5. Under a minute. Eval run mean 38.5 s; the Oct 29 rehearsal on the site 51.7 s (video/rehearsal-2026-10-29.md).
+5. About a minute. Eval run mean 38.5 s; the Oct 29 rehearsal on the site 51.7 s (video/rehearsal-2026-10-29.md); the Oct 29 evening shots 73.9 s and 72.1 s (video/shots-2026-10-29.md). Re-measure on recording day.
 6. Up to 24 hours a day; no 8-hour limit. sample-case.ts:899,918 (Rule 59G-4.261 p.5). Check on the live take.
 7. Every quote located on the page; vision reads it back when "See the page" opens it. PageViewer.tsx:226-239; the spoken line says so.
 8. Every letter claim cited and verified. README step 6.
