@@ -1478,3 +1478,144 @@ where they differ:
   533ce76 (production on both sides, `animations: "disabled"`): 20 of 20 desktop captures (8 fixtures, the
   intake, the landing, 1280 and 1024 by 800) byte-identical; control at 390 (`c_sample`, intake, landing) 3 of 3
   differ.
+
+## 18. The landing proof (Oct 30, 2026)
+
+From the Impeccable critique of Oct 28 (P2, issue 5): "The landing persuades with nothing: one sheet of text,
+375 px of empty manila, the sample link hidden under 1024. Fix: the sample's stamp and exhibit pair on the
+landing as proof; the link at every width." The link is at every width since section 17 (K9). The judge's
+red flag in the same critique: "no proof on the landing" in the three minutes they give the site. Measured on
+Oct 30 on the deployed site (8d78c32) and the session 11 captures: at 1280 by 800 the top sheet runs from y 101
+to 426 and 374 px of manila sit empty under it; at 390 by 844 the one column (no sheet) ends with the two sample
+links at about 593 px, with about 250 px of manila under them; the landing makes no API call. E9 of section 12
+(Alvaro, Oct 28: "no second sheet, no stamp, no feature list, no screenshots") is reopened by Alvaro on Oct 30 by
+prompt, both recommended readings taken: a second sheet under the top sheet, the full pair, named once. Made by
+the orchestrator within sections 9 to 17 and DESIGN.md (L1 to L11), then by the builder where marked. Files:
+`web/src/app/page.tsx`, a new component for the proof sheet (the builder names it, under `web/src/components/`),
+and only where a piece must be extracted or given a heading level, `VerdictSection.tsx`, `ExhibitPair.tsx`,
+`CaseHeader.tsx`, `DESIGN.md`. Nothing in `api/`, `policyqa/` or `cases/`; `sample-case.ts` is read, never changed.
+
+- L1. The second sheet. Under the top sheet at every width, the sample case as decided. At 1024 px and up a
+  second bond sheet in the top sheet's exact style (`TOP_SHEET`: 1 px ink border, bond, the same insets), the
+  top sheet's width, set under it by the folder's rhythm between sheets (the builder measures the case page's
+  gap between its top sheet and the next sheet at 1280 and uses that number). Under 1024 px the landing has no
+  sheet today; the proof is one bond sheet at the column width (358 px at 390, 608 at 768) with the phone case
+  page's edge and inset (1 px ink, 20 px), 40 px under the two sample links. The top sheet above it does not
+  change at any width (L9).
+- L2. What the sheet holds, in this order, every piece from the recorded dc-001 run (`SAMPLE_RECORD`, the
+  record `c_sample` replays) and rendered by the case page's own components or pieces extracted from them, so
+  the words, the marks, the paper clips and the highlight are the case page's to the pixel: the head line (L3);
+  the stamp "The denial appears inconsistent with the policy." in the `.stamp` style at DESIGN.md's sizes (38 px
+  at 1280 and up, 32 at 1024, 34 at 640, 28 on the phone), turned and inked, real selectable text, already
+  pressed (no press motion, no `stamp-in`); the Lead line under it as the case page's Lead gives it for this
+  verdict ("Appeal by Dec 6, 2026" with the day count computed from today, the same text `c_sample` shows that
+  day); the counts as marks, one per line as on the phone (section 17, K2), from the sample's investigation and
+  letter as the case page computes them (the findings verified, the letter sentences verified, struck, then the
+  second opinion line "Second opinion: Muse Spark Open agrees." with its tick); then the exhibit pair exactly as
+  the case page renders it at reviewed (`ExhibitPair` with the sample's card and its rule citation, unsupported
+  false): the two columns at 1024 px and up, stacked under 1024 px (K3). Nothing else from the case page: no case
+  line, no reference block, no rule and gap, no steelman strip, no letter, no checklist, no receipt.
+- L3. The head line. One line at the sheet's top, before the stamp, that names what this is: the words
+  "The sample case, decided." at 600 in ink, then in faded ink on the same line (wrapping under it under
+  1024 px, so at 768 as on the phone) "A sample letter, run for real on Oct 28, 2026." Draft wording; Alvaro's look settles it. This is the
+  only naming on the sheet: Exhibit 1's source line already reads "Sample Health Plan, letter dated October 7,
+  2026", and the band is the landing's band as today. No "synthetic", no "fixture" anywhere on the landing.
+- L4. See the page. The policy exhibit keeps its "See the page" action and it works as on `c_sample`: the page
+  opens in place (the desktop viewer at 1024 px and up, the phone's in-exhibit box under 1024 px, K4) with the
+  recorded highlight and the recorded vision line, from `SAMPLE_PAGES`, with zero API calls at load and zero on
+  open (section 15: the sample's pages and vision checks are recorded; the builder proves it with a network log).
+  Close and Escape as on the case page. If the viewer cannot open on the landing without an API call, the
+  action is left out of the landing's exhibit and the builder says why.
+- L5. Links. No new link. The top sheet's "Start with your letter", "See a sample case" and "Try a sample
+  letter" stay word for word where E9 and K9 put them. The proof sheet is proof, not a door: nothing on it
+  navigates except the citation chips and "See the page" that the exhibit already carries, and those behave as
+  on the case page.
+- L6. Heading order and reading. The landing's h1 is the headline on the top sheet, as today. The stamp is an
+  h2, never an h1 (the case page's `VerdictSection` renders its stamp as the page's h1; the landing needs the
+  stamp with the same look at h2, by a heading-level prop or an extracted stamp piece; the case page's output
+  does not change, L9). The head line is a paragraph, not a heading. Then the exhibits as the case page gives
+  them (figures, their titles as paragraphs). The outline at every width: h1, h2. The marks read as the case
+  page's ("6 of 6 findings verified", with the tick's reader word). Every target 44 px; contrast as the
+  world's; the focus ring the world's 3 px ink outline.
+- L7. Motion. None on the landing: the sheet is there at load, the stamp already pressed, nothing lands.
+- L8. Positions, measured at the four widths on a production build. At 1280 by 800: the proof sheet's top
+  edge inside the first viewport (under 800 px from the page top; expected about 458) and the stamp wholly
+  visible in it (its bottom under 800). At 1024 by 800 the same two targets. At 390 by 844: the sheet's top
+  edge under 700 and the stamp's top under 760, so the first screen ends on the proof's head and the stamp's
+  top. The page height at each width recorded in DESIGN.md (L10).
+- L9. Untouched, the control set. Every case fixture page (`c_sample` at reviewed, `c_consistent`,
+  `c_notsettled`, `c_dual`, `c_rejected`, `c_checkerror`, `c_fail`, `c_error`) and the intake (the entry state,
+  the sample list open, a letter loaded) byte-identical before and after at 1280 by 800, 1024 by 800, 768 by
+  1024 and 390 by 844: two production builds, the base a worktree of `e5b91b8`, captured full page with
+  `animations: "disabled"`, one page at a time (section 17's method). The control that proves the set can
+  fail: the landing differs at all four widths. The landing's top sheet is unchanged: every element rect inside
+  `[data-top-sheet="landing"]` equal before and after at the four widths. `c_sample`'s replay and its timing are
+  untouched. The landing still makes no network request at load beyond its own assets.
+- L10. DESIGN.md. The builder rewrites the landing's part of "The folder frame at desktop, one column under
+  it" from what was built, measured: the second sheet, its gap, the page heights at the four widths.
+- L11. Verification the builder owes before reporting: `npx tsc --noEmit`, `npm run lint` and `npm run build`
+  clean; Playwright captures of the landing at 1280 by 800, 1024 by 800, 768 by 1024 and 390 by 844, full page
+  and viewport, and of "See the page" open at 1280 and 390; the L8 numbers; the L9 byte-identity set with its
+  control; a network log of the landing at load and after "See the page"; the aria heading outline at 1280 and
+  390 (L6). A fresh evaluator grades L1 to L11 with the captures before the orchestrator looks.
+
+Decided by Alvaro (Oct 30, by prompt, both recommended readings): the proof as a second sheet under the top
+sheet, filling the desktop's empty manila and stacked under the links on the phone, rather than inside the top
+sheet's empty right third or a stamp alone; the full pair with the crop and the vision line, named once by one
+head line, with no second link to the sample case. His look at the build (Oct 30, afternoon: the builder's captures at 1280
+and 390 and the viewer open at 1280): passes as built; the head line's wording kept as built (L3 settled).
+
+After the fresh evaluation (Oct 30, 2:25 pm; the record is `web/landing-evaluation-2026-10-30.md`: 14 PASS, 0 FAIL,
+five low notes), settled by the orchestrator: the desktop viewer opened from the landing shows "Loading page" and
+"Checking the highlight with vision…" for about 2.9 s before the recorded vision line, with no request, exactly as
+`c_sample` does (section 15's recorded holds); accepted as the sample's behaviour. Without JavaScript the Lead stays
+hidden and leaves a 67 px gap at desktop (47.5 on the phone); accepted, the case page itself needs JavaScript. The
+empty bond to the right of the stamp, the Lead and the counts at desktop (about 480 px, y 539 to 921 at 1280) is
+the case page's own top-sheet shape and Alvaro's look passed it. Two stale lines fixed in DESIGN.md (the stamp as
+the case page's h1, pressed on arrival there and already pressed on the landing) and L3's wrap note corrected to
+under 1024 px.
+
+Decided by the builder, with the reason (Oct 30, 2026; the build measured on a production build against a
+worktree of e5b91b8; scripts and captures under `C:\Users\pau\AppData\Local\Temp\claude\landing-build\`):
+
+- The sheet is `web/src/components/landing/ProofSheet.tsx`, reading `SAMPLE_RECORD` and `SAMPLE_PAGES` and
+  rendering the head line, the stamp, the Lead, the counts, the second opinion and `ExhibitPair`, wrapped in
+  the case page's `PageViewerProvider` with `caseId="c_sample"` and its `PageViewerFrame`, so "See the page"
+  answers from the recording at every width (the side viewer from 1024 px, the in-exhibit box under it, K4).
+- Three pieces extracted from `VerdictSection.tsx` and exported, the case page calling them with its old class
+  strings: `VerdictStamp` (heading level 1 or 2; `pressed` adds the press motion), `ProofCounts`,
+  `SecondOpinionMark`.
+- `ExhibitPair` takes an optional `settled` prop: the policy exhibit starts finished (the crop drawn, the
+  vision check done, no request), the values mapped from `SAMPLE_PAGES` as `getHighlight` and `visionCheck`
+  map them. The case page never passes it; without a recorded check the exhibit falls back to asking.
+  Reason: the normal path shows "Loading page" for 450 ms and then "Checking…", and the arriving crop grows
+  the sheet, which L7 forbids on the landing.
+- The desktop gap under the top sheet is 80 px, the case page's measured gap between its top sheet and the
+  next block at 1280 (101 to 1116, then 1196); 96 px is the gap between later sheets. The sheet's top is at
+  506 at 1280 and 1024 (the brief expected about 458 from a 32 px guess), the stamp's bottom 105 px above the
+  1024 fold.
+- Under 1024 px the sheet starts 40 px under the sample links: 656 at 390 (links end at 616), 531 at 768.
+- The stamp keeps the case page's maximum widths from 1024 px, so it breaks into the same two lines (526 px
+  wide at 1280); its margin under the head line is 28 px on the phone and 36 px from 640 (the turned right
+  end rises 15 to 26 px; measured clearance 13.7 px at 390, 10.4 at 768, 12.2 at 1280).
+- The Lead is `PhoneLead` (20 px) under 1024 px and `DeadlineLine` at the lead size (30 px) from 1024, the
+  case page's sizes at each width, with the same `daysUntil` count. Today is read on the client: the landing
+  is prerendered, so before hydration the Lead is laid out with the recorded day and kept invisible, then
+  shown with today's count in place (no reflow, no hydration mismatch).
+- The head line's faded part is 15 px under 1024 px (at 17 px it wrapped and put the stamp's top at 760.8,
+  0.8 px past L8's target); the date in it comes from the record's `created_at`.
+- The counts are one per line at every width at the case page's sizes (17 px under 1024, 15 px from 1024).
+- The sheet is an unnamed `<section>`, so no extra landmark is announced.
+- Measured: L2 equal to `c_sample` at reviewed on the same build (the stamp 526 by 113 at 1280 and 316 by 113
+  at 390, the Lead "Appeal by Dec 6, 2026 / 37 days left", the counts, the second opinion line, the pair's box
+  1006 by 366.9 and 316 by 841.2, the pair's HTML equal once SSR markers are stripped); L8 at 1280: sheet 506,
+  stamp 574.5 to 711.1, page 1,401; at 1024: 506, 575.8 to 694.6, 1,379; at 768: 531, 606.4 to 733.8, 1,692;
+  at 390: 656, 734.7 to 862.2, 2,045; L9 44 of 44 byte-identical (8 fixtures and the intake's three states at
+  four widths) with the landing differing at 4 of 4 and the top sheet's 9 element rects equal; the landing
+  loads with 19 GET requests to its own origin and "See the page" adds none; the outline h1 then h2 only;
+  zero animations in the sheet at load; tsc, lint and build clean.
+- One target missed, settled by the orchestrator: the desktop crop button (the policy exhibit's crop as a
+  control from 1024 px) is 481 by 41.5 px at 1280 and 417 by 36 at 1024, the same as on the case page, where it
+  has been since section 11. It is the base's control, as section 17's evaluator treated the citation chips
+  and checkboxes; a fix belongs to both pages at once (bug bash, after the video), not to the landing alone,
+  since the landing may neither change the case page (L9) nor differ from it (L2).

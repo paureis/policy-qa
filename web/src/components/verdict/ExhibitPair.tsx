@@ -12,6 +12,7 @@ import {
   type CaseCard,
   type CitationRef,
   type PageHighlight,
+  type VisionCheck,
 } from "@/lib/case";
 import { pageFolio, shortDocName } from "@/components/investigation/CitationChip";
 import { CouldNotVerifyTag } from "@/components/investigation/CouldNotVerifyTag";
@@ -44,6 +45,16 @@ const MAX_SCALE = 1.2;
 
 type Load = { kind: "loading" } | { kind: "error"; error: PageError } | { kind: "ready"; highlight: PageHighlight };
 
+/*
+  The policy exhibit's answers already in hand: the highlight and the vision check as they were recorded. Given,
+  the exhibit renders as it stands at the end of a run from its first paint, with no request and nothing landing
+  (the landing's proof sheet, section 18). The case page does not pass it: there the exhibit asks as before.
+*/
+export interface SettledExhibit {
+  highlight: PageHighlight;
+  vision: VisionCheck;
+}
+
 function pct(n: number): string {
   return `${(n * 100).toFixed(4)}%`;
 }
@@ -60,12 +71,15 @@ export function ExhibitPair({
   citation,
   unsupported,
   className = "",
+  settled = null,
 }: {
   card: CaseCard;
   citation: CitationRef | null;
   unsupported: boolean;
   /* The land when the pair arrives on a sheet that is already there (the live run at desktop). */
   className?: string;
+  /* The policy exhibit's recorded answers, so it is settled from its first paint (the landing only). */
+  settled?: SettledExhibit | null;
 }) {
   const payer = card.payer_name.value ? String(card.payer_name.value) : null;
   const dated = card.letter_date.value ? displayValue("letter_date", card.letter_date.value) : null;
@@ -86,16 +100,18 @@ export function ExhibitPair({
         <blockquote className="mt-3 text-[19px] leading-[1.45] text-ink">“{displayValue("denial_reason", card.denial_reason.value)}”</blockquote>
         {source ? <figcaption className="mt-auto pt-4 text-[14px] leading-snug text-muted">{source}</figcaption> : null}
       </figure>
-      {citation ? <PolicyExhibit citation={citation} unsupported={unsupported} /> : <div aria-hidden="true" />}
+      {citation ? <PolicyExhibit citation={citation} unsupported={unsupported} settled={settled} /> : <div aria-hidden="true" />}
     </div>
   );
 }
 
-function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsupported: boolean }) {
+function PolicyExhibit({ citation, unsupported, settled }: { citation: CitationRef; unsupported: boolean; settled: SettledExhibit | null }) {
   const title = citation.title?.trim() || citation.doc_id;
-  const [load, setLoad] = useState<Load>({ kind: "loading" });
-  const [vision, setVision] = useState<Vision>({ kind: "idle" });
-  const [drawn, setDrawn] = useState(false);
+  const [load, setLoad] = useState<Load>(() => (settled ? { kind: "ready", highlight: settled.highlight } : { kind: "loading" }));
+  const [vision, setVision] = useState<Vision>(() => (settled ? { kind: "done", vision: settled.vision } : { kind: "idle" }));
+  /* Settled, the boxes are drawn from the first paint: there is no arrival to draw them on. */
+  const [drawn, setDrawn] = useState(settled !== null);
+  const isSettled = settled !== null;
   const [imageFailed, setImageFailed] = useState(false);
   const viewer = usePageViewer();
   const viewKey = `exhibit-${citation.doc_id}-${citation.page}`;
@@ -144,7 +160,7 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
   const { doc_id, page, quote } = citation;
   const caseId = useViewerCaseId() ?? undefined;
   useEffect(() => {
-    if (unsupported) return;
+    if (unsupported || isSettled) return;
     const controller = new AbortController();
     (async () => {
       let highlight: PageHighlight;
@@ -169,7 +185,7 @@ function PolicyExhibit({ citation, unsupported }: { citation: CitationRef; unsup
       }
     })();
     return () => controller.abort();
-  }, [doc_id, page, quote, unsupported, caseId]);
+  }, [doc_id, page, quote, unsupported, caseId, isSettled]);
 
   const folio = (
     <p className="mt-4 font-mono text-[14px] leading-snug text-ink" data-exhibit-folio="true">

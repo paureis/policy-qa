@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Band } from "@/components/intake/Band";
 import { FRAME_MAIN, FRAME_WIDTH, TOP_SHEET } from "@/components/intake/Frame";
+import { ProofSheet } from "@/components/landing/ProofSheet";
 import { INTAKE_MODE } from "@/lib/case";
 
 /*
@@ -8,7 +9,9 @@ import { INTAKE_MODE } from "@/lib/case";
   top sheet (case-page-brief section 12, E9): the h1 at the Lead size, the
   paragraph, the scope line, then the one button and one text action to the
   sample case. Under 1024 px it is the one column as before, with the two
-  sample text actions under the button (section 17, K9).
+  sample text actions under the button (section 17, K9). Under the top sheet at
+  every width, the proof: the sample case as decided, on a second sheet
+  (section 18).
 */
 export default function Home() {
   return (
@@ -51,6 +54,7 @@ export default function Home() {
             </div>
           </div>
         </div>
+        <ProofSheet />
       </main>
     </div>
   );

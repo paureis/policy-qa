@@ -171,8 +171,6 @@ export function VerdictSection({
   }
   const verdict = maybeVerdict;
   const outcome = verdict.outcome;
-  const marks = proofMarks(proof);
-  const second = secondOpinionLine(secondOpinion);
   /* The desktop scale: h3 at 20 px, weight 600 (the page sets 400 and 600; the stamp alone is 850). */
   const h3 = `text-[18px] font-bold ${folder ? "lg:text-[20px] lg:font-semibold" : ""}`;
   const ruleCitation = verdict.rule?.citations?.[0] ?? null;
@@ -205,16 +203,14 @@ export function VerdictSection({
         <SectionTitle title="What the documents say" short="Verdict" n={annotated ? n : null} />
       </p>
 
-      <h1
+      <VerdictStamp
+        verdict={verdict}
         /*
           In the folder under 1024 px the stamp is the sheet's first line, set down so its turned right end (it rises
           about 15 px at 390 and 26 px at 768) stays about 14 px inside the sheet's edge: 8 px, 20 px from 640.
         */
-        className={`stamp stamp-in ${folder ? "mt-2 sm:mt-5" : "mt-6"} text-[28px] text-balance sm:text-[34px] ${folder ? "lg:mt-6 lg:max-w-[calc(100%-380px)] lg:text-[32px] xl:max-w-[calc(100%-480px)] xl:text-[38px] tabs:mt-3" : ""}`}
-        data-headline={outcome}
-      >
-        {verdictHeadline(verdict)}
-      </h1>
+        className={`${folder ? "mt-2 sm:mt-5" : "mt-6"} text-[28px] text-balance sm:text-[34px] ${folder ? "lg:mt-6 lg:max-w-[calc(100%-380px)] lg:text-[32px] xl:max-w-[calc(100%-480px)] xl:text-[38px] tabs:mt-3" : ""}`}
+      />
       {/*
         The section's heading, after the h1 so the outline reads h1, h2, then the h3s (G4); unseen at every width.
         Under 1024 px in the folder it is "Verdict" (K8), the visible opening being gone there.
@@ -232,30 +228,12 @@ export function VerdictSection({
         )}
       </h2>
       {lead}
-      {marks.length > 0 ? (
-        <p
-          /* One count per line under 1024 px in the folder (K2). */
-          className={`${parts} mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[17px] leading-snug text-ink tabular-nums ${folder ? "max-lg:flex-col lg:mt-6 lg:gap-x-4 lg:text-[15px] xl:flex-nowrap" : ""}`}
-          data-verdict-proof="true"
-        >
-          {marks.map((m, i) => (
-            <span key={m.text} className="inline-flex items-center gap-2" data-proof-mark={m.mark}>
-              <Mark kind={m.mark} />
-              <span>{m.text}</span>
-              {i < marks.length - 1 ? <span className="sr-only">. </span> : null}
-            </span>
-          ))}
-          {/* The letter's two count lines held while it is drafted (phone only, unseen, out of the accessibility tree). */}
-          {letterPending
-            ? ["0 of 0 letter sentences verified", "0 struck"].map((t) => (
-                <span key={`pending-${t}`} aria-hidden="true" className="invisible inline-flex items-center gap-2 lg:hidden" data-proof-pending="true">
-                  <Mark kind="ring" />
-                  <span>{t}</span>
-                </span>
-              ))
-            : null}
-        </p>
-      ) : null}
+      <ProofCounts
+        proof={proof}
+        letterPending={letterPending}
+        /* One count per line under 1024 px in the folder (K2). */
+        className={`${parts} mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[17px] leading-snug text-ink tabular-nums ${folder ? "max-lg:flex-col lg:mt-6 lg:gap-x-4 lg:text-[15px] xl:flex-nowrap" : ""}`}
+      />
 
       {/*
         The second opinion: one line directly under the counts, at every width, a mark and the words in
@@ -265,17 +243,12 @@ export function VerdictSection({
         element, no land on a text change), and the tick steps in when Muse Spark Open agrees. Absent,
         null or skipped: not rendered, so a case without one looks exactly as before.
       */}
-      {second ? (
-        <p
-          /* The mark sits centred on the first line (4 px down the phone's 23 px line, 2 px down desktop's 21 px) when the words wrap. */
-          className={`${parts} mt-1 flex items-start gap-2 text-[17px] leading-snug text-ink tabular-nums ${folder ? "lg:text-[15px]" : ""}`}
-          data-second-opinion={secondOpinion?.status}
-          data-agrees={secondOpinion?.agrees === null || secondOpinion?.agrees === undefined ? undefined : String(secondOpinion.agrees)}
-        >
-          <Mark kind={second.mark} className={`mt-1 h-4 w-4 ${folder ? "lg:mt-0.5" : ""} ${second.mark === "tick" ? "tick-step" : ""}`} />
-          <span>{second.text}</span>
-        </p>
-      ) : null}
+      <SecondOpinionMark
+        secondOpinion={secondOpinion}
+        /* The mark sits centred on the first line (4 px down the phone's 23 px line, 2 px down desktop's 21 px) when the words wrap. */
+        className={`${parts} mt-1 flex items-start gap-2 text-[17px] leading-snug text-ink tabular-nums ${folder ? "lg:text-[15px]" : ""}`}
+        markClassName={`mt-1 h-4 w-4 ${folder ? "lg:mt-0.5" : ""}`}
+      />
 
       {phoneStatus}
       {cardLineNode}
@@ -367,6 +340,88 @@ export function VerdictSection({
         </div>
       </div>
     </section>
+  );
+}
+
+/*
+  The verdict stamp: the headline, verbatim, as a rubber stamp (.stamp in globals.css), with its class string for
+  the place it sits. The case page sets it as the page's h1 and presses it once (stamp-in); the landing's proof sheet
+  (section 18) sets it as an h2 already pressed: the same words and the same look, without the motion.
+*/
+export function VerdictStamp({
+  verdict,
+  level = 1,
+  pressed = true,
+  className,
+}: {
+  verdict: Verdict;
+  level?: 1 | 2;
+  pressed?: boolean;
+  className: string;
+}) {
+  const Heading = level === 1 ? "h1" : "h2";
+  return (
+    <Heading className={`stamp ${pressed ? "stamp-in " : ""}${className}`} data-headline={verdict.outcome}>
+      {verdictHeadline(verdict)}
+    </Heading>
+  );
+}
+
+/*
+  The counts as marks (proofMarks), one span per count, with the reader's full stop between them. letterPending
+  holds the letter's two lines unseen on the phone while the letter is drafted (section 17, fix round).
+*/
+export function ProofCounts({ proof, letterPending = false, className }: { proof: string[]; letterPending?: boolean; className: string }) {
+  const marks = proofMarks(proof);
+  if (marks.length === 0) return null;
+  return (
+    <p className={className} data-verdict-proof="true">
+      {marks.map((m, i) => (
+        <span key={m.text} className="inline-flex items-center gap-2" data-proof-mark={m.mark}>
+          <Mark kind={m.mark} />
+          <span>{m.text}</span>
+          {i < marks.length - 1 ? <span className="sr-only">. </span> : null}
+        </span>
+      ))}
+      {/* The letter's two count lines held while it is drafted (phone only, unseen, out of the accessibility tree). */}
+      {letterPending
+        ? ["0 of 0 letter sentences verified", "0 struck"].map((t) => (
+            <span key={`pending-${t}`} aria-hidden="true" className="invisible inline-flex items-center gap-2 lg:hidden" data-proof-pending="true">
+              <Mark kind="ring" />
+              <span>{t}</span>
+            </span>
+          ))
+        : null}
+    </p>
+  );
+}
+
+/*
+  The second opinion's line: its mark and its words (secondOpinionLine). The tick steps in when it arrives on a
+  running case (stepTick); the landing shows it already there.
+*/
+export function SecondOpinionMark({
+  secondOpinion,
+  className,
+  markClassName,
+  stepTick = true,
+}: {
+  secondOpinion: SecondOpinion | null;
+  className: string;
+  markClassName: string;
+  stepTick?: boolean;
+}) {
+  const second = secondOpinionLine(secondOpinion);
+  if (!second) return null;
+  return (
+    <p
+      className={className}
+      data-second-opinion={secondOpinion?.status}
+      data-agrees={secondOpinion?.agrees === null || secondOpinion?.agrees === undefined ? undefined : String(secondOpinion.agrees)}
+    >
+      <Mark kind={second.mark} className={`${markClassName} ${stepTick && second.mark === "tick" ? "tick-step" : ""}`} />
+      <span>{second.text}</span>
+    </p>
   );
 }
 
