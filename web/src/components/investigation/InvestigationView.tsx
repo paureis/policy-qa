@@ -333,7 +333,7 @@ export function InvestigationView({ caseId }: { caseId: string }) {
   const payerName = record?.card.payer_name.value ? String(record.card.payer_name.value) : null;
   /*
     The band's status line at desktop on the finished case: one plain line, the letter's stage
-    ("Letter checked: 1 of 1 issue fixed."). The question count stays with the record (section 4)
+    ("Letter checked. 1 of 1 issue fixed."). The question count stays with the record (section 4)
     and the receipt; with the folder tab beside it, both would not fit on one line.
   */
   const bandStatus = record ? (stageLine(record) ?? "") : "";

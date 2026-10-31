@@ -319,9 +319,15 @@ export function formatAmount(value: FieldValue): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 }
 
-/* How a value reads when the card is locked. */
+/*
+  How a value reads when the card is locked. An empty field says the letter did not state it, never
+  "Not found", which read as an error beside the stamp (section 19, M2). The editable fields keep their
+  placeholders.
+*/
+export const NOT_STATED = "Not stated in the letter";
+
 export function displayValue(key: FieldKey, value: FieldValue): string {
-  if (value === null || value === "") return "Not found";
+  if (value === null || value === "") return NOT_STATED;
   switch (key) {
     case "program":
       return PROGRAM_LABELS[value as Program] ?? String(value);
@@ -1420,10 +1426,10 @@ export function stageLine(record: Pick<CaseRecord, "status" | "letter" | "critiq
     case "reviewed":
       if (noLetter) return NO_LETTER_LINE;
       if (c && c.status === "done" && !c.skipped && c.accepted) {
-        if (c.issues_found === 0) return "Letter checked: no issues found.";
-        return `Letter checked: ${c.issues_fixed} of ${c.issues_found} ${c.issues_found === 1 ? "issue" : "issues"} fixed.`;
+        if (c.issues_found === 0) return "Letter checked. No issues found.";
+        return `Letter checked. ${c.issues_fixed} of ${c.issues_found} ${c.issues_found === 1 ? "issue" : "issues"} fixed.`;
       }
-      return "Letter checked: the first draft stands.";
+      return "Letter checked. The draft stands as written.";
     default:
       return null;
   }

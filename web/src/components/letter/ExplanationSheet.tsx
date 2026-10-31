@@ -196,12 +196,13 @@ export function ExplanationSheet({
         </p>
         {/*
           The margin, in the DOM right after the paragraph it belongs to. Absolute in the frame (the
-          sheet is not positioned), so it sits in the 420 px column across the 48 px gutter.
+          sheet is not positioned), so it sits in the 420 px column across the 48 px gutter; from 1280 px,
+          where the index tabs stand, 16 px narrower so it ends short of them, as the letter's (section 19, M3).
         */}
         {hasNotes ? (
           <div
             ref={marginRef}
-            className="absolute top-0 left-[calc((100%-48px)*620/1040+48px)] w-[calc((100%-48px)*420/1040)]"
+            className="absolute top-0 left-[calc((100%-48px)*620/1040+48px)] w-[calc((100%-48px)*420/1040)] xl:w-[calc((100%-48px)*420/1040-16px)]"
             data-margin-anchor="explanation"
             data-explanation-margin="true"
           >

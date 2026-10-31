@@ -247,7 +247,13 @@ function PolicyExhibit({ citation, unsupported, settled }: { citation: CitationR
               aria-expanded={pageOpen}
               aria-controls={pageOpen ? viewerPanelId(viewKey) : undefined}
               aria-label={`See page ${citation.page} of ${title}`}
-              className="block w-full cursor-zoom-in"
+              /*
+                At least 44 px tall (section 19, M1): a one-line crop is 41.5 px at 1280 and 36 at 1024, so the
+                button takes a 44 px minimum and centers the crop in it, the bond showing above and below. The
+                crop's own box, its image offsets and its highlight boxes are unchanged; a crop already 44 px
+                or taller gets nothing.
+              */
+              className="flex min-h-11 w-full cursor-zoom-in items-center"
               data-exhibit-open="true"
             >
               <Crop highlight={h} title={title} drawn={drawn} onLoad={onCropLoad} onError={() => setImageFailed(true)} />

@@ -1,5 +1,5 @@
 import { dayCountLabel, daysUntil, formatShortDate } from "@/lib/case";
-import { Mark } from "@/components/investigation/Marks";
+import { CalendarLeaf, Mark } from "@/components/investigation/Marks";
 
 /*
   The appeal deadline as a rubber stamp, where it is the only stamp on the
@@ -85,7 +85,10 @@ export function DeadlineStamp({
   The deadline set as type with a mark, where the verdict is the sheet's
   stamp: "Appeal by Dec 6, 2026" with the day count under it, or "Deadline
   not stated". size "lead" is the top sheet's register at desktop; "line" is
-  the phone header's line.
+  the phone header's line. The mark is the calendar leaf (section 19, M4):
+  20 px at the lead size, in the slot the ring had (Alvaro, Oct 30), and
+  16 px on the line, so the words do not move. A deadline the letter does
+  not state keeps the open ring: not reached, in the marks' meaning.
 */
 export function DeadlineLine({
   deadlineIso,
@@ -108,7 +111,11 @@ export function DeadlineLine({
       className={`flex items-start gap-3 tabular-nums ${lead ? "text-[30px] leading-[1.12] font-semibold tracking-[-0.015em]" : "text-[20px] leading-tight font-semibold"} ${className}`}
       data-deadline-line={missing ? "missing" : "date"}
     >
-      <Mark kind="ring" className={lead ? "mt-[9px] h-5 w-5" : "mt-[4px] h-4 w-4"} />
+      {missing ? (
+        <Mark kind="ring" className={lead ? "mt-[9px] h-5 w-5" : "mt-[4px] h-4 w-4"} />
+      ) : (
+        <CalendarLeaf size={lead ? 20 : 16} className={lead ? "mt-[9px] h-5 w-5" : "mt-[4px] h-4 w-4"} />
+      )}
       <span>
         {missing ? (
           "Deadline not stated"

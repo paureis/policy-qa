@@ -24,6 +24,36 @@ export function Mark({ kind, className = "h-4 w-4" }: { kind: MarkKind; classNam
 }
 
 /*
+  The calendar leaf: the deadline's mark where the deadline is the Lead line (section 19, M4), a page of a
+  wall calendar in the marks' hand: the leaf as a square-cornered frame, the header rule across its top,
+  two binding rings over the top edge, ink, 2 px strokes with square caps. Two sizes, each drawn on its own
+  pixel grid so the stroke stays 2 px (redrawn, not scaled): 16 by 16 px, the marks' size, on the phone's
+  Lead; 20 by 20 px beside the 30 px Lead type from 1024 px, the slot the ring had there (Alvaro, Oct 30).
+  Unlike the state marks it is not a state: it names what the line beside it is, so it carries reader text
+  ("Deadline") and the words after it carry the date. The open ring stays the mark for not settled or not
+  reached.
+*/
+export function CalendarLeaf({ size = 16, className = "h-4 w-4", label = "Deadline" }: { size?: 16 | 20; className?: string; label?: string }) {
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} role="img" aria-label={label} focusable="false" className={`shrink-0 text-ink ${className}`} data-mark="calendar">
+      {size === 20 ? (
+        <>
+          <path d="M2 5h16v13H2z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="miter" />
+          <path d="M2 10h16" fill="none" stroke="currentColor" strokeWidth="2" />
+          <path d="M6 2v3M14 2v3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square" />
+        </>
+      ) : (
+        <>
+          <path d="M2 4h12v10H2z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="miter" />
+          <path d="M2 8h12" fill="none" stroke="currentColor" strokeWidth="2" />
+          <path d="M5 2v2M11 2v2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+/*
   The disclosure mark beside a control that opens and closes: a drawn plus
   when closed, a drawn minus when open, in the marks' stroke. The control's
   aria-expanded carries the state; the mark is decorative.

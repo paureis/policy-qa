@@ -43,9 +43,11 @@ const LETTERS_HINT = "Ten letters written for this demo. Pick one and read it as
 /*
   Three equal ways in: a photo, a file, or pasted text (under 1024 px, as
   the intake brief has it). At 1024 px and up the paste box is the desk:
-  open from the start in the letter's 620 px column, with the photo and the
-  file as two secondary doors in the 420 px column beside it; the "Paste
-  text" door is not shown there (case-page-brief section 12, E2 and E3).
+  open from the start in the letter's 620 px column, with the file as the
+  secondary door in the 420 px column beside it; the "Paste text" door is
+  not shown there (case-page-brief section 12, E2 and E3), nor the photo
+  door (section 19, M6: a desktop has no phone camera to offer, and the file
+  door takes a scanned letter or a photo already on the computer).
 */
 export function EntryForm({
   text,
@@ -138,7 +140,8 @@ export function EntryForm({
       <div className="lg:col-start-2 lg:row-start-2 lg:mt-6" data-desk-doors="true">
         <p className={`hidden lg:block ${LABEL}`}>Or add the letter as a file</p>
         <ul className="mt-6 space-y-3 lg:mt-2 lg:space-y-5" aria-label="Ways to add the letter">
-          <li>
+          {/* The photo door under 1024 px only (section 19, M6). */}
+          <li className="lg:hidden">
             <button
               type="button"
               className={WAY}

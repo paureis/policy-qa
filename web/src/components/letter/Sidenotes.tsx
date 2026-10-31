@@ -23,8 +23,14 @@ export interface NoteGroup {
   struck: boolean;
 }
 
-/* A block in the margin column, beside the sheet: absolute, its top set by the layout above. */
-export const MARGIN_BLOCK = "absolute top-0 left-[calc(100%+48px)] w-[calc(100%*420/620)]";
+/*
+  A block in the margin column, beside the sheet: absolute, its top set by the layout above. From 1280 px,
+  where the index tabs stand at the folder's right edge, the column ends 16 px short of them (section 19,
+  M3): 404 px instead of 420 at 1280 and 1440, its left edge, the gutter and the letter unchanged. Keyed on
+  the width alone (xl), not on the tabs' height condition, so the notes do not reflow when only the
+  window's height changes.
+*/
+export const MARGIN_BLOCK = "absolute top-0 left-[calc(100%+48px)] w-[calc(100%*420/620)] xl:w-[calc(100%*420/620-16px)]";
 
 export function noteRegionId(base: string, n: number): string {
   return `${base}-note-${n}`;

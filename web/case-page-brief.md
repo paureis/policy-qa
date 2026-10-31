@@ -1619,3 +1619,105 @@ worktree of e5b91b8; scripts and captures under `C:\Users\pau\AppData\Local\Temp
   has been since section 11. It is the base's control, as section 17's evaluator treated the citation chips
   and checkboxes; a fix belongs to both pages at once (bug bash, after the video), not to the landing alone,
   since the landing may neither change the case page (L9) nor differ from it (L2).
+
+## 19. Bug bash, the web items (Oct 30, 2026)
+
+Six small items Alvaro picked by prompt on Oct 30 from the records: the shots record's on-screen problems
+(`video/shots-2026-10-29.md`), the Oct 28 critique's minor observations, and the landing evaluation's one short
+target. Made by the orchestrator within sections 9 to 18 and DESIGN.md (M1 to M6), then by the builder where
+marked. Files: `ExhibitPair.tsx`, `case.ts` (display and band strings), the letter sheet's components under
+`web/src/components/letter/`, `CaseHeader.tsx` (the Lead marks), `EntryForm.tsx`, their tests, `DESIGN.md` where a
+rule changes. Nothing in `api/`, `policyqa/` or `cases/`. The control for the whole section is one before-and-after
+capture set (two production builds, the base a worktree of `84a2c5a`, `animations: "disabled"`, one page at a
+time: the 8 fixture pages at reviewed, the intake's three states, the landing, at 1280 by 800, 1024 by 800, 768 by
+1024 and 390 by 844) with the list below of the captures each item is expected to change; every capture outside
+the union of those lists is byte-identical, and every capture inside it differs (the set can fail both ways).
+
+- M1. The crop control's height. From 1024 px the policy exhibit's crop is a button (481 by 41.5 px at 1280, 417
+  by 36 at 1024, on the case page and the landing alike). Its hit area is at least 44 px tall at every width
+  where it is a control, without changing the crop's drawn geometry (the aspect, the image offsets, the boxes):
+  vertical padding inside the button showing bond, or a min-height with the crop centered; the builder chooses
+  and says why. Under 1024 px the crop is not a control (K3) and nothing changes. Expected to differ: every
+  verdict fixture with a policy exhibit and the landing at 1280 and 1024. Measured: the button's height at 1280
+  and 1024 on `c_sample` and the landing, 44 or more; the crop's `data-exhibit-crop` size unchanged.
+- M2. "Not found". `displayValue` returns "Not found" for an empty field, which reads as an error beside the stamp
+  (dc-010 bills nothing: "Amount: Not found", shots problem 10). It reads "Not stated in the letter" everywhere
+  a locked field is shown (the case card's reference rows, the intake's locked card, the full case card
+  disclosure); the intake's editable fields keep their placeholders. A unit test on `displayValue`. Expected to
+  differ: none of the fixtures (the builder confirms that no fixture has an empty field; if one has, it lists
+  it). The live check is the deployed dc-010 case (`/case/c_d2d12f`) after the deploy.
+- M3. The sidenote gutter. On the letter sheet at 1280 the sidenote column's right edge sits at x 1183 and the
+  index tab rail starts at 1184 (shots problem 12; the critique's minor observation). The sidenote column ends
+  at least 16 px left of the rail at 1280 and at 1440, the rail does not move, the letter's text column keeps
+  its width and position. Expected to differ: every fixture with a letter (`c_sample`, `c_rejected`,
+  `c_checkerror`, and any other that draws sidenotes) at 1280; nothing under 1280 if the rail is hidden there
+  (DESIGN.md: the index tabs stay hidden under 1280), which the builder confirms.
+- M4. The deadline mark. The Lead line's mark before "Appeal by …" is the open ring, which in the world's marks
+  means not settled or not reached (critique minor). It becomes a drawn calendar leaf, 16 by 16 px, ink, one
+  stroke weight (2 to 2.2 px, square caps, as DESIGN.md's marks), in every place the deadline is the Lead: the
+  phone Lead, the desktop Lead, the landing's proof sheet (the same component). The ring stays wherever it means
+  not settled or not reached (the next-step Lead on the consistent and not-settled verdicts keeps its mark as
+  today). The mark's reader text names the deadline. Expected to differ: every fixture whose Lead is the deadline
+  (`c_sample`, `c_rejected`, `c_checkerror` at least; the builder lists them) at all four widths, and the landing
+  at all four widths. DESIGN.md's marks paragraph gains the calendar leaf.
+- M5. The band's status line after the self-check reads as jargon ("Letter checked: the first draft stands.").
+  The three reviewed lines lose the colon and the phrase: "Letter checked. No issues found."; "Letter checked.
+  2 of 2 issues fixed." (the count as today); "Letter checked. The draft stands as written." (when no revision
+  was accepted). The self-check section's own sentences are unchanged. Tests that assert the old strings are
+  updated. Expected to differ: every fixture at reviewed whose band shows one of these lines, at all four widths
+  (the builder lists them from the fixtures' critique states).
+- M6. The photo door at desktop. From 1024 px the intake desk shows the file door beside the paste box and not
+  "Take a photo" (critique minor: a desktop offers the phone camera; the file door covers a scanned letter). Under
+  1024 px the three doors and the sample door are unchanged. The doors' list label still reads "Ways to add the
+  letter". Section 12's E-line that put photo and file beside the box is amended by this item. Expected to
+  differ: the intake's three states at 1280 and 1024; byte-identical at 768 and 390.
+- M7. Verification the builder owes: `npx tsc --noEmit`, `npm run lint`, `npm run build` clean; the capture set
+  above with the expected-differences list and the byte comparison both ways; the M1 and M3 measurements; the
+  heading outline of `c_sample` and the landing unchanged at 1280 and 390; the M2 and M5 unit tests. A fresh
+  evaluator grades M1 to M7 before the orchestrator looks; Alvaro's look settles M4's drawing and M5's words.
+
+Decided by the builder, with the reason (Oct 30, 2026; measured on production builds against a worktree of
+`84a2c5a`, scripts and captures under `C:\Users\pau\AppData\Local\Temp\claude\bash-web\`):
+
+- M1 is a minimum height (`min-h-11`, the crop centered, bond above and below), not padding: the missing height
+  varies by crop and width (2.5 px at 1280 and 8 at 1024 on `c_sample`'s 629 by 54 crop; nothing on the other
+  fixtures, whose crops are already 46 to 54 px tall), so a minimum adds only what is missing and the other
+  fixtures stay byte-identical. Measured: the button 481 by 44 at 1280 and 417 by 44 at 1024 on `c_sample` and
+  the landing; the crop's own box and `data-exhibit-crop` unchanged; the crop moves 1.3 px down at 1280 and 4 at
+  1024.
+- M2: `displayValue` returns the exported constant `NOT_STATED`; no fixture has an empty field, so no capture
+  changes; the live check is the deployed dc-010 case after the Vercel deploy.
+- M3 is keyed on the `xl` width (from 1280 px), not on the tabs' 1280 by 760 condition, so the notes do not
+  reflow when only the window's height changes; the explanation sheet's margin column got the same 16 px because
+  it draws the same sidenotes and also touched the rail. Measured: the column 764 to 1168 at 1280 (the rail at
+  1184) and 844 to 1248 at 1440 (the rail at 1264); the rail and the letter column's x and width unchanged.
+- M4: `CalendarLeaf` in `Marks.tsx`, 16 by 16, ink, 2 px square-capped strokes (a leaf with a header rule and
+  two binding rings), reader text "Deadline" (the date follows in the words); drawn by `DeadlineLine` wherever
+  there is a date (the phone Lead, the desktop reference block's Lead, the landing's proof sheet); an unstated
+  deadline keeps the open ring; the leaf stays 16 px beside the desktop Lead's 30 px type, centered in the ring's
+  old 20 px slot so the words do not move (at 1280 the leaf at 705,149 where the ring was at 703,147).
+- M5: "Letter checked. No issues found.", "Letter checked. N of M issues fixed.", "Letter checked. The draft
+  stands as written."; no test asserted the old strings.
+- M6: the photo door is `lg:hidden`; the intake's height unchanged (969); section 12's E-line is amended by M6's
+  own text, not edited.
+- M7: no unit test runner exists under `web/`; the M2 and M5 checks compile `src/lib/case.ts` with the project's
+  tsc and run `unit/check.cjs` (34 of 34 on the change; 26 of 34 fail on the base, the control). Expected
+  differences: M1 four captures (`c_sample` and the landing at 1280 and 1024), M2 none, M3 seven (every fixture
+  with sidenotes at 1280), M4 twenty-two (`c_sample`, `c_rejected`, `c_checkerror`, `c_error` and the landing at
+  four widths; `c_fail` at 1280 and 1024, where its reference block shows the deadline), M5 six (`c_sample`,
+  `c_rejected`, `c_error` at 1280 and 1024: the band line is drawn only from 1024 px, as the evaluator found; `c_checkerror`'s band says the self-check could not run), M6 six (the
+  intake's three states at 1280 and 1024); the union 31 captures, all 31 differ, the 17 outside identical; the
+  heading outlines of `c_sample`, the landing and the intake identical at the four widths; tsc, lint, build
+  clean.
+
+Fix round after the fresh evaluation and Alvaro's look (Oct 30, evening; the evaluator's record is
+`web/bug-bash-evaluation-2026-10-30.md`: M1 to M7 pass, 48 of 48 captures as expected, four low notes): the
+band's words kept as built and the desk passed by Alvaro; the calendar leaf drawn at 20 px beside the desktop
+Lead (1024 px and up: the reference block's Lead and the landing's proof sheet), redrawn on its own pixel grid
+with the same 2 px stroke rather than scaled, 16 px on the phone and in the marks list, so it fills the 20 px
+slot the ring had (measured at 703,147 at 1280 and 611,147 at 1024 on `c_sample`, the ring's old box; the
+"Appeal by" words at the same coordinates on the base, the first round and the fix); DESIGN.md's landing heights
+corrected to 1,403 at 1280 and 1,387 at 1024 (the 44 px crop control) and the marks paragraph given both sizes;
+M5's visible change is the band at 1024 px and up only (the phone's line is a screen-reader region). Against the
+first round, exactly the 12 desktop M4 captures differ, each in the leaf's 18 by 18 box; the other 36 are
+byte-identical; against the base, 31 of 31 differ and 17 of 17 are identical; re-checked by the same evaluator (Oct 30, 11:44 pm): all nine items pass, 48 of 48 captures as expected against the base and against the first round, ready to commit.
